@@ -78,3 +78,10 @@ describe("validateCustomProvider", () => {
     })
   })
 })
+
+describe("DialogCustomProvider", () => {
+  test("does not link to opencode provider docs", async () => {
+    const text = await Bun.file(new URL("./dialog-custom-provider.tsx", import.meta.url)).text()
+    expect(text).not.toContain("https://opencode.ai/docs/providers/#custom-provider")
+  })
+})

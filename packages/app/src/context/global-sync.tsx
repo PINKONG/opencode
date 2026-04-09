@@ -5,6 +5,7 @@ import type {
   Project,
   ProviderAuthResponse,
   ProviderListResponse,
+  Session,
   Todo,
 } from "@opencode-ai/sdk/v2/client"
 import { showToast } from "@opencode-ai/ui/toast"
@@ -24,7 +25,7 @@ import { estimateRootSessionTotal, loadRootSessionsWithFallback } from "./global
 import { trimSessions } from "./global-sync/session-trim"
 import type { ProjectMeta } from "./global-sync/types"
 import { SESSION_RECENT_LIMIT } from "./global-sync/types"
-import { sanitizeProject } from "./global-sync/utils"
+import { normalizeList, sanitizeProject } from "./global-sync/utils"
 import { formatServerError } from "@/utils/server-errors"
 
 type GlobalStore = {
@@ -204,7 +205,7 @@ function createGlobalSync() {
       list: (query) => globalSDK.client.session.list(query),
     })
       .then((x) => {
-        const nonArchived = (x.data ?? [])
+        const nonArchived = normalizeList<Session>(x.data)
           .filter((s) => !!s?.id)
           .filter((s) => !s.time?.archived)
           .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
@@ -320,7 +321,7 @@ function createGlobalSync() {
         sdkFor(directory)
           .lsp.status()
           .then((x) => {
-            setStore("lsp", x.data ?? [])
+            setStore("lsp", normalizeList(x.data))
             setStore("lsp_ready", true)
           })
       },

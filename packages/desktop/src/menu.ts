@@ -1,5 +1,4 @@
 import { Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
-import { openUrl } from "@tauri-apps/plugin-opener"
 import { type as ostype } from "@tauri-apps/plugin-os"
 import { relaunch } from "@tauri-apps/plugin-process"
 import { commands } from "./bindings"
@@ -150,37 +149,6 @@ export async function createMenu(trigger: (id: string) => void) {
           }),
           await PredefinedMenuItem.new({
             item: "Separator",
-          }),
-        ],
-      }),
-      await Submenu.new({
-        text: t("desktop.menu.help"),
-        items: [
-          // missing native macos search
-          await MenuItem.new({
-            action: () => openUrl("https://opencode.ai/docs"),
-            text: t("desktop.menu.help.documentation"),
-          }),
-          await MenuItem.new({
-            action: () => openUrl("https://discord.com/invite/opencode"),
-            text: t("desktop.menu.help.supportForum"),
-          }),
-          await PredefinedMenuItem.new({
-            item: "Separator",
-          }),
-          // await MenuItem.new({
-          //   text: "Release Notes",
-          // }),
-          await PredefinedMenuItem.new({
-            item: "Separator",
-          }),
-          await MenuItem.new({
-            action: () => openUrl("https://github.com/anomalyco/opencode/issues/new?template=feature_request.yml"),
-            text: t("desktop.menu.help.shareFeedback"),
-          }),
-          await MenuItem.new({
-            action: () => openUrl("https://github.com/anomalyco/opencode/issues/new?template=bug_report.yml"),
-            text: t("desktop.menu.help.reportBug"),
           }),
         ],
       }),

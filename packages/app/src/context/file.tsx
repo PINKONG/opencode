@@ -9,6 +9,7 @@ import { useSync } from "./sync"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { createPathHelpers } from "./file/path"
+import { normalizeList } from "./global-sync/utils"
 import {
   approxBytes,
   evictContentLru,
@@ -73,7 +74,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
     const tree = createFileTreeStore({
       scope,
       normalizeDir: path.normalizeDir,
-      list: (dir) => sdk.client.file.list({ path: dir }).then((x) => x.data ?? []),
+      list: (dir) => sdk.client.file.list({ path: dir }).then((x) => normalizeList(x.data)),
       onError: (message) => {
         showToast({
           variant: "error",
@@ -196,7 +197,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
 
     const search = (query: string, dirs: "true" | "false") =>
       sdk.client.find.files({ query, dirs }).then(
-        (x) => (x.data ?? []).map(path.normalize),
+        (x) => normalizeList<string>(x.data).map(path.normalize),
         () => [],
       )
 

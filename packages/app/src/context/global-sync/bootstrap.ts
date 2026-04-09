@@ -16,7 +16,7 @@ import { retry } from "@opencode-ai/util/retry"
 import { batch } from "solid-js"
 import { reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type { State, VcsCache } from "./types"
-import { cmp, normalizeAgentList, normalizeProviderList } from "./utils"
+import { cmp, normalizeAgentList, normalizeList, normalizeProviderList } from "./utils"
 import { formatServerError } from "@/utils/server-errors"
 
 type GlobalStore = {
@@ -113,7 +113,7 @@ export async function bootstrapGlobal(input: {
     () =>
       retry(() =>
         input.globalSDK.project.list().then((x) => {
-          const projects = (x.data ?? [])
+          const projects = normalizeList<Project>(x.data)
             .filter((p) => !!p?.id)
             .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test"))
             .slice()
@@ -251,14 +251,13 @@ export async function bootstrapDirectory(input: {
           if (next) input.vcsCache.setStore("value", next)
         }),
       ),
-    () => retry(() => input.sdk.command.list().then((x) => input.setStore("command", x.data ?? []))),
+    () => retry(() => input.sdk.command.list().then((x) => input.setStore("command", normalizeList(x.data)))),
     () =>
       retry(() =>
         input.sdk.permission.list().then((x) => {
-          const ids = (x.data ?? []).map((perm) => perm?.sessionID).filter((id): id is string => !!id)
-          const grouped = groupBySession(
-            (x.data ?? []).filter((perm): perm is PermissionRequest => !!perm?.id && !!perm.sessionID),
-          )
+          const list = normalizeList<PermissionRequest>(x.data)
+          const ids = list.map((perm) => perm?.sessionID).filter((id): id is string => !!id)
+          const grouped = groupBySession(list.filter((perm): perm is PermissionRequest => !!perm?.id && !!perm.sessionID))
           return warmSessions({ ids, store: input.store, setStore: input.setStore, sdk: input.sdk }).then(() =>
             batch(() => {
               for (const sessionID of Object.keys(input.store.permission)) {
@@ -282,8 +281,9 @@ export async function bootstrapDirectory(input: {
     () =>
       retry(() =>
         input.sdk.question.list().then((x) => {
-          const ids = (x.data ?? []).map((question) => question?.sessionID).filter((id): id is string => !!id)
-          const grouped = groupBySession((x.data ?? []).filter((q): q is QuestionRequest => !!q?.id && !!q.sessionID))
+          const list = normalizeList<QuestionRequest>(x.data)
+          const ids = list.map((question) => question?.sessionID).filter((id): id is string => !!id)
+          const grouped = groupBySession(list.filter((q): q is QuestionRequest => !!q?.id && !!q.sessionID))
           return warmSessions({ ids, store: input.store, setStore: input.setStore, sdk: input.sdk }).then(() =>
             batch(() => {
               for (const sessionID of Object.keys(input.store.question)) {
