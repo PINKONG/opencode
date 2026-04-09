@@ -8,6 +8,7 @@ import { createRequire } from "module"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
+const cli = "wiscode-cli"
 
 function detectPlatformAndArch() {
   // Map platform names
@@ -49,8 +50,8 @@ function detectPlatformAndArch() {
 
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch()
-  const packageName = `opencode-${platform}-${arch}`
-  const binaryName = platform === "windows" ? "opencode.exe" : "opencode"
+  const packageName = `${cli}-${platform}-${arch}`
+  const binaryName = platform === "windows" ? `${cli}.exe` : cli
 
   try {
     // Use require.resolve to find the package
@@ -89,7 +90,7 @@ function symlinkBinary(sourcePath, binaryName) {
   const { targetPath } = prepareBinDirectory(binaryName)
 
   fs.symlinkSync(sourcePath, targetPath)
-  console.log(`opencode binary symlinked: ${targetPath} -> ${sourcePath}`)
+  console.log(`${cli} binary symlinked: ${targetPath} -> ${sourcePath}`)
 
   // Verify the file exists after operation
   if (!fs.existsSync(targetPath)) {
@@ -109,7 +110,7 @@ async function main() {
     // On non-Windows platforms, just verify the binary package exists
     // Don't replace the wrapper script - it handles binary execution
     const { binaryPath } = findBinary()
-    const target = path.join(__dirname, "bin", ".opencode")
+    const target = path.join(__dirname, "bin", ".wiscode-cli")
     if (fs.existsSync(target)) fs.unlinkSync(target)
     try {
       fs.linkSync(binaryPath, target)
@@ -118,7 +119,7 @@ async function main() {
     }
     fs.chmodSync(target, 0o755)
   } catch (error) {
-    console.error("Failed to setup opencode binary:", error.message)
+    console.error(`Failed to setup ${cli} binary:`, error.message)
     process.exit(1)
   }
 }

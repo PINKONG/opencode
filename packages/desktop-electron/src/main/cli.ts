@@ -13,7 +13,7 @@ import { getUserShell, loadShellEnv, mergeShellEnv } from "./shell-env"
 import { store } from "./store"
 
 const CLI_INSTALL_DIR = ".opencode/bin"
-const CLI_BINARY_NAME = "opencode"
+const CLI_BINARY_NAME = "wiscode"
 
 export type ServerConfig = {
   hostname?: string
@@ -45,8 +45,8 @@ const root = dirname(fileURLToPath(import.meta.url))
 export function getSidecarPath() {
   const suffix = process.platform === "win32" ? ".exe" : ""
   const path = app.isPackaged
-    ? join(process.resourcesPath, `opencode-cli${suffix}`)
-    : join(root, "../../resources", `opencode-cli${suffix}`)
+    ? join(process.resourcesPath, `wiscode-cli${suffix}`)
+    : join(root, "../../resources", `wiscode-cli${suffix}`)
   console.log(`[cli] Sidecar path resolved: ${path} (isPackaged: ${app.isPackaged})`)
   return path
 }
@@ -81,7 +81,7 @@ export async function installCli(): Promise<string> {
   const sidecar = getSidecarPath()
   const scriptPath = join(app.getAppPath(), "install")
   const script = readFileSync(scriptPath, "utf8")
-  const tempScript = join(tmpdir(), "opencode-install.sh")
+  const tempScript = join(tmpdir(), "wiscode-install.sh")
 
   writeFileSync(tempScript, script, "utf8")
   chmodSync(tempScript, 0o755)
@@ -219,7 +219,7 @@ function buildCommand(args: string, env: Record<string, string>, shell: string |
     const version = app.getVersion()
     const script = [
       "set -e",
-      'BIN="$HOME/.opencode/bin/opencode"',
+      'BIN="$HOME/.opencode/bin/wiscode"',
       'if [ ! -x "$BIN" ]; then',
       `  curl -fsSL https://opencode.ai/install | bash -s -- --version ${shellEscape(version)} --no-modify-path`,
       "fi",

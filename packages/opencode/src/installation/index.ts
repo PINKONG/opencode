@@ -15,6 +15,7 @@ import semver from "semver"
 
 export namespace Installation {
   const log = Log.create({ service: "installation" })
+  const npm = "wiscode-ai"
 
   export type Method = "curl" | "npm" | "yarn" | "pnpm" | "bun" | "brew" | "scoop" | "choco" | "unknown"
 
@@ -191,8 +192,7 @@ export namespace Installation {
 
           for (const check of checks) {
             const output = yield* check.command()
-            const installedName =
-              check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "opencode" : "opencode-ai"
+            const installedName = check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "opencode" : npm
             if (output.includes(installedName)) {
               return check.name
             }
@@ -225,9 +225,7 @@ export namespace Installation {
             const reg = r || "https://registry.npmjs.org"
             const registry = reg.endsWith("/") ? reg.slice(0, -1) : reg
             const channel = CHANNEL
-            const response = yield* httpOk.execute(
-              HttpClientRequest.get(`${registry}/opencode-ai/${channel}`).pipe(HttpClientRequest.acceptJson),
-            )
+            const response = yield* httpOk.execute(HttpClientRequest.get(`${registry}/${npm}/${channel}`).pipe(HttpClientRequest.acceptJson))
             const data = yield* HttpClientResponse.schemaBodyJson(NpmPackage)(response)
             return data.version
           }
@@ -268,13 +266,13 @@ export namespace Installation {
               result = yield* upgradeCurl(target)
               break
             case "npm":
-              result = yield* run(["npm", "install", "-g", `opencode-ai@${target}`])
+              result = yield* run(["npm", "install", "-g", `${npm}@${target}`])
               break
             case "pnpm":
-              result = yield* run(["pnpm", "install", "-g", `opencode-ai@${target}`])
+              result = yield* run(["pnpm", "install", "-g", `${npm}@${target}`])
               break
             case "bun":
-              result = yield* run(["bun", "install", "-g", `opencode-ai@${target}`])
+              result = yield* run(["bun", "install", "-g", `${npm}@${target}`])
               break
             case "brew": {
               const formula = yield* getBrewFormula()

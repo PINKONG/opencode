@@ -18,11 +18,11 @@ fi
 
 if [[ "${arch}" == "x86_64" ]]; then
   triple="x86_64-apple-darwin"
-  dir="opencode-darwin-x64-baseline"
+  dir="wiscode-cli-darwin-x64-baseline"
   cmd=(bun run script/build.ts --single --baseline --skip-install)
 elif [[ "${arch}" == "arm64" ]]; then
   triple="aarch64-apple-darwin"
-  dir="opencode-darwin-arm64"
+  dir="wiscode-cli-darwin-arm64"
   cmd=(bun run script/build.ts --single --skip-install)
 else
   echo "Unsupported macOS architecture: ${arch}" >&2
@@ -49,7 +49,7 @@ cd "${root}/packages/opencode"
 echo "==> build sidecar"
 "${cmd[@]}"
 
-bin="${root}/packages/opencode/dist/${dir}/bin/opencode"
+bin="${root}/packages/opencode/dist/${dir}/bin/wiscode-cli"
 if [[ ! -x "${bin}" ]]; then
   echo "Missing sidecar binary: ${bin}" >&2
   exit 1
@@ -58,8 +58,8 @@ fi
 cd "${root}/packages/desktop"
 echo "==> copy sidecar"
 mkdir -p src-tauri/sidecars
-cp "${bin}" "src-tauri/sidecars/opencode-cli-${triple}"
-chmod +x "src-tauri/sidecars/opencode-cli-${triple}"
+cp "${bin}" "src-tauri/sidecars/wiscode-cli-${triple}"
+chmod +x "src-tauri/sidecars/wiscode-cli-${triple}"
 
 echo "==> typecheck"
 bun run typecheck

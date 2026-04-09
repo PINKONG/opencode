@@ -34,12 +34,12 @@ if (Test-Path $envf) {
 
 if ($arch -eq "X64") {
   $triple = "x86_64-pc-windows-msvc"
-  $dir = "opencode-windows-x64-baseline"
+  $dir = "wiscode-cli-windows-x64-baseline"
   $args = @("run", "script/build.ts", "--single", "--baseline", "--skip-install")
 }
 elseif ($arch -eq "Arm64") {
   $triple = "aarch64-pc-windows-msvc"
-  $dir = "opencode-windows-arm64"
+  $dir = "wiscode-cli-windows-arm64"
   $args = @("run", "script/build.ts", "--single", "--skip-install")
 }
 else {
@@ -65,7 +65,7 @@ Set-Location (Join-Path $Root "packages\opencode")
 Write-Host "==> build sidecar"
 & bun @args
 
-$bin = Join-Path $Root "packages\opencode\dist\$dir\bin\opencode.exe"
+$bin = Join-Path $Root "packages\opencode\dist\$dir\bin\wiscode-cli.exe"
 if (-not (Test-Path $bin)) {
   throw "Missing sidecar binary: $bin"
 }
@@ -74,7 +74,7 @@ Set-Location (Join-Path $Root "packages\desktop")
 Write-Host "==> copy sidecar"
 $sidecar = Join-Path $Root "packages\desktop\src-tauri\sidecars"
 New-Item -ItemType Directory -Force $sidecar | Out-Null
-Copy-Item $bin (Join-Path $sidecar "opencode-cli-$triple.exe") -Force
+Copy-Item $bin (Join-Path $sidecar "wiscode-cli-$triple.exe") -Force
 
 Write-Host "==> typecheck"
 bun run typecheck

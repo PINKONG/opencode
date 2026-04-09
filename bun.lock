@@ -302,7 +302,7 @@
       "name": "opencode",
       "version": "1.0.0",
       "bin": {
-        "opencode": "./bin/opencode",
+        "wiscode": "./bin/opencode",
       },
       "dependencies": {
         "@actions/core": "1.11.1",

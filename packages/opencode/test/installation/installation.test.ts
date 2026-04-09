@@ -48,6 +48,23 @@ function testLayer(
 }
 
 describe("installation", () => {
+  describe("method", () => {
+    test("detects wiscode as an npm installation", async () => {
+      const layer = testLayer(
+        () => jsonResponse({}),
+        (cmd, args) => {
+          if (cmd === "npm" && args[0] === "list") return "wiscode-ai@1.0.0\n"
+          return ""
+        },
+      )
+
+      const result = await Effect.runPromise(
+        Installation.Service.use((svc) => svc.method()).pipe(Effect.provide(layer)),
+      )
+      expect(result).toBe("npm")
+    })
+  })
+
   describe("latest", () => {
     test("reads release version from GitHub releases", async () => {
       const layer = testLayer(() => jsonResponse({ tag_name: "v1.2.3" }))
@@ -68,8 +85,12 @@ describe("installation", () => {
     })
 
     test("reads npm registry versions", async () => {
+      let url = ""
       const layer = testLayer(
-        () => jsonResponse({ version: "1.5.0" }),
+        (request) => {
+          url = request.url.toString()
+          return jsonResponse({ version: "1.5.0" })
+        },
         (cmd, args) => {
           if (cmd === "npm" && args.includes("registry")) return "https://registry.npmjs.org\n"
           return ""
@@ -80,6 +101,7 @@ describe("installation", () => {
         Installation.Service.use((svc) => svc.latest("npm")).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("1.5.0")
+      expect(url).toContain("/wiscode-ai/")
     })
 
     test("reads npm registry versions for bun method", async () => {

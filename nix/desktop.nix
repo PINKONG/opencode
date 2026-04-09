@@ -72,7 +72,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     patchShebangs packages/desktop/node_modules
 
     mkdir -p packages/desktop/src-tauri/sidecars
-    cp ${opencode}/bin/opencode packages/desktop/src-tauri/sidecars/opencode-cli-${stdenv.hostPlatform.rust.rustcTarget}
+    cp ${opencode}/bin/wiscode-cli packages/desktop/src-tauri/sidecars/wiscode-cli-${stdenv.hostPlatform.rust.rustcTarget}
   '';
 
   # see publish-tauri job in .github/workflows/publish.yml

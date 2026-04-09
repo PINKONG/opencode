@@ -37,7 +37,7 @@ const getBase = (): Configuration => ({
     {
       from: "resources/",
       to: "",
-      filter: ["opencode-cli*"],
+      filter: ["wiscode-cli*"],
     },
     {
       from: "native/",
