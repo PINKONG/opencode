@@ -125,7 +125,7 @@ export default defineConfig({
           dir: "ltr",
         },
       },
-      favicon: "/favicon-v3.svg",
+      favicon: "/favicon-96x96-v3.png",
       head: [
         {
           tag: "link",
