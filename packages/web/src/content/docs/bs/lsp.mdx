@@ -1,13 +1,13 @@
 ---
 title: LSP serveri
-description: OpenCode se integriše sa vašim LSP serverima.
+description: WisCode se integriše sa vašim LSP serverima.
 ---
 
-OpenCode se integriše sa vašim Language Server Protocol (LSP) serverima kako bi pomogao LLM-u u interakciji s kodnom bazom. Koristi dijagnostiku za slanje povratnih informacija modelu.
+WisCode se integriše sa vašim Language Server Protocol (LSP) serverima kako bi pomogao LLM-u u interakciji s kodnom bazom. Koristi dijagnostiku za slanje povratnih informacija modelu.
 
 ## Ugrađeni
 
-OpenCode dolazi sa nekoliko ugrađenih LSP servera za popularne jezike:
+WisCode dolazi sa nekoliko ugrađenih LSP servera za popularne jezike:
 
 | LSP server         | Ekstenzije                                                          | Zahtjevi                                                 |
 | ------------------ | ------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -54,7 +54,7 @@ Možete onemogućiti automatska preuzimanja LSP servera tako što ćete postavit
 
 ## Kako radi
 
-Kada opencode otvori fajl, on:
+Kada WisCode otvori fajl, on:
 
 1. Provjerava ekstenziju datoteke u odnosu na sve omogućene LSP servere.
 2. Pokreće odgovarajući LSP server ako već nije pokrenut.
@@ -63,7 +63,7 @@ Kada opencode otvori fajl, on:
 
 ## Konfiguracija
 
-Možete prilagoditi LSP servere kroz `lsp` odjeljak u vašoj opencode konfiguraciji.
+Možete prilagoditi LSP servere kroz `lsp` odjeljak u vašoj WisCode konfiguraciji.
 
 ```json title="opencode.json"
 {

@@ -1,6 +1,6 @@
-# OpenCode Desktop
+# WisCode Desktop
 
-Native OpenCode desktop app, built with Tauri v2.
+Native WisCode desktop app, built with Tauri v2.
 
 ## Development
 

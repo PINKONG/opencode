@@ -3,7 +3,7 @@ title: Fehlerbehebung
 description: Haeufige Probleme und schnelle Loesungen.
 ---
 
-Wenn OpenCode Probleme macht, starte mit Logs und lokal gespeicherten Daten auf der Festplatte.
+Wenn WisCode Probleme macht, starte mit Logs und lokal gespeicherten Daten auf der Festplatte.
 
 ---
 
@@ -16,13 +16,13 @@ Logdateien werden hier gespeichert:
 
 Dateinamen enthalten Zeitstempel (z. B. `2025-01-09T123456.log`) und es bleiben die letzten 10 Logs erhalten.
 
-Mit `--log-level` bekommst du detailliertere Diagnoseinfos, z. B. `opencode --log-level DEBUG`.
+Mit `--log-level` bekommst du detailliertere Diagnoseinfos, z. B. `wiscode --log-level DEBUG`.
 
 ---
 
 ## Speicher
 
-opencode speichert Sitzungs- und App-Daten auf der Festplatte unter:
+WisCode speichert Sitzungs- und App-Daten auf der Festplatte unter:
 
 - **macOS/Linux**: `~/.local/share/opencode/`
 - **Windows**: Druecke `WIN+R` und fuege ein: `%USERPROFILE%\.local\share\opencode`
@@ -39,14 +39,14 @@ Dieses Verzeichnis enthaelt:
 
 ## Desktop-App
 
-OpenCode Desktop startet im Hintergrund einen lokalen OpenCode-Server (`opencode-cli`-Sidecar).
+WisCode Desktop startet im Hintergrund einen lokalen WisCode-Server (`opencode-cli`-Sidecar).
 Viele Probleme kommen von fehlerhaften Plugins, kaputtem Cache oder falschen Server-Einstellungen.
 
 ### Schnellchecks
 
 - App komplett beenden und neu starten
 - Bei Fehlerbildschirm **Restart** klicken und Details kopieren
-- Nur macOS: `OpenCode`-Menue -> **Reload Webview** (hilft bei leerer/eingefrorener UI)
+- Nur macOS: `WisCode`-Menue -> **Reload Webview** (hilft bei leerer/eingefrorener UI)
 
 ---
 
@@ -73,7 +73,7 @@ Wenn du Plugins konfiguriert hast, deaktiviere sie voruebergehend, indem du den 
 
 #### Plugin-Verzeichnisse prüfen
 
-OpenCode kann auch lokale Plugins von der Festplatte laden. Verschiebe diese voruebergehend (oder benenne den Ordner um) und starte die Desktop-App neu:
+WisCode kann auch lokale Plugins von der Festplatte laden. Verschiebe diese voruebergehend (oder benenne den Ordner um) und starte die Desktop-App neu:
 
 - **Globale Plugins**
   - **macOS/Linux**: `~/.config/opencode/plugins/`
@@ -87,22 +87,22 @@ Wenn die App wieder funktioniert, aktiviere Plugins nacheinander, um den Verursa
 
 ### Cache leeren
 
-Wenn das Deaktivieren von Plugins nicht hilft (oder eine Plugin-Installation haengt), leere den Cache, damit OpenCode ihn neu aufbauen kann.
+Wenn das Deaktivieren von Plugins nicht hilft (oder eine Plugin-Installation haengt), leere den Cache, damit WisCode ihn neu aufbauen kann.
 
-1. Beende OpenCode Desktop komplett.
+1. Beende WisCode Desktop komplett.
 2. Loesche das Cache-Verzeichnis:
 
 - **macOS**: Finder -> `Cmd+Shift+G` -> einfuegen: `~/.cache/opencode`
 - **Linux**: loesche `~/.cache/opencode` (oder fuehre aus: `rm -rf ~/.cache/opencode`)
 - **Windows**: Druecke `WIN+R` und fuege ein: `%USERPROFILE%\.cache\opencode`
 
-3. Starte OpenCode Desktop neu.
+3. Starte WisCode Desktop neu.
 
 ---
 
 ### Server-Verbindungsprobleme beheben
 
-OpenCode Desktop kann entweder einen eigenen lokalen Server starten (Standard) oder sich mit einer konfigurierten Server-URL verbinden.
+WisCode Desktop kann entweder einen eigenen lokalen Server starten (Standard) oder sich mit einer konfigurierten Server-URL verbinden.
 
 Wenn du einen **"Connection Failed"**-Dialog siehst (oder die App beim Splash-Screen haengen bleibt), pruefe auf eine benutzerdefinierte Server-URL.
 
@@ -133,21 +133,21 @@ Unter Linux koennen manche Wayland-Setups leere Fenster oder Compositor-Fehler v
 
 ### Windows: WebView2-Laufzeit
 
-Unter Windows benoetigt OpenCode Desktop die Microsoft Edge **WebView2 Runtime**. Wenn die App ein leeres Fenster zeigt oder nicht startet, installiere/aktualisiere WebView2 und versuche es erneut.
+Unter Windows benoetigt WisCode Desktop die Microsoft Edge **WebView2 Runtime**. Wenn die App ein leeres Fenster zeigt oder nicht startet, installiere/aktualisiere WebView2 und versuche es erneut.
 
 ---
 
 ### Windows: Allgemeine Performance-Probleme
 
-Wenn du langsame Performance, Dateizugriffsprobleme oder Terminal-Probleme unter Windows hast, versuche [WSL (Windows Subsystem for Linux)](/docs/windows-wsl). WSL bietet eine Linux-Umgebung, die nahtloser mit OpenCode-Features funktioniert.
+Wenn du langsame Performance, Dateizugriffsprobleme oder Terminal-Probleme unter Windows hast, versuche [WSL (Windows Subsystem for Linux)](/docs/windows-wsl). WSL bietet eine Linux-Umgebung, die nahtloser mit WisCode-Features funktioniert.
 
 ---
 
 ### Benachrichtigungen werden nicht angezeigt
 
-OpenCode Desktop zeigt Systembenachrichtigungen nur wenn:
+WisCode Desktop zeigt Systembenachrichtigungen nur wenn:
 
-- Benachrichtigungen fuer OpenCode in den OS-Einstellungen aktiviert sind, und
+- Benachrichtigungen fuer WisCode in den OS-Einstellungen aktiviert sind, und
 - das App-Fenster nicht fokussiert ist.
 
 ---
@@ -156,8 +156,8 @@ OpenCode Desktop zeigt Systembenachrichtigungen nur wenn:
 
 Wenn die App nicht startet und du Einstellungen nicht in der UI loeschen kannst, setze den gespeicherten Zustand der Desktop-App zurueck.
 
-1. Beende OpenCode Desktop.
-2. Finde und loesche diese Dateien (im App-Data-Verzeichnis von OpenCode Desktop):
+1. Beende WisCode Desktop.
+2. Finde und loesche diese Dateien (im App-Data-Verzeichnis von WisCode Desktop):
 
 - `opencode.settings.dat` (desktop default server URL)
 - `opencode.global.dat` und `opencode.workspace.*.dat` (UI state like recent servers/projects)
@@ -172,7 +172,7 @@ So findest du das Verzeichnis schnell:
 
 ## Hilfe bekommen
 
-Wenn du Probleme mit OpenCode hast:
+Wenn du Probleme mit WisCode hast:
 
 1. **Probleme auf GitHub melden**
 
@@ -196,11 +196,11 @@ Hier sind typische Fehlerbilder und wie du sie loest.
 
 ---
 
-### OpenCode startet nicht
+### WisCode startet nicht
 
 1. Pruefe die Logs auf Fehlermeldungen
 2. Versuche den Start mit `--print-logs`, um Ausgaben im Terminal zu sehen
-3. Stelle sicher, dass du die neueste Version hast: `opencode upgrade`
+3. Stelle sicher, dass du die neueste Version hast: `wiscode upgrade`
 
 ---
 
@@ -227,7 +227,7 @@ Beispiele:
 - `openrouter/google/gemini-2.5-flash`
 - `opencode/kimi-k2`
 
-Um zu sehen, auf welche Modelle du Zugriff hast, fuehre `opencode models` aus.
+Um zu sehen, auf welche Modelle du Zugriff hast, fuehre `wiscode models` aus.
 
 ---
 
@@ -252,7 +252,7 @@ Zur Loesung:
 
 ### AI_APICallError und Provider-Paket-Probleme
 
-Wenn du API-Call-Fehler erhaeltst, kann das an veralteten Provider-Paketen liegen. opencode installiert Provider-Pakete (OpenAI, Anthropic, Google, etc.) dynamisch bei Bedarf und cached sie lokal.
+Wenn du API-Call-Fehler erhaeltst, kann das an veralteten Provider-Paketen liegen. WisCode installiert Provider-Pakete (OpenAI, Anthropic, Google, etc.) dynamisch bei Bedarf und cached sie lokal.
 
 Um Provider-Paket-Probleme zu loesen:
 
@@ -264,9 +264,9 @@ Um Provider-Paket-Probleme zu loesen:
 
    Unter Windows druecke `WIN+R` und loesche: `%USERPROFILE%\.cache\opencode`
 
-2. Starte opencode neu, um die neuesten Provider-Pakete zu installieren
+2. Starte WisCode neu, um die neuesten Provider-Pakete zu installieren
 
-Dies zwingt opencode, die neuesten Versionen der Provider-Pakete herunterzuladen, was oft Kompatibilitaetsprobleme mit Modellparametern und API-Aenderungen loest.
+Dies zwingt WisCode, die neuesten Versionen der Provider-Pakete herunterzuladen, was oft Kompatibilitaetsprobleme mit Modellparametern und API-Aenderungen loest.
 
 ---
 
@@ -297,4 +297,4 @@ Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 export DISPLAY=:99.0
 ```
 
-opencode erkennt, ob du Wayland nutzt und bevorzugt `wl-clipboard`, sonst versucht es `xclip` und `xsel` (in dieser Reihenfolge).
+WisCode erkennt, ob du Wayland nutzt und bevorzugt `wl-clipboard`, sonst versucht es `xclip` und `xsel` (in dieser Reihenfolge).

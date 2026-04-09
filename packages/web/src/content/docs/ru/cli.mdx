@@ -1,20 +1,20 @@
 ---
 title: CLI
-description: Параметры и команда opencode CLI.
+description: Параметры и команда WisCode CLI.
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-CLI opencode по умолчанию запускает [TUI](/docs/tui) при запуске без каких-либо аргументов.
+CLI WisCode по умолчанию запускает [TUI](/docs/tui) при запуске без каких-либо аргументов.
 
 ```bash
-opencode
+wiscode
 ```
 
 Но он также принимает команды, описанные на этой странице. Это позволяет вам программно взаимодействовать с opencode.
 
 ```bash
-opencode run "Explain how closures work in JavaScript"
+wiscode run "Explain how closures work in JavaScript"
 ```
 
 ---
@@ -24,7 +24,7 @@ opencode run "Explain how closures work in JavaScript"
 Запустите TUI opencode.
 
 ```bash
-opencode [project]
+wiscode [project]
 ```
 
 #### Флаги
@@ -44,7 +44,7 @@ opencode [project]
 
 ## Команды
 
-CLI opencode также имеет следующие команды.
+CLI WisCode также имеет следующие команды.
 
 ---
 
@@ -53,27 +53,27 @@ CLI opencode также имеет следующие команды.
 Управляйте агентами для opencode.
 
 ```bash
-opencode agent [command]
+wiscode agent [command]
 ```
 
 ---
 
 ### attach
 
-Подключите терминал к уже работающему внутреннему серверу opencode, запущенному с помощью команд `serve` или `web`.
+Подключите терминал к уже работающему внутреннему серверу WisCode, запущенному с помощью команд `serve` или `web`.
 
 ```bash
-opencode attach [url]
+wiscode attach [url]
 ```
 
 Это позволяет использовать TUI с удаленным сервером opencode. Например:
 
 ```bash
 # Start the backend server for web/mobile access
-opencode web --port 4096 --hostname 0.0.0.0
+wiscode web --port 4096 --hostname 0.0.0.0
 
 # In another terminal, attach the TUI to the running backend
-opencode attach http://10.20.30.40:4096
+wiscode attach http://10.20.30.40:4096
 ```
 
 #### Флаги
@@ -90,7 +90,7 @@ opencode attach http://10.20.30.40:4096
 Создайте нового агента с пользовательской конфигурацией.
 
 ```bash
-opencode agent create
+wiscode agent create
 ```
 
 Эта команда поможет вам создать новый агент с настраиваемой системной подсказкой и настройкой инструмента.
@@ -102,7 +102,7 @@ opencode agent create
 Перечислите всех доступных агентов.
 
 ```bash
-opencode agent list
+wiscode agent list
 ```
 
 ---
@@ -112,20 +112,20 @@ opencode agent list
 Команда для управления учетными данными и входом в систему для провайдеров.
 
 ```bash
-opencode auth [command]
+wiscode auth [command]
 ```
 
 ---
 
 #### login
 
-opencode использует список провайдеров с [Models.dev](https://models.dev), поэтому вы можете использовать `opencode auth login` для настройки ключей API для любого поставщика, которого вы хотите использовать. Это хранится в `~/.local/share/opencode/auth.json`.
+WisCode использует список провайдеров с [Models.dev](https://models.dev), поэтому вы можете использовать `wiscode auth login` для настройки ключей API для любого поставщика, которого вы хотите использовать. Это хранится в `~/.local/share/opencode/auth.json`.
 
 ```bash
-opencode auth login
+wiscode auth login
 ```
 
-Когда opencode запускается, он загружает поставщиков из файла учетных данных. И если в ваших средах определены какие-либо ключи или файл `.env` в вашем проекте.
+Когда WisCode запускается, он загружает поставщиков из файла учетных данных. И если в ваших средах определены какие-либо ключи или файл `.env` в вашем проекте.
 
 ---
 
@@ -134,13 +134,13 @@ opencode auth login
 Перечисляет всех проверенных поставщиков, которые хранятся в файле учетных данных.
 
 ```bash
-opencode auth list
+wiscode auth list
 ```
 
 Или короткая версия.
 
 ```bash
-opencode auth ls
+wiscode auth ls
 ```
 
 ---
@@ -150,7 +150,7 @@ opencode auth ls
 Выключает вас из провайдера, удаляя его из файла учетных данных.
 
 ```bash
-opencode auth logout
+wiscode auth logout
 ```
 
 ---
@@ -160,7 +160,7 @@ opencode auth logout
 Управляйте агентом GitHub для автоматизации репозитория.
 
 ```bash
-opencode github [command]
+wiscode github [command]
 ```
 
 ---
@@ -170,7 +170,7 @@ opencode github [command]
 Установите агент GitHub в свой репозиторий.
 
 ```bash
-opencode github install
+wiscode github install
 ```
 
 Это настроит необходимый рабочий процесс GitHub Actions и проведет вас через процесс настройки. [Подробнее](/docs/github).
@@ -182,7 +182,7 @@ opencode github install
 Запустите агент GitHub. Обычно это используется в действиях GitHub.
 
 ```bash
-opencode github run
+wiscode github run
 ```
 
 ##### Флаги
@@ -199,7 +199,7 @@ opencode github run
 Управляйте серверами протокола контекста модели.
 
 ```bash
-opencode mcp [command]
+wiscode mcp [command]
 ```
 
 ---
@@ -209,7 +209,7 @@ opencode mcp [command]
 Добавьте сервер MCP в свою конфигурацию.
 
 ```bash
-opencode mcp add
+wiscode mcp add
 ```
 
 Эта команда поможет вам добавить локальный или удаленный сервер MCP.
@@ -221,13 +221,13 @@ opencode mcp add
 Перечислите все настроенные серверы MCP и состояние их подключения.
 
 ```bash
-opencode mcp list
+wiscode mcp list
 ```
 
 Или используйте короткую версию.
 
 ```bash
-opencode mcp ls
+wiscode mcp ls
 ```
 
 ---
@@ -237,7 +237,7 @@ opencode mcp ls
 Аутентификация с помощью сервера MCP с поддержкой OAuth.
 
 ```bash
-opencode mcp auth [name]
+wiscode mcp auth [name]
 ```
 
 Если вы не укажете имя сервера, вам будет предложено выбрать один из доступных серверов с поддержкой OAuth.
@@ -245,13 +245,13 @@ opencode mcp auth [name]
 Вы также можете перечислить серверы с поддержкой OAuth и их статус аутентификации.
 
 ```bash
-opencode mcp auth list
+wiscode mcp auth list
 ```
 
 Или используйте короткую версию.
 
 ```bash
-opencode mcp auth ls
+wiscode mcp auth ls
 ```
 
 ---
@@ -261,7 +261,7 @@ opencode mcp auth ls
 Удалите учетные данные OAuth для сервера MCP.
 
 ```bash
-opencode mcp logout [name]
+wiscode mcp logout [name]
 ```
 
 ---
@@ -271,7 +271,7 @@ opencode mcp logout [name]
 Отладка проблем с подключением OAuth для сервера MCP.
 
 ```bash
-opencode mcp debug <name>
+wiscode mcp debug <name>
 ```
 
 ---
@@ -281,7 +281,7 @@ opencode mcp debug <name>
 Перечислите все доступные модели от настроенных поставщиков.
 
 ```bash
-opencode models [provider]
+wiscode models [provider]
 ```
 
 Эта команда отображает все модели, доступные у настроенных вами поставщиков, в формате `provider/model`.
@@ -291,7 +291,7 @@ opencode models [provider]
 При желании вы можете передать идентификатор поставщика, чтобы фильтровать модели по этому поставщику.
 
 ```bash
-opencode models anthropic
+wiscode models anthropic
 ```
 
 #### Флаги
@@ -304,33 +304,33 @@ opencode models anthropic
 Используйте флаг `--refresh` для обновления списка кэшированных моделей. Это полезно, когда к поставщику добавлены новые модели и вы хотите увидеть их в opencode.
 
 ```bash
-opencode models --refresh
+wiscode models --refresh
 ```
 
 ---
 
 ### run
 
-Запустите opencode в неинтерактивном режиме, передав приглашение напрямую.
+Запустите WisCode в неинтерактивном режиме, передав приглашение напрямую.
 
 ```bash
-opencode run [message..]
+wiscode run [message..]
 ```
 
 Это полезно для создания сценариев, автоматизации или когда вам нужен быстрый ответ без запуска полного TUI. Например.
 
 ```bash "opencode run"
-opencode run Explain the use of context in Go
+wiscode run Explain the use of context in Go
 ```
 
-Вы также можете подключиться к работающему экземпляру `opencode serve`, чтобы избежать холодной загрузки сервера MCP при каждом запуске:
+Вы также можете подключиться к работающему экземпляру `wiscode serve`, чтобы избежать холодной загрузки сервера MCP при каждом запуске:
 
 ```bash
 # Start a headless server in one terminal
-opencode serve
+wiscode serve
 
 # In another terminal, run commands that attach to it
-opencode run --attach http://localhost:4096 "Explain async/await in JavaScript"
+wiscode run --attach http://localhost:4096 "Explain async/await in JavaScript"
 ```
 
 #### Флаги
@@ -347,20 +347,20 @@ opencode run --attach http://localhost:4096 "Explain async/await in JavaScript"
 | `--file`     | `-f`     | Файл(ы) для прикрепления к сообщению                                             |
 | `--format`   |          | Формат: по умолчанию (отформатированный) или json (необработанные события JSON). |
 | `--title`    |          | Название сеанса (использует усеченное приглашение, если значение не указано)     |
-| `--attach`   |          | Подключитесь к работающему серверу opencode (например, http://localhost:4096)    |
+| `--attach`   |          | Подключитесь к работающему серверу WisCode (например, http://localhost:4096)    |
 | `--port`     |          | Порт локального сервера (по умолчанию случайный порт)                            |
 
 ---
 
 ### serve
 
-Запустите автономный сервер opencode для доступа к API. Полный HTTP-интерфейс можно найти в [server docs](/docs/server).
+Запустите автономный сервер WisCode для доступа к API. Полный HTTP-интерфейс можно найти в [server docs](/docs/server).
 
 ```bash
-opencode serve
+wiscode serve
 ```
 
-При этом запускается HTTP-сервер, который обеспечивает доступ API к функциям opencode без интерфейса TUI. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `opencode`).
+При этом запускается HTTP-сервер, который обеспечивает доступ API к функциям WisCode без интерфейса TUI. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `opencode`).
 
 #### Флаги
 
@@ -378,7 +378,7 @@ opencode serve
 Управляйте сессиями opencode.
 
 ```bash
-opencode session [command]
+wiscode session [command]
 ```
 
 ---
@@ -388,7 +388,7 @@ opencode session [command]
 Перечислите все сеансы opencode.
 
 ```bash
-opencode session list
+wiscode session list
 ```
 
 ##### Флаги
@@ -405,7 +405,7 @@ opencode session list
 Покажите статистику использования токенов и затрат для ваших сеансов opencode.
 
 ```bash
-opencode stats
+wiscode stats
 ```
 
 #### Флаги
@@ -424,7 +424,7 @@ opencode stats
 Экспортируйте данные сеанса в формате JSON.
 
 ```bash
-opencode export [sessionID]
+wiscode export [sessionID]
 ```
 
 Если вы не укажете идентификатор сеанса, вам будет предложено выбрать один из доступных сеансов.
@@ -436,27 +436,27 @@ opencode export [sessionID]
 Импортируйте данные сеанса из файла JSON или URL-адреса общего ресурса opencode.
 
 ```bash
-opencode import <file>
+wiscode import <file>
 ```
 
 Вы можете импортировать из локального файла или URL-адреса общего ресурса opencode.
 
 ```bash
-opencode import session.json
-opencode import https://opncd.ai/s/abc123
+wiscode import session.json
+wiscode import https://opncd.ai/s/abc123
 ```
 
 ---
 
 ### web
 
-Запустите автономный сервер opencode с веб-интерфейсом.
+Запустите автономный сервер WisCode с веб-интерфейсом.
 
 ```bash
-opencode web
+wiscode web
 ```
 
-При этом запускается HTTP-сервер и открывается веб-браузер для доступа к opencode через веб-интерфейс. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `opencode`).
+При этом запускается HTTP-сервер и открывается веб-браузер для доступа к WisCode через веб-интерфейс. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `opencode`).
 
 #### Флаги
 
@@ -474,7 +474,7 @@ opencode web
 Запустите сервер ACP (агент-клиентский протокол).
 
 ```bash
-opencode acp
+wiscode acp
 ```
 
 Эта команда запускает сервер ACP, который обменивается данными через stdin/stdout с использованием nd-JSON.
@@ -491,10 +491,10 @@ opencode acp
 
 ### uninstall
 
-Удалите opencode и удалите все связанные файлы.
+Удалите WisCode и удалите все связанные файлы.
 
 ```bash
-opencode uninstall
+wiscode uninstall
 ```
 
 #### Флаги
@@ -510,22 +510,22 @@ opencode uninstall
 
 ### upgrade
 
-Обновляет opencode до последней версии или определенной версии.
+Обновляет WisCode до последней версии или определенной версии.
 
 ```bash
-opencode upgrade [target]
+wiscode upgrade [target]
 ```
 
 Чтобы обновиться до последней версии.
 
 ```bash
-opencode upgrade
+wiscode upgrade
 ```
 
 Для обновления до определенной версии.
 
 ```bash
-opencode upgrade v0.1.48
+wiscode upgrade v0.1.48
 ```
 
 #### Флаги
@@ -538,7 +538,7 @@ opencode upgrade v0.1.48
 
 ## Глобальные флаги
 
-CLI opencode принимает следующие глобальные флаги.
+CLI WisCode принимает следующие глобальные флаги.
 
 | Флаг           | Короткий | Описание                                   |
 | -------------- | -------- | ------------------------------------------ |
@@ -551,7 +551,7 @@ CLI opencode принимает следующие глобальные флаг
 
 ## Переменные среды
 
-opencode можно настроить с помощью переменных среды.
+WisCode можно настроить с помощью переменных среды.
 
 | Переменная                            | Тип                 | Описание                                                                         |
 | ------------------------------------- | ------------------- | -------------------------------------------------------------------------------- |
