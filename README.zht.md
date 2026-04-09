@@ -10,7 +10,7 @@
 <p align="center">開源的 AI Coding Agent。</p>
 <p align="center">
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/wiscode-ai"><img alt="npm" src="https://img.shields.io/npm/v/wiscode-ai?style=flat-square" /></a>
   <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
@@ -50,7 +50,7 @@
 curl -fsSL https://opencode.ai/install | bash
 
 # 套件管理員
-npm i -g opencode-ai@latest        # 也可使用 bun/pnpm/yarn
+npm i -g wiscode-ai@latest        # 也可使用 bun/pnpm/yarn
 scoop install opencode             # Windows
 choco install opencode             # Windows
 brew install anomalyco/tap/opencode # macOS 與 Linux（推薦，始終保持最新）
@@ -70,9 +70,9 @@ OpenCode 也提供桌面版應用程式。您可以直接從 [發佈頁面 (rele
 
 | 平台                  | 下載連結                              |
 | --------------------- | ------------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-darwin-aarch64.dmg` |
-| macOS (Intel)         | `opencode-desktop-darwin-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe`    |
+| macOS (Apple Silicon) | `WisCode_*_aarch64.dmg` |
+| macOS (Intel)         | `WisCode_*_x64.dmg`     |
+| Windows               | `WisCode_*_x64-setup.exe`    |
 | Linux                 | `.deb`, `.rpm`, 或 AppImage           |
 
 ```bash
