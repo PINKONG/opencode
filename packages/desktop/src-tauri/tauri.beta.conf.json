@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenCode Beta",
-  "identifier": "ai.opencode.desktop.beta",
+  "productName": "WisCode Beta",
+  "identifier": "ai.wiscode.desktop.beta",
   "bundle": {
     "createUpdaterArtifacts": true,
     "icon": [
@@ -30,7 +30,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYwMDM5Nzg5OUMzOUExMDQKUldRRW9UbWNpWmNEOENYT01CV0lhOXR1UFhpaXJsK1Z3aU9lZnNtNzE0TDROWVMwVW9XQnFOelkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgwQTJEMDBENDY5QTdEN0MKUldSOGZacEdEZENpZ0pZdmpLSjdwWjY1N0wyZ0piNDZkeGhZN3VSaVpmZ2dnMVBSUXNOc0JqSWYK",
       "endpoints": ["https://github.com/anomalyco/opencode-beta/releases/latest/download/latest.json"]
     }
   }

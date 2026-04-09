@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>ai.opencode.opencode</id>
+  <id>ai.wiscode.desktop</id>
 
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
 
-  <name>OpenCode</name>
+  <name>WisCode</name>
   <summary>Open source AI coding agent</summary>
 
   <developer id="ly.anoma">
@@ -18,7 +18,7 @@
     </p>
   </description>
 
-  <launchable type="desktop-id">ai.opencode.opencode.desktop</launchable>
+  <launchable type="desktop-id">ai.wiscode.desktop.desktop</launchable>
 
   <content_rating type="oars-1.1" />
 
