@@ -31,8 +31,6 @@ export function ErrorComponent(props: {
   })
   const [copied, setCopied] = createSignal(false)
 
-  const issueURL = new URL("https://github.com/anomalyco/opencode/issues/new?template=bug-report.yml")
-
   // Choose safe fallback colors per mode since theme context may not be available
   const isLight = props.mode === "light"
   const colors = {
@@ -42,21 +40,15 @@ export function ErrorComponent(props: {
     primary: isLight ? "#3b7dd8" : "#fab283",
   }
 
-  if (props.error.message) {
-    issueURL.searchParams.set("title", `opentui: fatal: ${props.error.message}`)
-  }
-
-  if (props.error.stack) {
-    issueURL.searchParams.set(
-      "description",
-      "```\n" + props.error.stack.substring(0, 6000 - issueURL.toString().length) + "...\n```",
-    )
-  }
-
-  issueURL.searchParams.set("opencode-version", Installation.VERSION)
+  const report = [
+    `wiscode-version: ${Installation.VERSION}`,
+    `message: ${props.error.message || "unknown error"}`,
+    "",
+    props.error.stack || "no stack trace",
+  ].join("\n")
 
   const copyIssueURL = () => {
-    Clipboard.copy(issueURL.toString()).then(() => {
+    Clipboard.copy(report).then(() => {
       setCopied(true)
     })
   }
@@ -69,7 +61,7 @@ export function ErrorComponent(props: {
         </text>
         <box onMouseUp={copyIssueURL} backgroundColor={colors.primary} padding={1}>
           <text attributes={TextAttributes.BOLD} fg={colors.bg}>
-            Copy issue URL (exception info pre-filled)
+            Copy error report
           </text>
         </box>
         {copied() && <text fg={colors.muted}>Successfully copied</text>}

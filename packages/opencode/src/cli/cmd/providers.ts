@@ -257,7 +257,7 @@ export const ProvidersLoginCommand = cmd({
   builder: (yargs) =>
     yargs
       .positional("url", {
-        describe: "opencode auth provider",
+        describe: "wiscode auth provider",
         type: "string",
       })
       .option("provider", {
@@ -407,9 +407,7 @@ export const ProvidersLoginCommand = cmd({
             if (handled) return
           }
 
-          prompts.log.warn(
-            `This only stores a credential for ${provider} - you will need configure it in opencode.json, check the docs for examples.`,
-          )
+          prompts.log.warn(`This only stores a credential for ${provider} - you will need to configure it in opencode.json.`)
         }
 
         if (provider === "amazon-bedrock") {
@@ -423,7 +421,7 @@ export const ProvidersLoginCommand = cmd({
         }
 
         if (provider === "opencode") {
-          prompts.log.info("Create an api key at https://opencode.ai/auth")
+          prompts.log.info("Use the WisCode API key configured for your deployment or contact your administrator.")
         }
 
         if (provider === "vercel") {
@@ -432,7 +430,7 @@ export const ProvidersLoginCommand = cmd({
 
         if (["cloudflare", "cloudflare-ai-gateway"].includes(provider)) {
           prompts.log.info(
-            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables. Read more: https://opencode.ai/docs/providers/#cloudflare-ai-gateway",
+            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables.",
           )
         }
 

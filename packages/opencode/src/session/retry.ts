@@ -53,8 +53,7 @@ export namespace SessionRetry {
     if (MessageV2.ContextOverflowError.isInstance(error)) return undefined
     if (MessageV2.APIError.isInstance(error)) {
       if (!error.data.isRetryable) return undefined
-      if (error.data.responseBody?.includes("FreeUsageLimitError"))
-        return `Free usage exceeded, subscribe to Go https://opencode.ai/go`
+      if (error.data.responseBody?.includes("FreeUsageLimitError")) return "Free usage exceeded for this WisCode plan"
       return error.data.message.includes("Overloaded") ? "Provider is overloaded" : error.data.message
     }
 
