@@ -85,7 +85,7 @@ const defaultPatchDeps: PatchDeps = {
     await Filesystem.write(file, text)
   },
   exists: (file) => Filesystem.exists(file),
-  files: (dir, name) => ConfigPaths.fileInDirectory(dir, name),
+  files: (dir, name) => ConfigPaths.preferredFileInDirectory(dir, name),
 }
 
 function pluginSpec(item: unknown) {
@@ -347,18 +347,26 @@ function patchFile(dir: string, name: "opencode" | "tui") {
   return path.join(dir, `${name}.jsonc`)
 }
 
+function nextFile(dir: string, name: "opencode" | "tui", src?: string) {
+  if (!src) return patchFile(dir, name)
+  const base = path.basename(src)
+  if (name === "opencode" && base.startsWith("wiscode.")) return src
+  if (name === "tui" && base.startsWith("tui.")) return src
+  const ext = path.extname(src) || ".jsonc"
+  if (name === "opencode") return path.join(dir, `wiscode${ext}`)
+  return path.join(dir, `${name}${ext}`)
+}
+
 async function patchOne(dir: string, target: Target, spec: string, force: boolean, dep: PatchDeps): Promise<PatchOne> {
   const name = patchName(target.kind)
   await using _ = await Flock.acquire(`plug-config:${Filesystem.resolve(path.join(dir, name))}`)
 
   const files = dep.files(dir, name)
   const legacy = path.basename(dir) === ".wiscode" ? dep.files(path.join(path.dirname(dir), ".opencode"), name) : []
-  let cfg = patchFile(dir, name)
   let src: string | undefined
   for (const item of files) {
     if (!(await dep.exists(item))) continue
     src = item
-    cfg = item
     break
   }
   if (!src) {
@@ -368,6 +376,7 @@ async function patchOne(dir: string, target: Target, spec: string, force: boolea
       break
     }
   }
+  const cfg = nextFile(dir, name, src)
 
   const raw = await dep.readText(src ?? cfg).catch((err: NodeJS.ErrnoException) => {
     if (err.code === "ENOENT") return "{}"
@@ -392,7 +401,7 @@ async function patchOne(dir: string, target: Target, spec: string, force: boolea
       ok: false,
       code: "invalid_json",
       kind: target.kind,
-      file: cfg,
+      file: src ?? cfg,
       line: lines.length,
       col: lines[lines.length - 1].length + 1,
       parse: printParseErrorCode(err.error),
@@ -408,7 +417,7 @@ async function patchOne(dir: string, target: Target, spec: string, force: boolea
       item: {
         kind: target.kind,
         mode: out.mode,
-        file: cfg,
+        file: src ?? cfg,
       },
     }
   }

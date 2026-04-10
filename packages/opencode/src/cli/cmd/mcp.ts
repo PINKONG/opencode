@@ -382,27 +382,49 @@ export const McpLogoutCommand = cmd({
 })
 
 async function resolveConfigPath(baseDir: string, global = false) {
-  const candidates = ConfigPaths.preferredFileInDirectory(baseDir, "opencode")
+  const root = ConfigPaths.preferredFileInDirectory(baseDir, "opencode")
+  const local = global ? [] : ConfigPaths.preferredFileInDirectory(ConfigPaths.localDir(baseDir), "opencode")
+  const legacy = global ? [] : ConfigPaths.fileInDirectory(path.join(baseDir, ".opencode"), "opencode")
 
-  if (!global) {
-    candidates.push(...ConfigPaths.preferredFileInDirectory(ConfigPaths.localDir(baseDir), "opencode"))
-    candidates.push(...ConfigPaths.fileInDirectory(path.join(baseDir, ".opencode"), "opencode"))
-  }
-
-  for (const candidate of candidates) {
+  for (const candidate of root) {
     if (await Filesystem.exists(candidate)) {
-      return candidate
+      return {
+        read: candidate,
+        write: root[0],
+      }
     }
   }
 
-  // Default to wiscode.json if none exist
-  return candidates[0]
+  for (const candidate of local) {
+    if (await Filesystem.exists(candidate)) {
+      return {
+        read: candidate,
+        write: local[0],
+      }
+    }
+  }
+
+  for (const candidate of legacy) {
+    if (await Filesystem.exists(candidate)) {
+      return {
+        read: candidate,
+        write: local[0] ?? root[0],
+      }
+    }
+  }
+
+  return {
+    write: root[0],
+  }
 }
 
-async function addMcpToConfig(name: string, mcpConfig: Config.Mcp, configPath: string) {
+export { resolveConfigPath as resolveMcpConfig }
+
+async function addMcpToConfig(name: string, mcpConfig: Config.Mcp, configPath: { read?: string; write: string }) {
   let text = "{}"
-  if (await Filesystem.exists(configPath)) {
-    text = await Filesystem.readText(configPath)
+  const source = configPath.read ?? configPath.write
+  if (await Filesystem.exists(source)) {
+    text = await Filesystem.readText(source)
   }
 
   // Use jsonc-parser to modify while preserving comments
@@ -411,10 +433,12 @@ async function addMcpToConfig(name: string, mcpConfig: Config.Mcp, configPath: s
   })
   const result = applyEdits(text, edits)
 
-  await Filesystem.write(configPath, result)
+  await Filesystem.write(configPath.write, result)
 
-  return configPath
+  return configPath.write
 }
+
+export { addMcpToConfig as patchMcpConfig }
 
 export const McpAddCommand = cmd({
   command: "add",
@@ -442,18 +466,18 @@ export const McpAddCommand = cmd({
             options: [
               {
                 label: "Current project",
-                value: projectConfigPath,
-                hint: projectConfigPath,
+                value: "project",
+                hint: projectConfigPath.write,
               },
               {
                 label: "Global",
-                value: globalConfigPath,
-                hint: globalConfigPath,
+                value: "global",
+                hint: globalConfigPath.write,
               },
             ],
           })
           if (prompts.isCancel(scopeResult)) throw new UI.CancelledError()
-          configPath = scopeResult
+          configPath = scopeResult === "project" ? projectConfigPath : globalConfigPath
         }
 
         const name = await prompts.text({
@@ -492,8 +516,8 @@ export const McpAddCommand = cmd({
             command: command.split(" "),
           }
 
-          await addMcpToConfig(name, mcpConfig, configPath)
-          prompts.log.success(`MCP server "${name}" added to ${configPath}`)
+          const file = await addMcpToConfig(name, mcpConfig, configPath)
+          prompts.log.success(`MCP server "${name}" added to ${file}`)
           prompts.outro("MCP server added successfully")
           return
         }
@@ -570,8 +594,8 @@ export const McpAddCommand = cmd({
             }
           }
 
-          await addMcpToConfig(name, mcpConfig, configPath)
-          prompts.log.success(`MCP server "${name}" added to ${configPath}`)
+          const file = await addMcpToConfig(name, mcpConfig, configPath)
+          prompts.log.success(`MCP server "${name}" added to ${file}`)
         }
 
         prompts.outro("MCP server added successfully")
