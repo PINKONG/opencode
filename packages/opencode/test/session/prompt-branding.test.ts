@@ -8,12 +8,15 @@ const root = resolve(dir, "../../src/session/prompt")
 const files = [
   "anthropic.txt",
   "beast.txt",
+  "build-switch.txt",
   "codex.txt",
   "copilot-gpt-5.txt",
   "default.txt",
   "gemini.txt",
   "gpt.txt",
   "kimi.txt",
+  "max-steps.txt",
+  "plan.txt",
   "trinity.txt",
 ]
 
@@ -23,14 +26,43 @@ const zh =
 
 describe("session prompt branding", () => {
   for (const name of files) {
+    test(`${name} does not expose old OpenCode branding`, async () => {
+      const txt = await Bun.file(join(root, name)).text()
+
+      expect(txt).not.toContain("OpenCode")
+      if (!["anthropic.txt", "default.txt"].includes(name)) {
+        expect(txt).not.toContain("opencode")
+        expect(txt).not.toContain("opencode.ai")
+      }
+    })
+  }
+
+  for (const name of [
+    "anthropic.txt",
+    "beast.txt",
+    "codex.txt",
+    "copilot-gpt-5.txt",
+    "default.txt",
+    "gemini.txt",
+    "gpt.txt",
+    "kimi.txt",
+    "trinity.txt",
+  ]) {
     test(`${name} uses the WisCode self-introduction`, async () => {
       const txt = await Bun.file(join(root, name)).text()
 
       expect(txt).toContain(intro)
       expect(txt).toContain(zh)
-      expect(txt).not.toContain("OpenCode")
-      expect(txt).not.toContain("opencode")
-      expect(txt).not.toContain("opencode.ai")
+    })
+  }
+
+  for (const name of ["anthropic.txt", "default.txt"]) {
+    test(`${name} restores doc lookup guidance for product capability questions`, async () => {
+      const txt = await Bun.file(join(root, name)).text()
+
+      expect(txt).toContain("use the WebFetch tool")
+      expect(txt).toContain("https://opencode.ai/docs")
+      expect(txt).toContain("compatibility reference")
     })
   }
 })
