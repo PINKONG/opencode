@@ -59,6 +59,25 @@ describe("mcp config isolation", () => {
     })
   })
 
+  test("prefers legacy jsonc over json in the same opencode directory", async () => {
+    await using tmp = await tmpdir()
+    const dir = path.join(tmp.path, ".opencode")
+    const json = path.join(dir, "opencode.json")
+    const jsonc = path.join(dir, "opencode.jsonc")
+    const next = path.join(tmp.path, ".wiscode", "wiscode.jsonc")
+    await fs.mkdir(dir, { recursive: true })
+    await Bun.write(json, "{}")
+    await Bun.write(jsonc, "{}")
+
+    const fn = (mcp as any).resolveMcpConfig
+    const out = await fn(tmp.path, false)
+
+    expect(out).toEqual({
+      read: jsonc,
+      write: next,
+    })
+  })
+
   test("reads legacy local config but writes the update into wiscode config", async () => {
     await using tmp = await tmpdir()
     const oldDir = path.join(tmp.path, ".opencode")

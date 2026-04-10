@@ -384,7 +384,7 @@ export const McpLogoutCommand = cmd({
 async function resolveConfigPath(baseDir: string, global = false) {
   const root = ConfigPaths.preferredFileInDirectory(baseDir, "opencode")
   const local = global ? [] : ConfigPaths.preferredFileInDirectory(ConfigPaths.localDir(baseDir), "opencode")
-  const legacy = global ? [] : ConfigPaths.fileInDirectory(path.join(baseDir, ".opencode"), "opencode")
+  const legacy = global ? [] : ConfigPaths.preferredFileInDirectory(path.join(baseDir, ".opencode"), "opencode")
 
   for (const candidate of local) {
     if (await Filesystem.exists(candidate)) {
