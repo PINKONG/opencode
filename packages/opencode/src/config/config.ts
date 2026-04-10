@@ -79,7 +79,7 @@ export namespace Config {
 
   const MANAGED_PLIST_DOMAIN = "ai.opencode.managed"
 
-  // Keys injected by macOS/MDM into the managed plist that are not OpenCode config
+  // Keys injected by macOS/MDM into the managed plist that are not WisCode config
   const PLIST_META = new Set([
     "PayloadDisplayName",
     "PayloadIdentifier",
@@ -90,7 +90,7 @@ export namespace Config {
   ])
 
   /**
-   * Parse raw JSON (from plutil conversion of a managed plist) into OpenCode config.
+   * Parse raw JSON (from plutil conversion of a managed plist) into WisCode config.
    * Strips MDM metadata keys before parsing through the config schema.
    * Pure function — no OS interaction, safe to unit test directly.
    */
