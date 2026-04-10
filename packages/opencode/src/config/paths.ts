@@ -57,7 +57,7 @@ export namespace ConfigPaths {
   }
 
   export function preferredFileInDirectory(dir: string, name: string) {
-    return writeNames(name).flatMap((item) => [path.join(dir, `${item}.json`), path.join(dir, `${item}.jsonc`)])
+    return writeNames(name).flatMap((item) => [path.join(dir, `${item}.jsonc`), path.join(dir, `${item}.json`)])
   }
 
   export function isConfigDir(dir: string) {

@@ -127,4 +127,50 @@ describe("plugin config isolation", () => {
       plugin: ["seed@1.0.0"],
     })
   })
+
+  test("prefers jsonc over json in the same wiscode directory", async () => {
+    await using tmp = await tmpdir()
+    const dir = path.join(tmp.path, ".wiscode")
+    const json = path.join(dir, "wiscode.json")
+    const jsonc = path.join(dir, "wiscode.jsonc")
+    await fs.mkdir(dir, { recursive: true })
+    await Bun.write(
+      json,
+      JSON.stringify(
+        {
+          plugin: ["json@1.0.0"],
+        },
+        null,
+        2,
+      ),
+    )
+    await Bun.write(
+      jsonc,
+      JSON.stringify(
+        {
+          plugin: ["jsonc@1.0.0"],
+        },
+        null,
+        2,
+      ),
+    )
+
+    const out = await patchPluginConfig({
+      spec: "acme@1.2.3",
+      targets: [{ kind: "server" }],
+      worktree: tmp.path,
+      directory: tmp.path,
+      vcs: "git",
+    })
+
+    expect(out.ok).toBe(true)
+    if (!out.ok) return
+    expect(out.items).toEqual([{ kind: "server", mode: "add", file: jsonc }])
+    expect(parseJsonc(await Bun.file(json).text())).toEqual({
+      plugin: ["json@1.0.0"],
+    })
+    expect(parseJsonc(await Bun.file(jsonc).text())).toEqual({
+      plugin: ["jsonc@1.0.0", "acme@1.2.3"],
+    })
+  })
 })

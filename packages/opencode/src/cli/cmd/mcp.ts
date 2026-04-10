@@ -386,20 +386,20 @@ async function resolveConfigPath(baseDir: string, global = false) {
   const local = global ? [] : ConfigPaths.preferredFileInDirectory(ConfigPaths.localDir(baseDir), "opencode")
   const legacy = global ? [] : ConfigPaths.fileInDirectory(path.join(baseDir, ".opencode"), "opencode")
 
-  for (const candidate of root) {
-    if (await Filesystem.exists(candidate)) {
-      return {
-        read: candidate,
-        write: root[0],
-      }
-    }
-  }
-
   for (const candidate of local) {
     if (await Filesystem.exists(candidate)) {
       return {
         read: candidate,
-        write: local[0],
+        write: candidate,
+      }
+    }
+  }
+
+  for (const candidate of root) {
+    if (await Filesystem.exists(candidate)) {
+      return {
+        read: candidate,
+        write: candidate,
       }
     }
   }
@@ -414,7 +414,7 @@ async function resolveConfigPath(baseDir: string, global = false) {
   }
 
   return {
-    write: root[0],
+    write: local[0] ?? root[0],
   }
 }
 
