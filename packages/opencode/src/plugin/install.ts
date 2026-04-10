@@ -334,7 +334,7 @@ function patchDir(input: PatchInput) {
   if (input.global) return input.config ?? Global.Path.config
   const git = input.vcs === "git" && input.worktree !== "/"
   const root = git ? input.worktree : input.directory
-  return path.join(root, ".opencode")
+  return ConfigPaths.localDir(root)
 }
 
 function patchName(kind: Kind): "opencode" | "tui" {
@@ -342,31 +342,46 @@ function patchName(kind: Kind): "opencode" | "tui" {
   return "tui"
 }
 
+function patchFile(dir: string, name: "opencode" | "tui") {
+  if (name === "opencode") return path.join(dir, "wiscode.jsonc")
+  return path.join(dir, `${name}.jsonc`)
+}
+
 async function patchOne(dir: string, target: Target, spec: string, force: boolean, dep: PatchDeps): Promise<PatchOne> {
   const name = patchName(target.kind)
   await using _ = await Flock.acquire(`plug-config:${Filesystem.resolve(path.join(dir, name))}`)
 
   const files = dep.files(dir, name)
-  let cfg = files[0]
-  for (const file of files) {
-    if (!(await dep.exists(file))) continue
-    cfg = file
+  const legacy = path.basename(dir) === ".wiscode" ? dep.files(path.join(path.dirname(dir), ".opencode"), name) : []
+  let cfg = patchFile(dir, name)
+  let src: string | undefined
+  for (const item of files) {
+    if (!(await dep.exists(item))) continue
+    src = item
+    cfg = item
     break
   }
+  if (!src) {
+    for (const item of legacy) {
+      if (!(await dep.exists(item))) continue
+      src = item
+      break
+    }
+  }
 
-  const src = await dep.readText(cfg).catch((err: NodeJS.ErrnoException) => {
+  const raw = await dep.readText(src ?? cfg).catch((err: NodeJS.ErrnoException) => {
     if (err.code === "ENOENT") return "{}"
     return err
   })
-  if (src instanceof Error) {
+  if (raw instanceof Error) {
     return {
       ok: false,
       code: "patch_failed",
       kind: target.kind,
-      error: src,
+      error: raw,
     }
   }
-  const text = src.trim() ? src : "{}"
+  const text = raw.trim() ? raw : "{}"
 
   const errs: JsoncParseError[] = []
   const data = parseJsonc(text, errs, { allowTrailingComma: true })

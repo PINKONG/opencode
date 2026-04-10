@@ -22,6 +22,7 @@ import { Skill } from "../skill"
 import { Effect, ServiceMap, Layer } from "effect"
 import { InstanceState } from "@/effect/instance-state"
 import { makeRuntime } from "@/effect/run-service"
+import { ConfigPaths } from "@/config/paths"
 
 export namespace Agent {
   export const Info = z
@@ -134,6 +135,7 @@ export namespace Agent {
                   },
                   edit: {
                     "*": "deny",
+                    [path.join(path.basename(ConfigPaths.localDir(Instance.worktree)), "plans", "*.md")]: "allow",
                     [path.join(".opencode", "plans", "*.md")]: "allow",
                     [path.relative(Instance.worktree, path.join(Global.Path.data, path.join("plans", "*.md")))]:
                       "allow",

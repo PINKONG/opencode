@@ -8,8 +8,25 @@ import { Flag } from "@/flag/flag"
 import { Global } from "@/global"
 
 export namespace ConfigPaths {
+  const dirs = [".wiscode", ".opencode"] as const
+
+  function readNames(name: string) {
+    if (name !== "opencode") return [name]
+    return ["opencode", "wiscode"]
+  }
+
+  function writeNames(name: string) {
+    if (name !== "opencode") return [name]
+    return ["wiscode", "opencode"]
+  }
+
   export async function projectFiles(name: string, directory: string, worktree: string) {
-    return Filesystem.findUp([`${name}.json`, `${name}.jsonc`], directory, worktree, { rootFirst: true })
+    return Filesystem.findUp(
+      readNames(name).flatMap((item) => [`${item}.json`, `${item}.jsonc`]),
+      directory,
+      worktree,
+      { rootFirst: true },
+    )
   }
 
   export async function directories(directory: string, worktree: string) {
@@ -18,7 +35,7 @@ export namespace ConfigPaths {
       ...(!Flag.OPENCODE_DISABLE_PROJECT_CONFIG
         ? await Array.fromAsync(
             Filesystem.up({
-              targets: [".opencode"],
+              targets: [...dirs].toReversed(),
               start: directory,
               stop: worktree,
             }),
@@ -26,7 +43,7 @@ export namespace ConfigPaths {
         : []),
       ...(await Array.fromAsync(
         Filesystem.up({
-          targets: [".opencode"],
+          targets: [...dirs].toReversed(),
           start: Global.Path.home,
           stop: Global.Path.home,
         }),
@@ -36,7 +53,20 @@ export namespace ConfigPaths {
   }
 
   export function fileInDirectory(dir: string, name: string) {
-    return [path.join(dir, `${name}.json`), path.join(dir, `${name}.jsonc`)]
+    return readNames(name).flatMap((item) => [path.join(dir, `${item}.json`), path.join(dir, `${item}.jsonc`)])
+  }
+
+  export function preferredFileInDirectory(dir: string, name: string) {
+    return writeNames(name).flatMap((item) => [path.join(dir, `${item}.json`), path.join(dir, `${item}.jsonc`)])
+  }
+
+  export function isConfigDir(dir: string) {
+    if (dir === Flag.OPENCODE_CONFIG_DIR) return true
+    return dirs.some((item) => dir.endsWith(item))
+  }
+
+  export function localDir(root: string) {
+    return path.join(root, dirs[0])
   }
 
   export const JsonError = NamedError.create(

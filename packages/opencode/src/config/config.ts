@@ -63,11 +63,11 @@ export namespace Config {
   function systemManagedConfigDir(): string {
     switch (process.platform) {
       case "darwin":
-        return "/Library/Application Support/opencode"
+        return "/Library/Application Support/wiscode"
       case "win32":
-        return path.join(process.env.ProgramData || "C:\\ProgramData", "opencode")
+        return path.join(process.env.ProgramData || "C:\\ProgramData", "wiscode")
       default:
-        return "/etc/opencode"
+        return "/etc/wiscode"
     }
   }
 
@@ -77,7 +77,7 @@ export namespace Config {
 
   const managedDir = managedConfigDir()
 
-  const MANAGED_PLIST_DOMAIN = "ai.opencode.managed"
+  const MANAGED_PLIST_DOMAIN = "ai.wiscode.managed"
 
   // Keys injected by macOS/MDM into the managed plist that are not WisCode config
   const PLIST_META = new Set([
@@ -222,7 +222,7 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.opencode/command/", "/.opencode/commands/", "/command/", "/commands/"]
+      const patterns = ["/.wiscode/command/", "/.wiscode/commands/", "/.opencode/command/", "/.opencode/commands/", "/command/", "/commands/"]
       const file = rel(item, patterns) ?? path.basename(item)
       const name = trim(file)
 
@@ -261,7 +261,7 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.opencode/agent/", "/.opencode/agents/", "/agent/", "/agents/"]
+      const patterns = ["/.wiscode/agent/", "/.wiscode/agents/", "/.opencode/agent/", "/.opencode/agents/", "/agent/", "/agents/"]
       const file = rel(item, patterns) ?? path.basename(item)
       const agentName = trim(file)
 
@@ -1069,7 +1069,7 @@ export namespace Config {
   export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/Config") {}
 
   function globalConfigFile() {
-    const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+    const candidates = ["wiscode.jsonc", "wiscode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
       path.join(Global.Path.config, file),
     )
     for (const file of candidates) {
@@ -1225,6 +1225,8 @@ export namespace Config {
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "config.json"))),
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.json"))),
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"))),
+            mergeDeep(yield* loadFile(path.join(Global.Path.config, "wiscode.json"))),
+            mergeDeep(yield* loadFile(path.join(Global.Path.config, "wiscode.jsonc"))),
           )
 
           const legacy = path.join(Global.Path.config, "config")
@@ -1236,7 +1238,7 @@ export namespace Config {
                   if (provider && model) result.model = `${provider}/${model}`
                   result["$schema"] = "https://opencode.ai/config.json"
                   result = mergeDeep(result, rest)
-                  await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
+                  await fsNode.writeFile(path.join(Global.Path.config, "wiscode.json"), JSON.stringify(result, null, 2))
                   await fsNode.unlink(legacy)
                 })
                 .catch(() => {}),
@@ -1341,9 +1343,8 @@ export namespace Config {
           const deps: Promise<void>[] = []
 
           for (const dir of unique(directories)) {
-            if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
-              for (const file of ["opencode.json", "opencode.jsonc"]) {
-                const source = path.join(dir, file)
+            if (ConfigPaths.isConfigDir(dir)) {
+              for (const source of ConfigPaths.fileInDirectory(dir, "opencode")) {
                 log.debug(`loading config from ${source}`)
                 merge(source, yield* loadFile(source))
                 result.agent ??= {}
@@ -1415,8 +1416,7 @@ export namespace Config {
           }
 
           if (existsSync(managedDir)) {
-            for (const file of ["opencode.json", "opencode.jsonc"]) {
-              const source = path.join(managedDir, file)
+            for (const source of ConfigPaths.fileInDirectory(managedDir, "opencode")) {
               merge(source, yield* loadFile(source), "global")
             }
           }
@@ -1499,7 +1499,7 @@ export namespace Config {
 
         const update = Effect.fn("Config.update")(function* (config: Info) {
           const dir = yield* InstanceState.directory
-          const file = path.join(dir, "config.json")
+          const file = path.join(dir, "wiscode.json")
           const existing = yield* loadFile(file)
           yield* fs
             .writeFileString(file, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))

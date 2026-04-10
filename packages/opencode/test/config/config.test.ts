@@ -95,11 +95,15 @@ test("loads config with defaults when no files exist", async () => {
 test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      await writeConfig(dir, {
-        $schema: "https://opencode.ai/config.json",
-        model: "test/model",
-        username: "testuser",
-      })
+      await writeConfig(
+        dir,
+        {
+          $schema: "https://opencode.ai/config.json",
+          model: "test/model",
+          username: "testuser",
+        },
+        "wiscode.json",
+      )
     },
   })
   await Instance.provide({
@@ -108,6 +112,55 @@ test("loads JSON config file", async () => {
       const config = await Config.get()
       expect(config.model).toBe("test/model")
       expect(config.username).toBe("testuser")
+    },
+  })
+})
+
+test("prefers wiscode.json over opencode.json in the same directory", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(
+        dir,
+        {
+          $schema: "https://opencode.ai/config.json",
+          model: "wis/model",
+          username: "wis",
+        },
+        "wiscode.json",
+      )
+      await writeConfig(dir, {
+        $schema: "https://opencode.ai/config.json",
+        model: "open/model",
+        username: "open",
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.model).toBe("wis/model")
+      expect(config.username).toBe("wis")
+    },
+  })
+})
+
+test("falls back to opencode.json when wiscode.json is absent", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://opencode.ai/config.json",
+        model: "open/model",
+        username: "open",
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.model).toBe("open/model")
+      expect(config.username).toBe("open")
     },
   })
 })
@@ -545,12 +598,12 @@ test("migrates mode field to agent field", async () => {
   })
 })
 
-test("loads config from .opencode directory", async () => {
+test("loads config from .wiscode directory", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      const opencodeDir = path.join(dir, ".opencode")
-      await fs.mkdir(opencodeDir, { recursive: true })
-      const agentDir = path.join(opencodeDir, "agent")
+      const wiscodeDir = path.join(dir, ".wiscode")
+      await fs.mkdir(wiscodeDir, { recursive: true })
+      const agentDir = path.join(wiscodeDir, "agent")
       await fs.mkdir(agentDir, { recursive: true })
 
       await Filesystem.write(
@@ -573,6 +626,50 @@ Test agent prompt`,
           prompt: "Test agent prompt",
         }),
       )
+    },
+  })
+})
+
+test("prefers .wiscode directory config over .opencode", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      const wis = path.join(dir, ".wiscode")
+      const open = path.join(dir, ".opencode")
+      await fs.mkdir(wis, { recursive: true })
+      await fs.mkdir(open, { recursive: true })
+      await Filesystem.write(
+        path.join(wis, "wiscode.json"),
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          mcp: {
+            docs: {
+              type: "remote",
+              url: "https://docs.example.com/mcp",
+              enabled: true,
+            },
+          },
+        }),
+      )
+      await Filesystem.write(
+        path.join(open, "opencode.json"),
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          mcp: {
+            docs: {
+              type: "remote",
+              url: "https://docs.example.com/mcp",
+              enabled: false,
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.mcp?.docs?.enabled).toBe(true)
     },
   })
 })
@@ -726,7 +823,7 @@ test("updates config and writes to file", async () => {
       const newConfig = { model: "updated/model" }
       await Config.update(newConfig as any)
 
-      const writtenConfig = await Filesystem.readJson(path.join(tmp.path, "config.json"))
+      const writtenConfig = await Filesystem.readJson(path.join(tmp.path, "wiscode.json"))
       expect(writtenConfig.model).toBe("updated/model")
     },
   })
