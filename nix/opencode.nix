@@ -55,10 +55,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    install -Dm755 dist/wiscode-cli-*/bin/wiscode-cli $out/bin/wiscode
+    install -Dm755 dist/wiscode-cli-*/bin/wiscode-cli $out/bin/wiscode-cli
     install -Dm644 schema.json $out/share/opencode/schema.json
 
-    wrapProgram $out/bin/wiscode \
+    makeBinaryWrapper $out/bin/wiscode-cli $out/bin/wiscode \
       --prefix PATH : ${
         lib.makeBinPath (
           [

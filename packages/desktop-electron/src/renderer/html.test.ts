@@ -18,6 +18,11 @@ const html = async (name: string) => Bun.file(join(dir, name)).text()
 describe("electron renderer html", () => {
   for (const name of ["index.html", "loading.html"]) {
     describe(name, () => {
+      test("document title uses WisCode branding", async () => {
+        const content = await html(name)
+        expect(content).toContain("<title>WisCode</title>")
+      })
+
       test("script src attributes use relative paths", async () => {
         const content = await html(name)
         const srcs = [...content.matchAll(/\bsrc=["']([^"']+)["']/g)].map((m) => m[1])
