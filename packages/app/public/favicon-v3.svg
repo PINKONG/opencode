@@ -1,1 +1,9 @@
-../../ui/src/assets/favicon/favicon-v3.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" fill="#0D4AA8" />
+  <g stroke="#fff" stroke-width="38" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M29 381L160 147L207 230L255 147L377 381" />
+    <path d="M29 381H379" />
+    <path d="M118 381L207 230" />
+    <circle cx="398" cy="284" r="87" />
+  </g>
+</svg>
