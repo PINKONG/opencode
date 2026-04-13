@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode drives af udbyderlisten på [Models.dev](https://models.dev), så du kan bruge `wiscode auth login` til at konfigurere API-nøgler for enhver udbyder, du vil bruge. Dette er gemt i `~/.local/share/opencode/auth.json`.
+WisCode drives af udbyderlisten på [Models.dev](https://models.dev), så du kan bruge `wiscode auth login` til at konfigurere API-nøgler for enhver udbyder, du vil bruge. Dette er gemt i `~/.local/share/wiscode/auth.json`.
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ Start en hovedløs WisCode-server til API-adgang. Tjek [server docs](/docs/serve
 wiscode serve
 ```
 
-Dette starter en HTTP-server, der giver API-adgang til opencode-funktionalitet uden TUI-grænsefladen. Indstil `OPENCODE_SERVER_PASSWORD` for at aktivere HTTP grundlæggende godkendelse (brugernavn er standard til `opencode`).
+Dette starter en HTTP-server, der giver API-adgang til opencode-funktionalitet uden TUI-grænsefladen. Indstil `OPENCODE_SERVER_PASSWORD` for at aktivere HTTP grundlæggende godkendelse (brugernavn er standard til `wiscode`).
 
 #### Flag
 
@@ -456,7 +456,7 @@ Start en hovedløs WisCode-server med en webgrænseflade.
 wiscode web
 ```
 
-Dette starter en HTTP-server og åbner en webbrowser for at få adgang til WisCode via en webgrænseflade. Indstil `OPENCODE_SERVER_PASSWORD` for at aktivere HTTP grundlæggende godkendelse (brugernavn er standard til `opencode`).
+Dette starter en HTTP-server og åbner en webbrowser for at få adgang til WisCode via en webgrænseflade. Indstil `OPENCODE_SERVER_PASSWORD` for at aktivere HTTP grundlæggende godkendelse (brugernavn er standard til `wiscode`).
 
 #### Flag
 
@@ -578,7 +578,7 @@ WisCode kan konfigureres ved hjælp af miljøvariabler.
 | `OPENCODE_CLIENT`                     | string  | Klient-id (standard til `cli`)                                        |
 | `OPENCODE_ENABLE_EXA`                 | boolean | Aktiver Exa-websøgeværktøjer                                          |
 | `OPENCODE_SERVER_PASSWORD`            | string  | Aktiver grundlæggende godkendelse for `serve`/`web`                   |
-| `OPENCODE_SERVER_USERNAME`            | string  | Tilsidesæt grundlæggende godkendelsesbrugernavn (standard `opencode`) |
+| `OPENCODE_SERVER_USERNAME`            | string  | Tilsidesæt grundlæggende godkendelsesbrugernavn (standard `wiscode`) |
 | `OPENCODE_MODELS_URL`                 | string  | Brugerdefineret URL til hentning af modelkonfiguration                |
 
 ---

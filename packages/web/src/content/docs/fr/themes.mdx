@@ -5,7 +5,7 @@ description: Sélectionnez un thème intégré ou définissez le vôtre.
 
 Avec WisCode, vous pouvez choisir parmi plusieurs thèmes intégrés, utiliser un thème qui s'adapte au thème de votre terminal ou définir votre propre thème personnalisé.
 
-Par défaut, WisCode utilise notre propre thème `opencode`.
+Par défaut, WisCode utilise notre propre thème `wiscode`.
 
 ---
 
@@ -83,9 +83,9 @@ WisCode prend en charge un système de thèmes flexible basé sur JSON qui perme
 Les thèmes sont chargés à partir de plusieurs répertoires dans l'ordre suivant, les répertoires ultérieurs remplaçant les précédents :
 
 1. **Thèmes intégrés** - Ceux-ci sont intégrés au binaire
-2. **Répertoire de configuration utilisateur** - Défini dans `~/.config/opencode/themes/*.json` ou `$XDG_CONFIG_HOME/opencode/themes/*.json`
-3. **Répertoire racine du projet** - Défini dans `<project-root>/.opencode/themes/*.json`
-4. **Répertoire de travail actuel** - Défini dans `./.opencode/themes/*.json`
+2. **Répertoire de configuration utilisateur** - Défini dans `~/.config/wiscode/themes/*.json` ou `$XDG_CONFIG_HOME/opencode/themes/*.json`
+3. **Répertoire racine du projet** - Défini dans `<project-root>/.wiscode/themes/*.json`
+4. **Répertoire de travail actuel** - Défini dans `./.wiscode/themes/*.json`
 
 Si plusieurs répertoires contiennent un thème portant le même nom, le thème du répertoire ayant la priorité la plus élevée sera utilisé.
 
@@ -98,15 +98,15 @@ Pour créer un thème personnalisé, créez un fichier JSON dans l'un des réper
 Pour les thèmes à l’échelle de l’utilisateur :
 
 ```bash no-frame
-mkdir -p ~/.config/opencode/themes
-vim ~/.config/opencode/themes/my-theme.json
+mkdir -p ~/.config/wiscode/themes
+vim ~/.config/wiscode/themes/my-theme.json
 ```
 
 Et pour des thèmes spécifiques au projet.
 
 ```bash no-frame
-mkdir -p .opencode/themes
-vim .opencode/themes/my-theme.json
+mkdir -p .wiscode/themes
+vim .wiscode/themes/my-theme.json
 ```
 
 ---

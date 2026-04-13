@@ -12,7 +12,7 @@ import { WSL_ENABLED_KEY } from "./constants"
 import { getUserShell, loadShellEnv, mergeShellEnv } from "./shell-env"
 import { store } from "./store"
 
-const CLI_INSTALL_DIR = ".opencode/bin"
+const CLI_INSTALL_DIR = ".wiscode/bin"
 const CLI_BINARY_NAME = "wiscode"
 
 export type ServerConfig = {
@@ -219,7 +219,7 @@ function buildCommand(args: string, env: Record<string, string>, shell: string |
     const version = app.getVersion()
     const script = [
       "set -e",
-      'BIN="$HOME/.opencode/bin/wiscode"',
+      'BIN="$HOME/.wiscode/bin/wiscode"',
       'if [ ! -x "$BIN" ]; then',
       `  curl -fsSL https://opencode.ai/install | bash -s -- --version ${shellEscape(version)} --no-modify-path`,
       "fi",

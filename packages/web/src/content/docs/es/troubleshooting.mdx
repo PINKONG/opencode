@@ -11,8 +11,8 @@ Para depurar problemas con WisCode, comience verificando los registros y los dat
 
 Los archivos de registro se escriben en:
 
-- **macOS/Linux**: `~/.local/share/opencode/log/`
-- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.local\share\opencode\log`
+- **macOS/Linux**: `~/.local/share/wiscode/log/`
+- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.local\share\wiscode\log`
 
 Los archivos de registro reciben nombres con marcas de tiempo (por ejemplo, `2025-01-09T123456.log`) y se conservan los 10 archivos de registro más recientes.
 
@@ -24,8 +24,8 @@ Puede configurar el nivel de registro con la opción de línea de comandos `--lo
 
 WisCode almacena datos de sesión y otros datos de aplicaciones en el disco en:
 
-- **macOS/Linux**: `~/.local/share/opencode/`
-- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.local\share\opencode`
+- **macOS/Linux**: `~/.local/share/wiscode/`
+- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.local\share\wiscode`
 
 Este directorio contiene:
 
@@ -39,7 +39,7 @@ Este directorio contiene:
 
 ## Aplicación de escritorio
 
-WisCode Desktop ejecuta un servidor WisCode local (el sidecar `opencode-cli`) en segundo plano. La mayoría de los problemas se deben a un complemento que no funciona correctamente, una memoria caché dañada o una mala configuración del servidor.
+WisCode Desktop ejecuta un servidor WisCode local (el sidecar `wiscode-cli`) en segundo plano. La mayoría de los problemas se deben a un complemento que no funciona correctamente, una memoria caché dañada o una mala configuración del servidor.
 
 ### Comprobaciones rápidas
 
@@ -57,9 +57,9 @@ Si la aplicación de escritorio falla al iniciarse, se bloquea o se comporta de 
 
 Abra su archivo de configuración global y busque una clave `plugin`.
 
-- **macOS/Linux**: `~/.config/opencode/opencode.jsonc` (o `~/.config/opencode/opencode.json`)
-- **macOS/Linux** (instalaciones anteriores): `~/.local/share/opencode/opencode.jsonc`
-- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.config\opencode\opencode.jsonc`
+- **macOS/Linux**: `~/.config/wiscode/wiscode.jsonc` (o `~/.config/wiscode/wiscode.json`)
+- **macOS/Linux** (instalaciones anteriores): `~/.local/share/wiscode/wiscode.jsonc`
+- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.config\wiscode\wiscode.jsonc`
 
 Si tiene complementos configurados, desactívelos temporalmente eliminando la clave o configurándola en una matriz vacía:
 
@@ -75,10 +75,10 @@ Si tiene complementos configurados, desactívelos temporalmente eliminando la cl
 WisCode también puede cargar complementos locales desde el disco. Quítelos temporalmente del camino (o cambie el nombre de la carpeta) y reinicie la aplicación de escritorio:
 
 - **Complementos globales**
-  - **macOS/Linux**: `~/.config/opencode/plugins/`
-  - **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.config\opencode\plugins`
+  - **macOS/Linux**: `~/.config/wiscode/plugins/`
+  - **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.config\wiscode\plugins`
 - **Complementos de proyecto** (solo si usas la configuración por proyecto)
-  - `<your-project>/.opencode/plugins/`
+  - `<your-project>/.wiscode/plugins/`
 
 Si la aplicación comienza a funcionar nuevamente, vuelva a habilitar los complementos uno a la vez para encontrar cuál está causando el problema.
 
@@ -91,9 +91,9 @@ Si deshabilitar los complementos no ayuda (o la instalación de un complemento e
 1. Salga de WisCode Desktop por completo.
 2. Elimine el directorio de caché:
 
-- **macOS**: Buscador -> `Cmd+Shift+G` -> pegar `~/.cache/opencode`
-- **Linux**: eliminar `~/.cache/opencode` (o ejecutar `rm -rf ~/.cache/opencode`)
-- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.cache\opencode`
+- **macOS**: Buscador -> `Cmd+Shift+G` -> pegar `~/.cache/wiscode`
+- **Linux**: eliminar `~/.cache/wiscode` (o ejecutar `rm -rf ~/.cache/wiscode`)
+- **Windows**: Presione `WIN+R` y pegue `%USERPROFILE%\.cache\wiscode`
 
 3. Reinicie el escritorio WisCode.
 
@@ -111,7 +111,7 @@ Desde la pantalla de inicio, haga clic en el nombre del servidor (con el punto d
 
 #### Elimina `server.port` / `server.hostname` de tu configuración
 
-Si su `opencode.json(c)` contiene una sección `server`, elimínela temporalmente y reinicie la aplicación de escritorio.
+Si su `wiscode.json(c)` contiene una sección `server`, elimínela temporalmente y reinicie la aplicación de escritorio.
 
 #### Verificar variables de entorno
 
@@ -177,7 +177,7 @@ Si tiene problemas con WisCode:
 
    La mejor manera de informar errores o solicitar funciones es a través de nuestro repositorio GitHub:
 
-   [**github.com/anomalyco/opencode/issues**](https://github.com/anomalyco/opencode/issues)
+   [**github.com/PINKONG/opencode/issues**](https://github.com/PINKONG/opencode/issues)
 
    Antes de crear un nuevo problema, busque los problemas existentes para ver si su problema ya ha sido informado.
 
@@ -241,10 +241,10 @@ Para resolver esto:
 2. Si el problema persiste, intente borrar la configuración almacenada:
 
    ```bash
-   rm -rf ~/.local/share/opencode
+   rm -rf ~/.local/share/wiscode
    ```
 
-   En Windows, presione `WIN+R` y elimine: `%USERPROFILE%\.local\share\opencode`
+   En Windows, presione `WIN+R` y elimine: `%USERPROFILE%\.local\share\wiscode`
 
 3. Vuelva a autenticarse con su proveedor utilizando el comando `/connect` en TUI.
 
@@ -259,10 +259,10 @@ Para resolver problemas con el paquete del proveedor:
 1. Borre la caché del paquete del proveedor:
 
    ```bash
-   rm -rf ~/.cache/opencode
+   rm -rf ~/.cache/wiscode
    ```
 
-   En Windows, presione `WIN+R` y elimine: `%USERPROFILE%\.cache\opencode`
+   En Windows, presione `WIN+R` y elimine: `%USERPROFILE%\.cache\wiscode`
 
 2. Reinicie WisCode para reinstalar los paquetes del proveedor más recientes.
 

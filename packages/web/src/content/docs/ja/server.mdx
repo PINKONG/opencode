@@ -36,7 +36,7 @@ wiscode serve --cors http://localhost:5173 --cors https://app.example.com
 
 ### 認証
 
-HTTP 基本認証でサーバーを保護するには、`OPENCODE_SERVER_PASSWORD` を設定します。ユーザー名はデフォルトで `opencode` になるか、`OPENCODE_SERVER_USERNAME` を設定してオーバーライドします。これは、`wiscode serve` と `wiscode web` の両方に当てはまります。
+HTTP 基本認証でサーバーを保護するには、`OPENCODE_SERVER_PASSWORD` を設定します。ユーザー名はデフォルトで `wiscode` になるか、`OPENCODE_SERVER_USERNAME` を設定してオーバーライドします。これは、`wiscode serve` と `wiscode web` の両方に当てはまります。
 
 ```bash
 OPENCODE_SERVER_PASSWORD=your-password wiscode serve
@@ -46,7 +46,7 @@ OPENCODE_SERVER_PASSWORD=your-password wiscode serve
 
 ### 仕組み
 
-`opencode` を実行すると、TUI とサーバーが起動します。 TUI はサーバーと通信するクライアントです。サーバーは OpenAPI 3.1 仕様のエンドポイントを公開します。このエンドポイントは、[SDK](/docs/sdk) を使用してアクセスできます。
+`wiscode` を実行すると、TUI とサーバーが起動します。 TUI はサーバーと通信するクライアントです。サーバーは OpenAPI 3.1 仕様のエンドポイントを公開します。このエンドポイントは、[SDK](/docs/sdk) を使用してアクセスできます。
 
 :::tip
 WisCode サーバーを使用して、プログラムで WisCode と対話します。

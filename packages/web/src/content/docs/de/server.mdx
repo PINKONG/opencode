@@ -38,7 +38,7 @@ wiscode serve --cors http://localhost:5173 --cors https://app.example.com
 ### Authentifizierung
 
 Setze `OPENCODE_SERVER_PASSWORD`, um den Server mit HTTP Basic Auth zu schuetzen.
-Der Benutzername ist standardmaessig `opencode`, kann aber mit `OPENCODE_SERVER_USERNAME` ueberschrieben werden. Das gilt fuer `wiscode serve` und `wiscode web`.
+Der Benutzername ist standardmaessig `wiscode`, kann aber mit `OPENCODE_SERVER_USERNAME` ueberschrieben werden. Das gilt fuer `wiscode serve` und `wiscode web`.
 
 ```bash
 OPENCODE_SERVER_PASSWORD=your-password wiscode serve
@@ -48,7 +48,7 @@ OPENCODE_SERVER_PASSWORD=your-password wiscode serve
 
 ### Funktionsweise
 
-Wenn du `opencode` startest, werden TUI und Server gestartet.
+Wenn du `wiscode` startest, werden TUI und Server gestartet.
 Die TUI ist dabei der Client, der mit dem Server spricht; dessen OpenAPI-3.1-Endpunkt dient auch zur Generierung des [SDK](/docs/sdk).
 
 :::tip

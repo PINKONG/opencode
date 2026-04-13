@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode integruje się z wieloma dostawcami. Możesz użyć `wiscode auth login`, aby skonfigurować klucz API dla dowolnego obsługiwanego dostawcy. Klucze są bezpiecznie przechowywane w `~/.local/share/opencode/auth.json`.
+WisCode integruje się z wieloma dostawcami. Możesz użyć `wiscode auth login`, aby skonfigurować klucz API dla dowolnego obsługiwanego dostawcy. Klucze są bezpiecznie przechowywane w `~/.local/share/wiscode/auth.json`.
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ Uruchom serwer WisCode (bez interfejsu) w celu uzyskania dostępu do API. Pełny
 wiscode serve
 ```
 
-Uruchamia to serwer HTTP, który zapewnia dostęp do API WisCode bez interfejsu TUI. Ustaw `OPENCODE_SERVER_PASSWORD`, aby włączyć podstawowe uwierzytelnianie HTTP (domyślna nazwa użytkownika to `opencode`).
+Uruchamia to serwer HTTP, który zapewnia dostęp do API WisCode bez interfejsu TUI. Ustaw `OPENCODE_SERVER_PASSWORD`, aby włączyć podstawowe uwierzytelnianie HTTP (domyślna nazwa użytkownika to `wiscode`).
 
 #### Flagi
 
@@ -456,7 +456,7 @@ Uruchom serwer WisCode z interfejsem internetowym.
 wiscode web
 ```
 
-Uruchamia to serwer HTTP i udostępnia WisCode przez interfejs przeglądarkowy. Ustaw `OPENCODE_SERVER_PASSWORD`, aby włączyć podstawowe uwierzytelnianie HTTP (domyślna nazwa użytkownika to `opencode`).
+Uruchamia to serwer HTTP i udostępnia WisCode przez interfejs przeglądarkowy. Ustaw `OPENCODE_SERVER_PASSWORD`, aby włączyć podstawowe uwierzytelnianie HTTP (domyślna nazwa użytkownika to `wiscode`).
 
 #### Flagi
 
@@ -578,7 +578,7 @@ WisCode można skonfigurować za pomocą zmiennych środowiskowych.
 | `OPENCODE_CLIENT`                     | string  | Identyfikator klienta (domyślnie `cli`)                     |
 | `OPENCODE_ENABLE_EXA`                 | boolean | Włącz narzędzie wyszukiwania internetowego Exa              |
 | `OPENCODE_SERVER_PASSWORD`            | string  | Włącz uwierzytelnianie podstawowe dla `serve`/`web`         |
-| `OPENCODE_SERVER_USERNAME`            | string  | Nazwa użytkownika do autoryzacji (domyślnie `opencode`)     |
+| `OPENCODE_SERVER_USERNAME`            | string  | Nazwa użytkownika do autoryzacji (domyślnie `wiscode`)     |
 | `OPENCODE_MODELS_URL`                 | string  | Niestandardowy adres URL do pobierania konfiguracji modeli  |
 
 ---

@@ -28,6 +28,7 @@ import { ExperimentalRoutes } from "./routes/experimental"
 import { ProviderRoutes } from "./routes/provider"
 import { EventRoutes } from "./routes/event"
 import { errorHandler } from "./middleware"
+import { Product } from "@/product"
 
 const log = Log.create({ service: "server" })
 
@@ -296,11 +297,12 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket, app: Hono = new Hono()
           return c.json({ error: "Not Found" }, 404)
         }
       } else {
-        const response = await proxy(`https://app.opencode.ai${path}`, {
+        const url = Product.app()
+        const response = await proxy(`${url}${path}`, {
           ...c.req,
           headers: {
             ...c.req.raw.headers,
-            host: "app.opencode.ai",
+            host: new URL(url).host,
           },
         })
         const match = response.headers.get("content-type")?.includes("text/html")

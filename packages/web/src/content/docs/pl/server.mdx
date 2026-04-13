@@ -36,7 +36,7 @@ wiscode serve --cors http://localhost:5173 --cors https://app.example.com
 
 ### Uwierzytelnianie
 
-Ustaw `OPENCODE_SERVER_PASSWORD`, aby chronić serwer za pomocą podstawowego uwierzytelniania HTTP. Domyślną nazwą użytkownika jest `opencode` lub ustaw `OPENCODE_SERVER_USERNAME`, aby ją zastąpić. Dotyczy to zarówno `wiscode serve`, jak i `wiscode web`.
+Ustaw `OPENCODE_SERVER_PASSWORD`, aby chronić serwer za pomocą podstawowego uwierzytelniania HTTP. Domyślną nazwą użytkownika jest `wiscode` lub ustaw `OPENCODE_SERVER_USERNAME`, aby ją zastąpić. Dotyczy to zarówno `wiscode serve`, jak i `wiscode web`.
 
 ```bash
 OPENCODE_SERVER_PASSWORD=your-password wiscode serve
@@ -46,7 +46,7 @@ OPENCODE_SERVER_PASSWORD=your-password wiscode serve
 
 ### Jak to działa
 
-Kiedy uruchomisz `opencode`, uruchomi się TUI i serwer. Gdzie jest TUI
+Kiedy uruchomisz `wiscode`, uruchomi się TUI i serwer. Gdzie jest TUI
 klient komunikujący się z serwerem. Serwer udostępnia specyfikację OpenAPI 3.1
 punkt końcowy. Ten punkt końcowy jest również używany do generowania [SDK](/docs/sdk).
 

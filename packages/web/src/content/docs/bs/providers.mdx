@@ -18,7 +18,7 @@ Za dodavanje provajdera potrebno je:
 ### Vjerodajnice
 
 Kada dodate API ključeve dobavljača sa naredbom `/connect`, oni se pohranjuju
-u `~/.local/share/opencode/auth.json`.
+u `~/.local/share/wiscode/auth.json`.
 
 ---
 
@@ -33,7 +33,7 @@ config.
 
 Možete prilagoditi osnovni URL za bilo kojeg provajdera postavljanjem opcije `baseURL`. Ovo je korisno kada koristite proxy usluge ili prilagođene krajnje tačke.
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -190,9 +190,9 @@ Ili ih dodajte na svoj bash profil:
 
 #### Konfiguracijski fajl (Preporučeno)
 
-Za konfiguraciju specifičnu za projekat ili trajnu konfiguraciju, koristite `opencode.json`:
+Za konfiguraciju specifičnu za projekat ili trajnu konfiguraciju, koristite `wiscode.json`:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -220,7 +220,7 @@ Opcije konfiguracijske datoteke imaju prednost nad varijablama okruženja.
 
 Ako koristite VPC krajnje tačke za Bedrock:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -266,7 +266,7 @@ Kada se postavi token nosioca (putem `/connect` ili `AWS_BEARER_TOKEN_BEDROCK`),
 :::note
 Za prilagođene profile zaključivanja, koristite ime modela i dobavljača u ključu i postavite svojstvo `id` na arn. Ovo osigurava ispravno keširanje:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -518,7 +518,7 @@ Ili ga postavite kao varijablu okruženja.
 
 Također možete dodati modele kroz svoju WisCode konfiguraciju.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -724,7 +724,7 @@ da pohrani token u WisCode auth memoriju.
 WisCode koristi mali model za neke AI zadatke kao što je generiranje naslova sesije.
 Podrazumevano je konfigurisan da koristi gpt-5-nano, a hostuje ga Zen. Da zaključate WisCode
 da biste koristili samo svoju vlastitu instancu koju hostuje GitLab, dodajte sljedeće u svoju
-`opencode.json` fajl. Također se preporučuje da onemogućite dijeljenje sesije.
+`wiscode.json` fajl. Također se preporučuje da onemogućite dijeljenje sesije.
 
 ```json
 {
@@ -786,9 +786,9 @@ Više dokumentacije na početnoj stranici [opencode-gitlab-auth](https://www.npm
 
 ##### Konfiguracija
 
-Prilagodite putem `opencode.json`:
+Prilagodite putem `wiscode.json`:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -805,7 +805,7 @@ Prilagodite putem `opencode.json`:
 
 Za pristup GitLab alatima (zahtjevi za spajanje, problemi, cjevovodi, CI/CD, itd.):
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-gitlab-plugin"]
@@ -988,7 +988,7 @@ U slučaju da vidite funkciju ili model iz Helicone-a koji nije automatski konfi
 
 Evo [Heliconeov katalog modela](https://helicone.ai/models), ovo će vam trebati da preuzmete ID-ove modela koje želite dodati.
 
-```jsonc title="~/.config/opencode/opencode.jsonc"
+```jsonc title="~/.config/wiscode/wiscode.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1016,7 +1016,7 @@ Evo [Heliconeov katalog modela](https://helicone.ai/models), ovo će vam trebati
 
 Helicone podržava prilagođena zaglavlja za funkcije kao što su keširanje, praćenje korisnika i upravljanje sesijom. Dodajte ih u konfiguraciju svog provajdera koristeći `options.headers`:
 
-```jsonc title="~/.config/opencode/opencode.jsonc"
+```jsonc title="~/.config/wiscode/wiscode.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1045,7 +1045,7 @@ npm install -g opencode-helicone-session
 
 Dodajte ga u svoju konfiguraciju.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "plugin": ["opencode-helicone-session"]
 }
@@ -1070,7 +1070,7 @@ Pogledajte [Helicone Header Directory](https://docs.helicone.ai/helicone-headers
 
 Možete konfigurirati WisCode za korištenje lokalnih modela putem [llama.cpp's](https://github.com/ggml-org/llama.cpp) uslužnog programa llama-server
 
-```json title="opencode.json" "llama.cpp" {5, 6, 8, 10-15}
+```json title="wiscode.json" "llama.cpp" {5, 6, 8, 10-15}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1137,7 +1137,7 @@ IO.NET nudi 17 modela optimiziranih za različite slučajeve upotrebe:
 
 Možete konfigurirati WisCode za korištenje lokalnih modela preko LM Studio.
 
-```json title="opencode.json" "lmstudio" {5, 6, 8, 10-14}
+```json title="wiscode.json" "lmstudio" {5, 6, 8, 10-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1258,7 +1258,7 @@ Možete konfigurirati WisCode za korištenje lokalnih modela putem Ollame.
 Ollama se može automatski konfigurirati za WisCode. Pogledajte [Ollama integracijske dokumente](https://docs.ollama.com/integrations/opencode) za detalje.
 :::
 
-```json title="opencode.json" "ollama" {5, 6, 8, 10-14}
+```json title="wiscode.json" "ollama" {5, 6, 8, 10-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1420,7 +1420,7 @@ WisCode Zen je lista testiranih i verifikovanih modela koju je obezbedio WisCode
 
 Također možete dodati dodatne modele putem vaše WisCode konfiguracije.
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1435,7 +1435,7 @@ Također možete dodati dodatne modele putem vaše WisCode konfiguracije.
 
 5. Također ih možete prilagoditi putem vaše WisCode konfiguracije. Evo primjera navođenja provajdera
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1684,7 +1684,7 @@ Vercel AI Gateway vam omogućava da pristupite modelima iz OpenAI, Anthropic, Go
 
 Također možete prilagoditi modele kroz svoju WisCode konfiguraciju. Evo primjera specificiranja redoslijeda usmjeravanja dobavljača.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1794,7 +1794,7 @@ Ako ste pretplaćeni na **GLM plan kodiranja**, odaberite **Z.AI plan kodiranja*
 
 Također možete dodati dodatne modele putem vaše WisCode konfiguracije.
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1853,16 +1853,16 @@ Odaberite ID koji se pamti, to ćete koristiti u svom konfiguracijskom fajlu.
 
    ┌  Add credential
    │
-   ▲  This only stores a credential for myprovider - you will need to configure it in opencode.json, check the docs for examples.
+   ▲  This only stores a credential for myprovider - you will need to configure it in wiscode.json, check the docs for examples.
    │
    ◇  Enter your API key
    │  sk-...
    └
 ```
 
-4. Kreirajte ili ažurirajte svoju `opencode.json` datoteku u direktoriju projekta:
+4. Kreirajte ili ažurirajte svoju `wiscode.json` datoteku u direktoriju projekta:
 
-```json title="opencode.json" ""myprovider"" {5-15}
+```json title="wiscode.json" ""myprovider"" {5-15}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1901,7 +1901,7 @@ Više o naprednim opcijama u primjeru ispod.
 
 Evo primjera postavljanja opcija `apiKey`, `headers` i modela `limit`.
 
-```json title="opencode.json" {9,11,17-20}
+```json title="wiscode.json" {9,11,17-20}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {

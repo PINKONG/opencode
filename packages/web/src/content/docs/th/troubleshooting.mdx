@@ -11,8 +11,8 @@ description: ปัญหาทั่วไปและวิธีแก้ป�
 
 ไฟล์บันทึกถูกเขียนไปที่:
 
-- **macOS/Linux**: `~/.local/share/opencode/log/`
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.local\share\opencode\log`
+- **macOS/Linux**: `~/.local/share/wiscode/log/`
+- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.local\share\wiscode\log`
 
 ไฟล์บันทึกจะถูกตั้งชื่อด้วยการประทับเวลา (เช่น `2025-01-09T123456.log`) และไฟล์บันทึกล่าสุด 10 ไฟล์จะถูกเก็บไว้
 
@@ -24,8 +24,8 @@ description: ปัญหาทั่วไปและวิธีแก้ป�
 
 WisCode เก็บข้อมูลเซสชันและข้อมูลแอปพลิเคชันอื่น ๆ ไว้บนดิสก์ที่:
 
-- **macOS/Linux**: `~/.local/share/opencode/`
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.local\share\opencode`
+- **macOS/Linux**: `~/.local/share/wiscode/`
+- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.local\share\wiscode`
 
 ไดเรกทอรีนี้ประกอบด้วย:
 
@@ -39,7 +39,7 @@ WisCode เก็บข้อมูลเซสชันและข้อมู
 
 ## แอปเดสก์ท็อป
 
-WisCode Desktop รันเซิร์ฟเวอร์ WisCode ในเครื่อง (ไฟล์ `opencode-cli` sidecar) ในเบื้องหลัง ปัญหาส่วนใหญ่มีสาเหตุมาจากปลั๊กอินที่ทำงานผิดปกติ แคชเสียหาย หรือการตั้งค่าเซิร์ฟเวอร์ไม่ถูกต้อง
+WisCode Desktop รันเซิร์ฟเวอร์ WisCode ในเครื่อง (ไฟล์ `wiscode-cli` sidecar) ในเบื้องหลัง ปัญหาส่วนใหญ่มีสาเหตุมาจากปลั๊กอินที่ทำงานผิดปกติ แคชเสียหาย หรือการตั้งค่าเซิร์ฟเวอร์ไม่ถูกต้อง
 
 ### การตรวจสอบอย่างรวดเร็ว
 
@@ -57,9 +57,9 @@ WisCode Desktop รันเซิร์ฟเวอร์ WisCode ในเค�
 
 เปิดไฟล์กำหนดค่าส่วนกลางของคุณแล้วมองหาคีย์ `plugin`
 
-- **macOS/Linux**: `~/.config/opencode/opencode.jsonc` (หรือ `~/.config/opencode/opencode.json`)
-- **macOS/Linux** (การติดตั้งเก่ากว่า): `~/.local/share/opencode/opencode.jsonc`
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.config\opencode\opencode.jsonc`
+- **macOS/Linux**: `~/.config/wiscode/wiscode.jsonc` (หรือ `~/.config/wiscode/wiscode.json`)
+- **macOS/Linux** (การติดตั้งเก่ากว่า): `~/.local/share/wiscode/wiscode.jsonc`
+- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.config\wiscode\wiscode.jsonc`
 
 หากคุณได้กำหนดค่าปลั๊กอินไว้ ให้ปิดการใช้งานชั่วคราวโดยลบคีย์ออกหรือตั้งค่าเป็นอาร์เรย์ว่าง:
 
@@ -75,10 +75,10 @@ WisCode Desktop รันเซิร์ฟเวอร์ WisCode ในเค�
 WisCode ยังสามารถโหลดปลั๊กอินในเครื่องจากดิสก์ได้ ย้ายสิ่งเหล่านี้ออกไปชั่วคราว (หรือเปลี่ยนชื่อโฟลเดอร์) และรีสตาร์ทแอปเดสก์ท็อป:
 
 - **ปลั๊กอินสากล**
-  - **macOS/Linux**: `~/.config/opencode/plugins/`
-  - **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.config\opencode\plugins`
+  - **macOS/Linux**: `~/.config/wiscode/plugins/`
+  - **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.config\wiscode\plugins`
 - **ปลั๊กอินโครงการ** (เฉพาะในกรณีที่คุณใช้การกำหนดค่าต่อโครงการ)
-  - `<your-project>/.opencode/plugins/`
+  - `<your-project>/.wiscode/plugins/`
 
 หากแอปเริ่มทำงานอีกครั้ง ให้เปิดใช้งานปลั๊กอินอีกครั้งทีละรายการเพื่อดูว่าปลั๊กอินใดเป็นสาเหตุของปัญหา
 
@@ -91,9 +91,9 @@ WisCode ยังสามารถโหลดปลั๊กอินในเ
 1. ออกจาก WisCode Desktop โดยสมบูรณ์
 2. ลบไดเรกทอรีแคช:
 
-- **macOS**: ตัวค้นหา -> `Cmd+Shift+G` -> วาง `~/.cache/opencode`
-- **Linux**: ลบ `~/.cache/opencode` (หรือรัน `rm -rf ~/.cache/opencode`)
-- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.cache\opencode`
+- **macOS**: ตัวค้นหา -> `Cmd+Shift+G` -> วาง `~/.cache/wiscode`
+- **Linux**: ลบ `~/.cache/wiscode` (หรือรัน `rm -rf ~/.cache/wiscode`)
+- **Windows**: กด `WIN+R` แล้ววาง `%USERPROFILE%\.cache\wiscode`
 
 3. รีสตาร์ทเดสก์ท็อป WisCode
 
@@ -111,7 +111,7 @@ WisCode Desktop สามารถเริ่มต้นเซิร์ฟเ�
 
 #### ลบ `server.port` / `server.hostname` ออกจากการกำหนดค่าของคุณ
 
-หาก `opencode.json(c)` ของคุณมีส่วน `server` ให้ลบออกชั่วคราวแล้วรีสตาร์ทแอปเดสก์ท็อป
+หาก `wiscode.json(c)` ของคุณมีส่วน `server` ให้ลบออกชั่วคราวแล้วรีสตาร์ทแอปเดสก์ท็อป
 
 #### ตรวจสอบตัวแปรสภาพแวดล้อม
 
@@ -177,7 +177,7 @@ WisCode Desktop จะแสดงการแจ้งเตือนของ�
 
    วิธีที่ดีที่สุดในการรายงานจุดบกพร่องหรือขอคุณสมบัติคือผ่านพื้นที่เก็บข้อมูล GitHub ของเรา:
 
-   [**github.com/anomalyco/opencode/issues**](https://github.com/anomalyco/opencode/issues)
+   [**github.com/PINKONG/opencode/issues**](https://github.com/PINKONG/opencode/issues)
 
    ก่อนที่จะสร้างปัญหาใหม่ ให้ค้นหาปัญหาที่มีอยู่เพื่อดูว่าปัญหาของคุณได้รับการรายงานแล้วหรือไม่
 
@@ -241,10 +241,10 @@ WisCode Desktop จะแสดงการแจ้งเตือนของ�
 2. หากปัญหายังคงอยู่ ให้ลองล้างการกำหนดค่าที่เก็บไว้:
 
    ```bash
-   rm -rf ~/.local/share/opencode
+   rm -rf ~/.local/share/wiscode
    ```
 
-   บน Windows กด `WIN+R` และลบ: `%USERPROFILE%\.local\share\opencode`
+   บน Windows กด `WIN+R` และลบ: `%USERPROFILE%\.local\share\wiscode`
 
 3. ตรวจสอบความถูกต้องอีกครั้งกับผู้ให้บริการของคุณโดยใช้คำสั่ง `/connect` ใน TUI
 
@@ -259,10 +259,10 @@ WisCode Desktop จะแสดงการแจ้งเตือนของ�
 1. ล้างแคชแพ็คเกจผู้ให้บริการ:
 
    ```bash
-   rm -rf ~/.cache/opencode
+   rm -rf ~/.cache/wiscode
    ```
 
-   บน Windows กด `WIN+R` และลบ: `%USERPROFILE%\.cache\opencode`
+   บน Windows กด `WIN+R` และลบ: `%USERPROFILE%\.cache\wiscode`
 
 2. รีสตาร์ท WisCode เพื่อติดตั้งแพ็คเกจผู้ให้บริการล่าสุดอีกครั้ง
 

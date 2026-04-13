@@ -5,7 +5,7 @@ description: 选择内置主题或定义您自己的主题。
 
 通过 WisCode，您可以从多个内置主题中进行选择，使用能自动适配终端主题的主题，或者定义您自己的自定义主题。
 
-默认情况下，WisCode 使用我们自己的 `opencode` 主题。
+默认情况下，WisCode 使用我们自己的 `wiscode` 主题。
 
 ---
 
@@ -83,9 +83,9 @@ WisCode 支持灵活的基于 JSON 的主题系统，让用户可以轻松创建
 主题按以下顺序从多个目录加载，后面的目录会覆盖前面的目录：
 
 1. **内置主题** — 嵌入在二进制文件中
-2. **用户配置目录** — 定义在 `~/.config/opencode/themes/*.json` 或 `$XDG_CONFIG_HOME/opencode/themes/*.json`
-3. **项目根目录** — 定义在 `<project-root>/.opencode/themes/*.json`
-4. **当前工作目录** — 定义在 `./.opencode/themes/*.json`
+2. **用户配置目录** — 定义在 `~/.config/wiscode/themes/*.json` 或 `$XDG_CONFIG_HOME/opencode/themes/*.json`
+3. **项目根目录** — 定义在 `<project-root>/.wiscode/themes/*.json`
+4. **当前工作目录** — 定义在 `./.wiscode/themes/*.json`
 
 如果多个目录包含同名主题，将使用优先级较高的目录中的主题。
 
@@ -98,15 +98,15 @@ WisCode 支持灵活的基于 JSON 的主题系统，让用户可以轻松创建
 创建用户级主题：
 
 ```bash no-frame
-mkdir -p ~/.config/opencode/themes
-vim ~/.config/opencode/themes/my-theme.json
+mkdir -p ~/.config/wiscode/themes
+vim ~/.config/wiscode/themes/my-theme.json
 ```
 
 创建项目级主题：
 
 ```bash no-frame
-mkdir -p .opencode/themes
-vim .opencode/themes/my-theme.json
+mkdir -p .wiscode/themes
+vim .wiscode/themes/my-theme.json
 ```
 
 ---

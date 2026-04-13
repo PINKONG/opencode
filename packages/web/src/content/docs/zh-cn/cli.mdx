@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode 基于 [Models.dev](https://models.dev) 的提供商列表运行，因此您可以使用 `wiscode auth login` 为任何想要使用的提供商配置 API 密钥。密钥存储在 `~/.local/share/opencode/auth.json` 中。
+WisCode 基于 [Models.dev](https://models.dev) 的提供商列表运行，因此您可以使用 `wiscode auth login` 为任何想要使用的提供商配置 API 密钥。密钥存储在 `~/.local/share/wiscode/auth.json` 中。
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ wiscode run --attach http://localhost:4096 "Explain async/await in JavaScript"
 wiscode serve
 ```
 
-此命令启动一个 HTTP 服务器，提供对 WisCode 功能的 API 访问，无需 TUI 界面。设置 `OPENCODE_SERVER_PASSWORD` 可启用 HTTP 基本认证（用户名默认为 `opencode`）。
+此命令启动一个 HTTP 服务器，提供对 WisCode 功能的 API 访问，无需 TUI 界面。设置 `OPENCODE_SERVER_PASSWORD` 可启用 HTTP 基本认证（用户名默认为 `wiscode`）。
 
 #### 标志
 
@@ -456,7 +456,7 @@ wiscode import https://opncd.ai/s/abc123
 wiscode web
 ```
 
-此命令启动一个 HTTP 服务器并打开浏览器，通过 Web 界面访问 WisCode。设置 `OPENCODE_SERVER_PASSWORD` 可启用 HTTP 基本认证（用户名默认为 `opencode`）。
+此命令启动一个 HTTP 服务器并打开浏览器，通过 Web 界面访问 WisCode。设置 `OPENCODE_SERVER_PASSWORD` 可启用 HTTP 基本认证（用户名默认为 `wiscode`）。
 
 #### 标志
 
@@ -578,7 +578,7 @@ WisCode 可以通过环境变量进行配置。
 | `OPENCODE_CLIENT`                     | string  | 客户端标识符（默认为 `cli`）            |
 | `OPENCODE_ENABLE_EXA`                 | boolean | 启用 Exa 网络搜索工具                   |
 | `OPENCODE_SERVER_PASSWORD`            | string  | 为 `serve`/`web` 启用基本认证           |
-| `OPENCODE_SERVER_USERNAME`            | string  | 覆盖基本认证用户名（默认为 `opencode`） |
+| `OPENCODE_SERVER_USERNAME`            | string  | 覆盖基本认证用户名（默认为 `wiscode`） |
 | `OPENCODE_MODELS_URL`                 | string  | 自定义模型配置获取 URL                  |
 
 ---

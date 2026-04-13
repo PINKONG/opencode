@@ -32,7 +32,7 @@ Build é o modo **padrão** com todas as ferramentas habilitadas. Este é o modo
 Um modo restrito projetado para planejamento e análise. No modo plan, as seguintes ferramentas estão desativadas por padrão:
 
 - `write` - Não pode criar novos arquivos
-- `edit` - Não pode modificar arquivos existentes, exceto para arquivos localizados em `.opencode/plans/*.md` para detalhar o plano em si
+- `edit` - Não pode modificar arquivos existentes, exceto para arquivos localizados em `.wiscode/plans/*.md` para detalhar o plano em si
 - `patch` - Não pode aplicar patches
 - `bash` - Não pode executar comandos de shell
 
@@ -54,9 +54,9 @@ Você pode personalizar os modos integrados ou criar os seus próprios através 
 
 ### Configuração JSON
 
-Configure os modos no seu arquivo de configuração `opencode.json`:
+Configure os modos no seu arquivo de configuração `wiscode.json`:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "mode": {
@@ -85,10 +85,10 @@ Configure os modos no seu arquivo de configuração `opencode.json`:
 
 Você também pode definir modos usando arquivos markdown. Coloque-os em:
 
-- Global: `~/.config/opencode/modes/`
-- Projeto: `.opencode/modes/`
+- Global: `~/.config/wiscode/modes/`
+- Projeto: `.wiscode/modes/`
 
-```markdown title="~/.config/opencode/modes/review.md"
+```markdown title="~/.config/wiscode/modes/review.md"
 ---
 model: anthropic/claude-sonnet-4-20250514
 temperature: 0.1
@@ -118,7 +118,7 @@ Vamos analisar essas opções de configuração em detalhes.
 
 Use a configuração `model` para substituir o modelo padrão para este modo. Útil para usar diferentes modelos otimizados para diferentes tarefas. Por exemplo, um modelo mais rápido para planejamento, um modelo mais capaz para implementação.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "plan": {
@@ -134,7 +134,7 @@ Use a configuração `model` para substituir o modelo padrão para este modo. Ú
 
 Controle a aleatoriedade e a criatividade das respostas da IA com a configuração `temperature`. Valores mais baixos tornam as respostas mais focadas e determinísticas, enquanto valores mais altos aumentam a criatividade e a variabilidade.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "plan": {
@@ -153,7 +153,7 @@ Os valores de temperatura geralmente variam de 0.0 a 1.0:
 - **0.3-0.5**: Respostas equilibradas com alguma criatividade, boas para tarefas de desenvolvimento geral
 - **0.6-1.0**: Respostas mais criativas e variadas, úteis para brainstorming e exploração
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "analyze": {
@@ -179,7 +179,7 @@ Se nenhuma temperatura for especificada, o WisCode usa padrões específicos do 
 
 Especifique um arquivo de prompt do sistema personalizado para este modo com a configuração `prompt`. O arquivo de prompt deve conter instruções específicas para o propósito do modo.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "review": {
@@ -243,7 +243,7 @@ Você pode criar seus próprios modos personalizados adicionando-os à configura
 
 ### Usando configuração JSON
 
-```json title="opencode.json" {4-14}
+```json title="wiscode.json" {4-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "mode": {
@@ -264,9 +264,9 @@ Você pode criar seus próprios modos personalizados adicionando-os à configura
 
 ### Usando arquivos markdown
 
-Crie arquivos de modo em `.opencode/modes/` para modos específicos do projeto ou `~/.config/opencode/modes/` para modos globais:
+Crie arquivos de modo em `.wiscode/modes/` para modos específicos do projeto ou `~/.config/wiscode/modes/` para modos globais:
 
-```markdown title=".opencode/modes/debug.md"
+```markdown title=".wiscode/modes/debug.md"
 ---
 temperature: 0.1
 tools:
@@ -290,7 +290,7 @@ Focus on:
 Do not make any changes to files. Only investigate and report.
 ```
 
-```markdown title="~/.config/opencode/modes/refactor.md"
+```markdown title="~/.config/wiscode/modes/refactor.md"
 ---
 model: anthropic/claude-sonnet-4-20250514
 temperature: 0.2

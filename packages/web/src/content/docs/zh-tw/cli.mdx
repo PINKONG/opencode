@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode 基於 [Models.dev](https://models.dev) 的供應商列表運作，因此您可以使用 `wiscode auth login` 為任何想要使用的供應商設定 API 金鑰。金鑰儲存在 `~/.local/share/opencode/auth.json` 中。
+WisCode 基於 [Models.dev](https://models.dev) 的供應商列表運作，因此您可以使用 `wiscode auth login` 為任何想要使用的供應商設定 API 金鑰。金鑰儲存在 `~/.local/share/wiscode/auth.json` 中。
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ wiscode run --attach http://localhost:4096 "Explain async/await in JavaScript"
 wiscode serve
 ```
 
-此指令啟動一個 HTTP 伺服器，提供對 WisCode 功能的 API 存取，無需 TUI 介面。設定 `OPENCODE_SERVER_PASSWORD` 可啟用 HTTP 基本認證（使用者名稱預設為 `opencode`）。
+此指令啟動一個 HTTP 伺服器，提供對 WisCode 功能的 API 存取，無需 TUI 介面。設定 `OPENCODE_SERVER_PASSWORD` 可啟用 HTTP 基本認證（使用者名稱預設為 `wiscode`）。
 
 #### 旗標
 
@@ -456,7 +456,7 @@ wiscode import https://opncd.ai/s/abc123
 wiscode web
 ```
 
-此指令啟動一個 HTTP 伺服器並開啟瀏覽器，透過 Web 介面存取 WisCode。設定 `OPENCODE_SERVER_PASSWORD` 可啟用 HTTP 基本認證（使用者名稱預設為 `opencode`）。
+此指令啟動一個 HTTP 伺服器並開啟瀏覽器，透過 Web 介面存取 WisCode。設定 `OPENCODE_SERVER_PASSWORD` 可啟用 HTTP 基本認證（使用者名稱預設為 `wiscode`）。
 
 #### 旗標
 
@@ -578,7 +578,7 @@ WisCode 可以透過環境變數進行設定。
 | `OPENCODE_CLIENT`                     | string  | 用戶端識別碼（預設為 `cli`）                |
 | `OPENCODE_ENABLE_EXA`                 | boolean | 啟用 Exa 網路搜尋工具                       |
 | `OPENCODE_SERVER_PASSWORD`            | string  | 為 `serve`/`web` 啟用基本認證               |
-| `OPENCODE_SERVER_USERNAME`            | string  | 覆寫基本認證使用者名稱（預設為 `opencode`） |
+| `OPENCODE_SERVER_USERNAME`            | string  | 覆寫基本認證使用者名稱（預設為 `wiscode`） |
 | `OPENCODE_MODELS_URL`                 | string  | 自訂模型設定擷取 URL                        |
 
 ---

@@ -18,7 +18,7 @@ WisCode 使用 [AI SDK](https://ai-sdk.dev/) 和 [Models.dev](https://models.dev
 ### 凭据
 
 使用 `/connect` 命令添加提供商的 API 密钥后，凭据会存储在
-`~/.local/share/opencode/auth.json` 中。
+`~/.local/share/wiscode/auth.json` 中。
 
 ---
 
@@ -32,7 +32,7 @@ WisCode 使用 [AI SDK](https://ai-sdk.dev/) 和 [Models.dev](https://models.dev
 
 你可以通过设置 `baseURL` 选项来自定义任何提供商的 Base URL。这在使用代理服务或自定义端点时非常有用。
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -159,9 +159,9 @@ WisCode Zen 是由 WisCode 团队提供的模型列表，这些模型已经过�
 
    #### 配置文件（推荐）
 
-   如需项目级别或持久化的配置，请使用 `opencode.json`：
+   如需项目级别或持久化的配置，请使用 `wiscode.json`：
 
-   ```json title="opencode.json"
+   ```json title="wiscode.json"
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -190,7 +190,7 @@ WisCode Zen 是由 WisCode 团队提供的模型列表，这些模型已经过�
 
    如果你使用 Bedrock 的 VPC 端点：
 
-   ```json title="opencode.json"
+   ```json title="wiscode.json"
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -238,7 +238,7 @@ WisCode Zen 是由 WisCode 团队提供的模型列表，这些模型已经过�
 :::note
 对于自定义推理配置文件，请在 key 中使用模型名称和提供商名称，并将 `id` 属性设置为 ARN。这可以确保正确的缓存行为：
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -489,7 +489,7 @@ Cloudflare AI Gateway 允许你通过统一端点访问来自 OpenAI、Anthropic
 
    你也可以通过 WisCode 配置添加模型。
 
-   ```json title="opencode.json"
+   ```json title="wiscode.json"
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -689,7 +689,7 @@ GitLab Duo 通过 GitLab 的 Anthropic 代理提供具有原生工具调用能�
 ##### 自托管 GitLab
 
 :::note[合规说明]
-WisCode 会使用一个小模型来执行部分 AI 任务，例如生成会话标题。默认情况下使用由 Zen 托管的 gpt-5-nano。如果你需要让 WisCode 仅使用你自己的 GitLab 托管实例，请在 `opencode.json` 文件中添加以下内容。同时建议禁用会话共享。
+WisCode 会使用一个小模型来执行部分 AI 任务，例如生成会话标题。默认情况下使用由 Zen 托管的 gpt-5-nano。如果你需要让 WisCode 仅使用你自己的 GitLab 托管实例，请在 `wiscode.json` 文件中添加以下内容。同时建议禁用会话共享。
 
 ```json
 {
@@ -749,9 +749,9 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 ##### 配置
 
-通过 `opencode.json` 进行自定义配置：
+通过 `wiscode.json` 进行自定义配置：
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -768,7 +768,7 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 要访问 GitLab 工具（合并请求、Issue、流水线、CI/CD 等）：
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-gitlab-plugin"]
@@ -947,7 +947,7 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 [Helicone 模型目录](https://helicone.ai/models)中可以找到你需要添加的模型 ID。
 
-```jsonc title="~/.config/opencode/opencode.jsonc"
+```jsonc title="~/.config/wiscode/wiscode.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -975,7 +975,7 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 Helicone 支持用于缓存、用户跟踪和会话管理等功能的自定义请求头。使用 `options.headers` 将它们添加到提供商配置中：
 
-```jsonc title="~/.config/opencode/opencode.jsonc"
+```jsonc title="~/.config/wiscode/wiscode.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1004,7 +1004,7 @@ npm install -g opencode-helicone-session
 
 将其添加到配置中。
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "plugin": ["opencode-helicone-session"]
 }
@@ -1029,7 +1029,7 @@ npm install -g opencode-helicone-session
 
 你可以通过 [llama.cpp](https://github.com/ggml-org/llama.cpp) 的 llama-server 工具配置 WisCode 使用本地模型。
 
-```json title="opencode.json" "llama.cpp" {5, 6, 8, 10-15}
+```json title="wiscode.json" "llama.cpp" {5, 6, 8, 10-15}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1096,7 +1096,7 @@ IO.NET 提供 17 个针对不同用例优化的模型：
 
 你可以通过 LM Studio 配置 WisCode 使用本地模型。
 
-```json title="opencode.json" "lmstudio" {5, 6, 8, 10-14}
+```json title="wiscode.json" "lmstudio" {5, 6, 8, 10-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1217,7 +1217,7 @@ IO.NET 提供 17 个针对不同用例优化的模型：
 Ollama 可以自动为 WisCode 进行配置。详见 [Ollama 集成文档](https://docs.ollama.com/integrations/opencode)。
 :::
 
-```json title="opencode.json" "ollama" {5, 6, 8, 10-14}
+```json title="wiscode.json" "ollama" {5, 6, 8, 10-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1378,7 +1378,7 @@ WisCode Zen 是由 WisCode 团队提供的经过测试和验证的模型列表�
 
    你也可以通过 WisCode 配置添加更多模型。
 
-   ```json title="opencode.json" {6}
+   ```json title="wiscode.json" {6}
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -1393,7 +1393,7 @@ WisCode Zen 是由 WisCode 团队提供的经过测试和验证的模型列表�
 
 5. 你还可以通过 WisCode 配置自定义模型。以下是指定提供商的示例：
 
-   ```json title="opencode.json"
+   ```json title="wiscode.json"
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -1642,7 +1642,7 @@ Vercel AI Gateway 允许你通过统一端点访问来自 OpenAI、Anthropic、G
 
 你也可以通过 WisCode 配置自定义模型。以下是指定提供商路由顺序的示例。
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1752,7 +1752,7 @@ Vercel AI Gateway 允许你通过统一端点访问来自 OpenAI、Anthropic、G
 
    你也可以通过 WisCode 配置添加更多模型。
 
-   ```json title="opencode.json" {6}
+   ```json title="wiscode.json" {6}
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -1811,16 +1811,16 @@ Vercel AI Gateway 允许你通过统一端点访问来自 OpenAI、Anthropic、G
 
    ┌  Add credential
    │
-   ▲  This only stores a credential for myprovider - you will need to configure it in opencode.json, check the docs for examples.
+   ▲  This only stores a credential for myprovider - you will need to configure it in wiscode.json, check the docs for examples.
    │
    ◇  Enter your API key
    │  sk-...
    └
    ```
 
-4. 在项目目录中创建或更新 `opencode.json` 文件：
+4. 在项目目录中创建或更新 `wiscode.json` 文件：
 
-   ```json title="opencode.json" ""myprovider"" {5-15}
+   ```json title="wiscode.json" ""myprovider"" {5-15}
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -1858,7 +1858,7 @@ Vercel AI Gateway 允许你通过统一端点访问来自 OpenAI、Anthropic、G
 
 以下是设置 `apiKey`、`headers` 和模型 `limit` 选项的示例。
 
-```json title="opencode.json" {9,11,17-20}
+```json title="wiscode.json" {9,11,17-20}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {

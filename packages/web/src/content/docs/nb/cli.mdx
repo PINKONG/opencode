@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode drives av leverandørlisten på [Models.dev](https://models.dev), så du kan bruke `wiscode auth login` til å konfigurere API-nøkler for enhver leverandør du vil bruke. Dette er lagret i `~/.local/share/opencode/auth.json`.
+WisCode drives av leverandørlisten på [Models.dev](https://models.dev), så du kan bruke `wiscode auth login` til å konfigurere API-nøkler for enhver leverandør du vil bruke. Dette er lagret i `~/.local/share/wiscode/auth.json`.
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ Start en headless WisCode-server for API-tilgang. Sjekk ut [server-dokumentene](
 wiscode serve
 ```
 
-Dette starter en HTTP-server som gir API tilgang til WisCode-funksjonalitet uten TUI-grensesnittet. Sett `OPENCODE_SERVER_PASSWORD` for å aktivere HTTP grunnleggende autentisering (brukernavn er standard til `opencode`).
+Dette starter en HTTP-server som gir API tilgang til WisCode-funksjonalitet uten TUI-grensesnittet. Sett `OPENCODE_SERVER_PASSWORD` for å aktivere HTTP grunnleggende autentisering (brukernavn er standard til `wiscode`).
 
 #### Flagg
 
@@ -456,7 +456,7 @@ Start en headless WisCode-server med et webgrensesnitt.
 wiscode web
 ```
 
-Dette starter en HTTP-server og åpner en nettleser for å få tilgang til WisCode via et nettgrensesnitt. Sett `OPENCODE_SERVER_PASSWORD` for å aktivere HTTP grunnleggende autentisering (brukernavn er standard til `opencode`).
+Dette starter en HTTP-server og åpner en nettleser for å få tilgang til WisCode via et nettgrensesnitt. Sett `OPENCODE_SERVER_PASSWORD` for å aktivere HTTP grunnleggende autentisering (brukernavn er standard til `wiscode`).
 
 #### Flagg
 
@@ -578,7 +578,7 @@ WisCode kan konfigureres ved hjelp av miljøvariabler.
 | `OPENCODE_CLIENT`                     | streng | Klientidentifikator (standard til `cli`)                              |
 | `OPENCODE_ENABLE_EXA`                 | boolsk | Aktiver Exa-nettsøkeverktøy                                           |
 | `OPENCODE_SERVER_PASSWORD`            | streng | Aktiver grunnleggende autentisering for `serve`/`web`                 |
-| `OPENCODE_SERVER_USERNAME`            | streng | Overstyr grunnleggende autentiseringsbrukernavn (standard `opencode`) |
+| `OPENCODE_SERVER_USERNAME`            | streng | Overstyr grunnleggende autentiseringsbrukernavn (standard `wiscode`) |
 | `OPENCODE_MODELS_URL`                 | streng | Egendefinert URL for henting av modellkonfigurasjon                   |
 
 ---

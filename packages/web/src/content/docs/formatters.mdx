@@ -60,7 +60,7 @@ This process happens in the background, ensuring your code styles are maintained
 
 You can customize formatters through the `formatter` section in your WisCode config.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "formatter": {}
@@ -84,7 +84,7 @@ Let's look at some examples.
 
 To disable **all** formatters globally, set `formatter` to `false`:
 
-```json title="opencode.json" {3}
+```json title="wiscode.json" {3}
 {
   "$schema": "https://opencode.ai/config.json",
   "formatter": false
@@ -93,7 +93,7 @@ To disable **all** formatters globally, set `formatter` to `false`:
 
 To disable a **specific** formatter, set `disabled` to `true`:
 
-```json title="opencode.json" {5}
+```json title="wiscode.json" {5}
 {
   "$schema": "https://opencode.ai/config.json",
   "formatter": {
@@ -110,7 +110,7 @@ To disable a **specific** formatter, set `disabled` to `true`:
 
 You can override the built-in formatters or add new ones by specifying the command, environment variables, and file extensions:
 
-```json title="opencode.json" {4-14}
+```json title="wiscode.json" {4-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "formatter": {

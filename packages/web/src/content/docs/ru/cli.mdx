@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode использует список провайдеров с [Models.dev](https://models.dev), поэтому вы можете использовать `wiscode auth login` для настройки ключей API для любого поставщика, которого вы хотите использовать. Это хранится в `~/.local/share/opencode/auth.json`.
+WisCode использует список провайдеров с [Models.dev](https://models.dev), поэтому вы можете использовать `wiscode auth login` для настройки ключей API для любого поставщика, которого вы хотите использовать. Это хранится в `~/.local/share/wiscode/auth.json`.
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ wiscode run --attach http://localhost:4096 "Explain async/await in JavaScript"
 wiscode serve
 ```
 
-При этом запускается HTTP-сервер, который обеспечивает доступ API к функциям WisCode без интерфейса TUI. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `opencode`).
+При этом запускается HTTP-сервер, который обеспечивает доступ API к функциям WisCode без интерфейса TUI. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `wiscode`).
 
 #### Флаги
 
@@ -456,7 +456,7 @@ wiscode import https://opncd.ai/s/abc123
 wiscode web
 ```
 
-При этом запускается HTTP-сервер и открывается веб-браузер для доступа к WisCode через веб-интерфейс. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `opencode`).
+При этом запускается HTTP-сервер и открывается веб-браузер для доступа к WisCode через веб-интерфейс. Установите `OPENCODE_SERVER_PASSWORD`, чтобы включить базовую аутентификацию HTTP (имя пользователя по умолчанию — `wiscode`).
 
 #### Флаги
 
@@ -578,7 +578,7 @@ WisCode можно настроить с помощью переменных с�
 | `OPENCODE_CLIENT`                     | строка              | Идентификатор клиента (по умолчанию `cli`)                                       |
 | `OPENCODE_ENABLE_EXA`                 | логическое значение | Включить инструменты веб-поиска Exa                                              |
 | `OPENCODE_SERVER_PASSWORD`            | строка              | Включить базовую аутентификацию для `serve`/`web`                                |
-| `OPENCODE_SERVER_USERNAME`            | строка              | Переопределить имя пользователя базовой аутентификации (по умолчанию `opencode`) |
+| `OPENCODE_SERVER_USERNAME`            | строка              | Переопределить имя пользователя базовой аутентификации (по умолчанию `wiscode`) |
 | `OPENCODE_MODELS_URL`                 | строка              | Пользовательский URL-адрес для получения конфигурации модели                     |
 
 ---

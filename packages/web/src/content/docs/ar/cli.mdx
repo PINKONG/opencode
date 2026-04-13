@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-يعتمد WisCode على قائمة المزودين في [Models.dev](https://models.dev)، لذا يمكنك استخدام `wiscode auth login` لتهيئة مفاتيح API لأي مزود ترغب باستخدامه. يتم حفظ ذلك في `~/.local/share/opencode/auth.json`.
+يعتمد WisCode على قائمة المزودين في [Models.dev](https://models.dev)، لذا يمكنك استخدام `wiscode auth login` لتهيئة مفاتيح API لأي مزود ترغب باستخدامه. يتم حفظ ذلك في `~/.local/share/wiscode/auth.json`.
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ wiscode run --attach http://localhost:4096 "Explain async/await in JavaScript"
 wiscode serve
 ```
 
-يشغّل هذا خادم HTTP يوفّر وصولا عبر API لوظائف WisCode دون واجهة TUI. اضبط `OPENCODE_SERVER_PASSWORD` لتفعيل مصادقة HTTP الأساسية (اسم المستخدم الافتراضي `opencode`).
+يشغّل هذا خادم HTTP يوفّر وصولا عبر API لوظائف WisCode دون واجهة TUI. اضبط `OPENCODE_SERVER_PASSWORD` لتفعيل مصادقة HTTP الأساسية (اسم المستخدم الافتراضي `wiscode`).
 
 #### الرايات
 
@@ -456,7 +456,7 @@ wiscode import https://opncd.ai/s/abc123
 wiscode web
 ```
 
-يشغّل هذا خادم HTTP ويفتح متصفح ويب للوصول إلى WisCode عبر واجهة ويب. اضبط `OPENCODE_SERVER_PASSWORD` لتفعيل مصادقة HTTP الأساسية (اسم المستخدم الافتراضي `opencode`).
+يشغّل هذا خادم HTTP ويفتح متصفح ويب للوصول إلى WisCode عبر واجهة ويب. اضبط `OPENCODE_SERVER_PASSWORD` لتفعيل مصادقة HTTP الأساسية (اسم المستخدم الافتراضي `wiscode`).
 
 #### الرايات
 
@@ -577,7 +577,7 @@ wiscode upgrade v0.1.48
 | `OPENCODE_CLIENT`                     | string  | معرّف العميل (الافتراضي `cli`)                            |
 | `OPENCODE_ENABLE_EXA`                 | boolean | تفعيل أدوات بحث الويب من Exa                              |
 | `OPENCODE_SERVER_PASSWORD`            | string  | تفعيل المصادقة الأساسية لخادمي `serve`/`web`              |
-| `OPENCODE_SERVER_USERNAME`            | string  | تجاوز اسم مستخدم المصادقة الأساسية (الافتراضي `opencode`) |
+| `OPENCODE_SERVER_USERNAME`            | string  | تجاوز اسم مستخدم المصادقة الأساسية (الافتراضي `wiscode`) |
 | `OPENCODE_MODELS_URL`                 | string  | رابط مخصص لجلب تهيئة النماذج                              |
 
 ---

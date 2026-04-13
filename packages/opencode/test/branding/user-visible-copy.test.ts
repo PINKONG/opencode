@@ -111,8 +111,11 @@ describe("user visible branding copy", () => {
     expect(mcp).not.toContain("e.g., opencode x @modelcontextprotocol/server-filesystem")
 
     expect(providers).toContain("wiscode auth provider")
-    expect(providers).toContain("configure it in opencode.json.")
+    expect(providers).toContain("configure it in wiscode.json.")
+    expect(providers).toContain("Configure via wiscode.json options (profile, region, endpoint) or")
     expect(providers).not.toContain("opencode auth provider")
+    expect(providers).not.toContain("configure it in opencode.json.")
+    expect(providers).not.toContain("Configure via opencode.json options (profile, region, endpoint) or")
     expect(providers).not.toContain("https://opencode.ai/auth")
     expect(providers).not.toContain("https://opencode.ai/docs/providers/#cloudflare-ai-gateway")
 

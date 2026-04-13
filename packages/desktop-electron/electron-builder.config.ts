@@ -27,7 +27,7 @@ const channel = (() => {
 })()
 
 const getBase = (): Configuration => ({
-  artifactName: "opencode-electron-${os}-${arch}.${ext}",
+  artifactName: "wiscode-electron-${os}-${arch}.${ext}",
   directories: {
     output: "dist",
     buildResources: "resources",
@@ -59,8 +59,8 @@ const getBase = (): Configuration => ({
     sign: true,
   },
   protocols: {
-    name: "OpenCode",
-    schemes: ["opencode"],
+    name: "WisCode",
+    schemes: ["wiscode"],
   },
   win: {
     icon: `resources/icons/icon.ico`,
@@ -89,29 +89,29 @@ function getConfig() {
     case "dev": {
       return {
         ...base,
-        appId: "ai.opencode.desktop.dev",
-        productName: "OpenCode Dev",
-        rpm: { packageName: "opencode-dev" },
+        appId: "ai.wiscode.desktop.dev",
+        productName: "WisCode Dev",
+        rpm: { packageName: "wiscode-dev" },
       }
     }
     case "beta": {
       return {
         ...base,
-        appId: "ai.opencode.desktop.beta",
-        productName: "OpenCode Beta",
-        protocols: { name: "OpenCode Beta", schemes: ["opencode"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" },
-        rpm: { packageName: "opencode-beta" },
+        appId: "ai.wiscode.desktop.beta",
+        productName: "WisCode Beta",
+        protocols: { name: "WisCode Beta", schemes: ["wiscode"] },
+        publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "beta" },
+        rpm: { packageName: "wiscode-beta" },
       }
     }
     case "prod": {
       return {
         ...base,
-        appId: "ai.opencode.desktop",
-        productName: "OpenCode",
-        protocols: { name: "OpenCode", schemes: ["opencode"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
-        rpm: { packageName: "opencode" },
+        appId: "ai.wiscode.desktop",
+        productName: "WisCode",
+        protocols: { name: "WisCode", schemes: ["wiscode"] },
+        publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "latest" },
+        rpm: { packageName: "wiscode" },
       }
     }
   }

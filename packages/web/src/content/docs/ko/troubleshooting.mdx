@@ -11,9 +11,9 @@ WisCode와 문제를 디버그하려면 로그와 로컬 데이터를 확인하�
 
 로그 파일은 다음과 같습니다:
 
--**macOS/리눅스**: `~/.local/share/opencode/log/`
+-**macOS/리눅스**: `~/.local/share/wiscode/log/`
 
-- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.local\share\opencode\log`
+- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.local\share\wiscode\log`
 
 로그 파일은 타임스탬프 (예 : `2025-01-09T123456.log`)과 가장 최근 10 로그 파일이 보관됩니다.
 
@@ -25,9 +25,9 @@ WisCode와 문제를 디버그하려면 로그와 로컬 데이터를 확인하�
 
 WisCode 저장 세션 데이터 및 디스크에 다른 응용 데이터:
 
--**macOS/리눅스**: `~/.local/share/opencode/`
+-**macOS/리눅스**: `~/.local/share/wiscode/`
 
-- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.local\share\opencode`
+- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.local\share\wiscode`
 
 이 디렉토리는 다음과 같습니다:
 
@@ -41,7 +41,7 @@ WisCode 저장 세션 데이터 및 디스크에 다른 응용 데이터:
 
 ## 데스크톱 앱
 
-WisCode 데스크톱은 배경에서 로컬 WisCode 서버 (`opencode-cli` sidecar)를 실행합니다. 대부분의 문제는 misbehaving 플러그인, 손상된 캐시, 또는 나쁜 서버 설정에 의해 발생합니다.
+WisCode 데스크톱은 배경에서 로컬 WisCode 서버 (`wiscode-cli` sidecar)를 실행합니다. 대부분의 문제는 misbehaving 플러그인, 손상된 캐시, 또는 나쁜 서버 설정에 의해 발생합니다.
 
 ## 빠른 확인
 
@@ -59,9 +59,9 @@ WisCode 데스크톱은 배경에서 로컬 WisCode 서버 (`opencode-cli` sidec
 
 글로벌 설정 파일을 열고 `plugin` 키를 찾습니다.
 
--**macOS/리눅스**: `~/.config/opencode/opencode.jsonc` (또는 `~/.config/opencode/opencode.json`) -**macOS/Linux** (외부 설치): `~/.local/share/opencode/opencode.jsonc`
+-**macOS/리눅스**: `~/.config/wiscode/wiscode.jsonc` (또는 `~/.config/wiscode/wiscode.json`) -**macOS/Linux** (외부 설치): `~/.local/share/wiscode/wiscode.jsonc`
 
-- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.config\opencode\opencode.jsonc`
+- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.config\wiscode\wiscode.jsonc`
 
 구성 된 플러그인이있는 경우, 일시적으로 키를 제거하거나 빈 배열로 설정하여 비활성화하십시오.
 
@@ -76,10 +76,10 @@ WisCode 데스크톱은 배경에서 로컬 WisCode 서버 (`opencode-cli` sidec
 
 WisCode는 디스크에서 로컬 플러그인을로드 할 수 있습니다. Temporarily 이동 이러한 방법 (또는 폴더 이름을 변경) 및 데스크톱 응용 프로그램을 다시 시작:
 
-- **글로벌 플러그인** -**macOS/리눅스**: `~/.config/opencode/plugins/`
-- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.config\opencode\plugins`
+- **글로벌 플러그인** -**macOS/리눅스**: `~/.config/wiscode/plugins/`
+- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.config\wiscode\plugins`
 - **프로젝트 플러그인** (프로젝트 설정만 사용)
-- `<your-project>/.opencode/plugins/`
+- `<your-project>/.wiscode/plugins/`
 
 앱이 다시 일하는 경우, 재 활성화 플러그인은 한 번에 문제가 발생할 수 있습니다.
 
@@ -92,10 +92,10 @@ WisCode는 디스크에서 로컬 플러그인을로드 할 수 있습니다. Te
 1. Quit WisCode 데스크톱 완전히.
 2. 캐시 디렉토리 삭제:
 
--**macOS**: 찾기 -> `Cmd+Shift+G` -> 붙여넣기 `~/.cache/opencode`
+-**macOS**: 찾기 -> `Cmd+Shift+G` -> 붙여넣기 `~/.cache/wiscode`
 
-- **Linux**: `~/.cache/opencode` 삭제 (또는 `rm -rf ~/.cache/opencode` 실행)
-- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.cache\opencode`
+- **Linux**: `~/.cache/wiscode` 삭제 (또는 `rm -rf ~/.cache/wiscode` 실행)
+- **Windows**: 압박 `WIN+R`와 풀 `%USERPROFILE%\.cache\wiscode`
 
 3. Restart WisCode 데스크탑.
 
@@ -113,7 +113,7 @@ Home 화면에서 Server Picker를 열려면 서버 이름(상태 점)을 클릭
 
 #### 설정에서 server.port/server.hostname 제거
 
-`opencode.json(c)`가 `server` 섹션을 포함하면 일시적으로 제거하고 데스크톱 앱을 다시 시작합니다.
+`wiscode.json(c)`가 `server` 섹션을 포함하면 일시적으로 제거하고 데스크톱 앱을 다시 시작합니다.
 
 ### 환경 변수 확인
 
@@ -180,7 +180,7 @@ WisCode와 문제가 발생하면:
 
 버그 또는 요청 기능을보고하는 가장 좋은 방법은 GitHub 저장소를 통해 다음과 같습니다.
 
-[**github.com/anomalyco/opencode/issues**](https://github.com/anomalyco/opencode/issues)
+[**github.com/PINKONG/opencode/issues**](https://github.com/PINKONG/opencode/issues)
 
 새로운 문제를 만들기 전에, 당신의 문제가 이미보고 된 경우 기존 문제를 검색.
 
@@ -244,10 +244,10 @@ ProviderInitError가 발생하면 잘못된 구성이나 손상된 구성이 있
 2. 문제가 발생하면 저장된 구성을 삭제하십시오.
 
    ```bash
-   rm -rf ~/.local/share/opencode
+   rm -rf ~/.local/share/wiscode
    ```
 
-Windows에서, `WIN+R`를 누르고 삭제하십시오: `%USERPROFILE%\.local\share\opencode`
+Windows에서, `WIN+R`를 누르고 삭제하십시오: `%USERPROFILE%\.local\share\wiscode`
 
 3. TUI의 `/connect` 명령을 사용하여 공급자와 재해.
 
@@ -262,10 +262,10 @@ API 호출 오류가 발생하면, 이 공급 업체 패키지로 인해 발생�
 1. 공급자 포장 캐시를 지우십시오:
 
    ```bash
-   rm -rf ~/.cache/opencode
+   rm -rf ~/.cache/wiscode
    ```
 
-Windows에서, `WIN+R`를 누르고 삭제하십시오: `%USERPROFILE%\.cache\opencode`
+Windows에서, `WIN+R`를 누르고 삭제하십시오: `%USERPROFILE%\.cache\wiscode`
 
 2. 최신 공급자 포장을 재설치하는 Restart WisCode
 

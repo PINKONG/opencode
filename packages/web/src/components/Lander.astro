@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import { getRelativeLocaleUrl } from 'astro:i18n';
 import config from "virtual:starlight/user-config";
+import web from "../../config.mjs";
 
 import CopyIcon from "../assets/lander/copy.svg";
 import CheckIcon from "../assets/lander/check.svg";
@@ -29,8 +30,10 @@ const docsIdeHref = getRelativeLocaleUrl(locale, "ide")
 const docsGithubHref = getRelativeLocaleUrl(locale, "github")
 
 const command = "curl -fsSL"
-const protocol = "https://"
-const url = "opencode.ai/install"
+const install = web.install
+const [scheme = "https", host = install] = install.split("://")
+const protocol = `${scheme}://`
+const url = host
 const bash = "| bash"
 
 let darkImage: ImageMetadata | undefined;
@@ -94,9 +97,9 @@ if (image) {
     <section class="alternatives">
       <div class="col1">
         <h3>npm</h3>
-        <button class="command" data-command="npm install -g opencode-ai">
+        <button class="command" data-command="npm install -g wiscode-ai">
           <code>
-            <span>npm install -g</span> <span class="highlight">opencode-ai</span>
+            <span>npm install -g</span> <span class="highlight">wiscode-ai</span>
           </code>
           <span class="copy">
             <CopyIcon />
@@ -106,9 +109,9 @@ if (image) {
       </div>
       <div class="col2">
         <h3>Bun</h3>
-        <button class="command" data-command="bun install -g opencode-ai">
+        <button class="command" data-command="bun install -g wiscode-ai">
           <code>
-            <span>bun install -g</span> <span class="highlight">opencode-ai</span>
+            <span>bun install -g</span> <span class="highlight">wiscode-ai</span>
           </code>
           <span class="copy">
             <CopyIcon />
@@ -118,9 +121,9 @@ if (image) {
       </div>
       <div class="col3">
         <h3>Homebrew</h3>
-        <button class="command" data-command="brew install opencode">
+        <button class="command" data-command="brew install wiscode">
           <code>
-            <span>brew install</span> <span class="highlight">opencode</span>
+            <span>brew install</span> <span class="highlight">wiscode</span>
           </code>
           <span class="copy">
             <CopyIcon />
@@ -130,9 +133,9 @@ if (image) {
       </div>
       <div class="col4">
         <h3>Paru</h3>
-        <button class="command" data-command="paru -S opencode-bin">
+        <button class="command" data-command="paru -S wiscode-bin">
           <code>
-            <span>paru -S</span> <span class="highlight">opencode-bin</span>
+            <span>paru -S</span> <span class="highlight">wiscode-bin</span>
           </code>
           <span class="copy">
             <CopyIcon />
@@ -142,9 +145,9 @@ if (image) {
       </div>
       <div class="col4">
         <h3>Mise</h3>
-        <button class="command" data-command="mise use -g github:anomalyco/opencode">
+        <button class="command" data-command="mise use -g github:PINKONG/opencode">
           <code>
-            <span>mise use -g</span> <span class="highlight">github:anomalyco/opencode</span>
+            <span>mise use -g</span> <span class="highlight">github:PINKONG/opencode</span>
           </code>
           <span class="copy">
             <CopyIcon />

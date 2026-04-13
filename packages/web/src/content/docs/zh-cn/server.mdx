@@ -36,7 +36,7 @@ wiscode serve --cors http://localhost:5173 --cors https://app.example.com
 
 ### 认证
 
-设置 `OPENCODE_SERVER_PASSWORD` 以使用 HTTP 基本认证保护服务器。用户名默认为 `opencode`，也可以设置 `OPENCODE_SERVER_USERNAME` 来覆盖它。这适用于 `wiscode serve` 和 `wiscode web`。
+设置 `OPENCODE_SERVER_PASSWORD` 以使用 HTTP 基本认证保护服务器。用户名默认为 `wiscode`，也可以设置 `OPENCODE_SERVER_USERNAME` 来覆盖它。这适用于 `wiscode serve` 和 `wiscode web`。
 
 ```bash
 OPENCODE_SERVER_PASSWORD=your-password wiscode serve
@@ -46,7 +46,7 @@ OPENCODE_SERVER_PASSWORD=your-password wiscode serve
 
 ### 工作原理
 
-当你运行 `opencode` 时，它会启动一个 TUI 和一个服务器。TUI 是与服务器通信的客户端。服务器暴露一个 OpenAPI 3.1 规范端点。该端点也用于生成 [SDK](/docs/sdk)。
+当你运行 `wiscode` 时，它会启动一个 TUI 和一个服务器。TUI 是与服务器通信的客户端。服务器暴露一个 OpenAPI 3.1 规范端点。该端点也用于生成 [SDK](/docs/sdk)。
 
 :::tip
 使用 WisCode 服务器以编程方式与 WisCode 交互。

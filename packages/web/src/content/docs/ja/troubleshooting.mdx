@@ -11,8 +11,8 @@ WisCode の問題をデバッグするには、まず、ディスク上に保存
 
 ログファイルは次の場所に書き込まれます。
 
-- **macOS/Linux**: `~/.local/share/opencode/log/`
-- **Windows**: `WIN+R` を押して `%USERPROFILE%\.local\share\opencode\log` を貼り付けます
+- **macOS/Linux**: `~/.local/share/wiscode/log/`
+- **Windows**: `WIN+R` を押して `%USERPROFILE%\.local\share\wiscode\log` を貼り付けます
 
 ログファイルにはタイムスタンプ付きの名前が付けられ (例: `2025-01-09T123456.log`)、最新の 10 個のログファイルが保存されます。
 
@@ -24,8 +24,8 @@ WisCode の問題をデバッグするには、まず、ディスク上に保存
 
 WisCode は、セッションデータとその他のアプリケーションデータをディスク上の次の場所に保存します。
 
-- **macOS/Linux**: `~/.local/share/opencode/`
-- **Windows**: `WIN+R` を押して `%USERPROFILE%\.local\share\opencode` を貼り付けます
+- **macOS/Linux**: `~/.local/share/wiscode/`
+- **Windows**: `WIN+R` を押して `%USERPROFILE%\.local\share\wiscode` を貼り付けます
 
 このディレクトリには次のものが含まれます。
 
@@ -39,7 +39,7 @@ WisCode は、セッションデータとその他のアプリケーションデ
 
 ## デスクトップアプリ
 
-WisCode Desktop は、ローカル WisCode サーバー (`opencode-cli` サイドカー) をバックグラウンドで実行します。ほとんどの問題は、誤動作しているプラグイン、破損したキャッシュ、または不正なサーバー設定によって発生します。
+WisCode Desktop は、ローカル WisCode サーバー (`wiscode-cli` サイドカー) をバックグラウンドで実行します。ほとんどの問題は、誤動作しているプラグイン、破損したキャッシュ、または不正なサーバー設定によって発生します。
 
 ### クイックチェック
 
@@ -57,9 +57,9 @@ WisCode Desktop は、ローカル WisCode サーバー (`opencode-cli` サイ�
 
 グローバル設定ファイルを開き、`plugin` キーを探します。
 
-- **macOS/Linux**: `~/.config/opencode/opencode.jsonc` (または `~/.config/opencode/opencode.json`)
-- **macOS/Linux** (古いインストール): `~/.local/share/opencode/opencode.jsonc`
-- **Windows**: `WIN+R` を押して `%USERPROFILE%\.config\opencode\opencode.jsonc` を貼り付けます
+- **macOS/Linux**: `~/.config/wiscode/wiscode.jsonc` (または `~/.config/wiscode/wiscode.json`)
+- **macOS/Linux** (古いインストール): `~/.local/share/wiscode/wiscode.jsonc`
+- **Windows**: `WIN+R` を押して `%USERPROFILE%\.config\wiscode\wiscode.jsonc` を貼り付けます
 
 プラグインを構成している場合は、キーを削除するか空の配列に設定して、プラグインを一時的に無効にします。
 
@@ -75,10 +75,10 @@ WisCode Desktop は、ローカル WisCode サーバー (`opencode-cli` サイ�
 WisCode はディスクからローカルプラグインをロードすることもできます。これらを一時的に邪魔にならない場所に移動し (またはフォルダーの名前を変更し)、デスクトップアプリを再起動します。
 
 - **グローバルプラグイン**
-  - **macOS/Linux**: `~/.config/opencode/plugins/`
-  - **Windows**: `WIN+R` を押して `%USERPROFILE%\.config\opencode\plugins` を貼り付けます
+  - **macOS/Linux**: `~/.config/wiscode/plugins/`
+  - **Windows**: `WIN+R` を押して `%USERPROFILE%\.config\wiscode\plugins` を貼り付けます
 - **プロジェクトプラグイン** (プロジェクトごとの構成を使用する場合のみ)
-  - `<your-project>/.opencode/plugins/`
+  - `<your-project>/.wiscode/plugins/`
 
 アプリが再び動作し始めた場合は、プラグインを 1 つずつ再度有効にして、問題の原因となっているプラ​​グインを特定します。
 
@@ -91,9 +91,9 @@ WisCode はディスクからローカルプラグインをロードすること
 1. WisCode Desktop を完全に終了します。
 2. キャッシュディレクトリを削除します。
 
-- **macOS**: Finder -> `Cmd+Shift+G` -> `~/.cache/opencode` を貼り付け
-- **Linux**: `~/.cache/opencode` を削除します (または `rm -rf ~/.cache/opencode` を実行します)。
-- **Windows**: `WIN+R` を押して `%USERPROFILE%\.cache\opencode` を貼り付けます
+- **macOS**: Finder -> `Cmd+Shift+G` -> `~/.cache/wiscode` を貼り付け
+- **Linux**: `~/.cache/wiscode` を削除します (または `rm -rf ~/.cache/wiscode` を実行します)。
+- **Windows**: `WIN+R` を押して `%USERPROFILE%\.cache\wiscode` を貼り付けます
 
 3. WisCode デスクトップを再起動します。
 
@@ -111,7 +111,7 @@ WisCode Desktop は、独自のローカルサーバー (デフォルト) を起
 
 #### 設定から `server.port` / `server.hostname` を削除します
 
-`opencode.json(c)` に `server` セクションが含まれている場合は、それを一時的に削除し、デスクトップアプリを再起動します。
+`wiscode.json(c)` に `server` セクションが含まれている場合は、それを一時的に削除し、デスクトップアプリを再起動します。
 
 #### 環境変数を確認する
 
@@ -177,7 +177,7 @@ WisCode で問題が発生している場合:
 
 バグを報告したり、機能をリクエストしたりする最良の方法は、GitHub リポジトリを使用することです。
 
-[**github.com/anomalyco/opencode/issues**](https://github.com/anomalyco/opencode/issues)
+[**github.com/PINKONG/opencode/issues**](https://github.com/PINKONG/opencode/issues)
 
 新しい問題を作成する前に、既存の問題を検索して、問題がすでに報告されているかどうかを確認してください。
 
@@ -241,10 +241,10 @@ ProviderInitError が発生した場合は、構成が無効または破損し�
 2. 問題が解決しない場合は、保存されている構成をクリアしてみてください。
 
    ```bash
-   rm -rf ~/.local/share/opencode
+   rm -rf ~/.local/share/wiscode
    ```
 
-   Windows では、`WIN+R` を押して、`%USERPROFILE%\.local\share\opencode` を削除します。
+   Windows では、`WIN+R` を押して、`%USERPROFILE%\.local\share\wiscode` を削除します。
 
 3. TUI の `/connect` コマンドを使用して、プロバイダーで再認証します。
 
@@ -259,10 +259,10 @@ API 呼び出しエラーが発生した場合は、プロバイダーパッケ�
 1. プロバイダーパッケージのキャッシュをクリアします。
 
    ```bash
-   rm -rf ~/.cache/opencode
+   rm -rf ~/.cache/wiscode
    ```
 
-   Windows では、`WIN+R` を押して、`%USERPROFILE%\.cache\opencode` を削除します。
+   Windows では、`WIN+R` を押して、`%USERPROFILE%\.cache\wiscode` を削除します。
 
 2. WisCode を再起動して最新のプロバイダーパッケージを再インストールします
 

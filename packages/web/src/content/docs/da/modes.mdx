@@ -34,7 +34,7 @@ Byg er **standard**-tilstanden med alle værktøjer aktiveret. Dette er standard
 En begrænset tilstand designet til planlægning og analyse. I plantilstand er følgende værktøjer deaktiveret som standard:
 
 - `write` - Kan ikke oprette nye filer
-- `edit` - Kan ikke ændre eksisterende filer, undtagen filer placeret på `.opencode/plans/*.md` for at detaljere selve planen
+- `edit` - Kan ikke ændre eksisterende filer, undtagen filer placeret på `.wiscode/plans/*.md` for at detaljere selve planen
 - `patch` - Kan ikke anvende patches
 - `bash` - Kan ikke udføre shell-kommandoer
 
@@ -56,9 +56,9 @@ Du kan tilpasse de indbyggede tilstande eller oprette dine egne gennem konfigura
 
 ### JSON-konfiguration
 
-Konfigurer tilstande i din `opencode.json`-konfigurationsfil:
+Konfigurer tilstande i din `wiscode.json`-konfigurationsfil:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "mode": {
@@ -87,10 +87,10 @@ Konfigurer tilstande i din `opencode.json`-konfigurationsfil:
 
 Du kan også definere tilstande ved hjælp af markdown-filer. Placer dem i:
 
-- Globalt: `~/.config/opencode/modes/`
-- Projekt: `.opencode/modes/`
+- Globalt: `~/.config/wiscode/modes/`
+- Projekt: `.wiscode/modes/`
 
-```markdown title="~/.config/opencode/modes/review.md"
+```markdown title="~/.config/wiscode/modes/review.md"
 ---
 model: anthropic/claude-sonnet-4-20250514
 temperature: 0.1
@@ -120,7 +120,7 @@ Lad os se nærmere på disse konfigurationsmuligheder.
 
 Brug `model`-konfigurationen til at tilsidesætte standardmodellen for denne tilstand. Nyttigt til brug af forskellige modeller optimeret til forskellige opgaver. For eksempel en hurtigere model til planlægning, en mere dygtig model til implementering.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "plan": {
@@ -136,7 +136,7 @@ Brug `model`-konfigurationen til at tilsidesætte standardmodellen for denne til
 
 Styr tilfældigheden og kreativiteten af ​​AI's svar med `temperature`-konfigurationen. Lavere værdier gør svar mere fokuserede og deterministiske, mens højere værdier øger kreativitet og variabilitet.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "plan": {
@@ -155,7 +155,7 @@ Temperaturværdier varierer typisk fra 0,0 til 1,0:
 - **0,3-0,5**: Afbalancerede svar med en vis kreativitet, god til generelle udviklingsopgaver
 - **0.6-1.0**: Mere kreative og varierede svar, nyttige til brainstorming og udforskning
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "analyze": {
@@ -181,7 +181,7 @@ Hvis der ikke er angivet nogen temperatur, bruger WisCode modelspecifikke standa
 
 Angiv en brugerdefineret systempromptfil for denne tilstand med `prompt`-konfigurationen. Promptfilen skal indeholde instruktioner, der er specifikke for tilstandens formål.
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "mode": {
     "review": {
@@ -246,7 +246,7 @@ Du kan oprette dine egne brugerdefinerede tilstande ved at tilføje dem til konf
 
 ### Brug af JSON-konfiguration
 
-```json title="opencode.json" {4-14}
+```json title="wiscode.json" {4-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "mode": {
@@ -267,9 +267,9 @@ Du kan oprette dine egne brugerdefinerede tilstande ved at tilføje dem til konf
 
 ### Brug af markdown-filer
 
-Opret tilstandsfiler i `.opencode/modes/` for projektspecifikke tilstande eller `~/.config/opencode/modes/` for globale tilstande:
+Opret tilstandsfiler i `.wiscode/modes/` for projektspecifikke tilstande eller `~/.config/wiscode/modes/` for globale tilstande:
 
-```markdown title=".opencode/modes/debug.md"
+```markdown title=".wiscode/modes/debug.md"
 ---
 temperature: 0.1
 tools:
@@ -293,7 +293,7 @@ Focus on:
 Do not make any changes to files. Only investigate and report.
 ```
 
-```markdown title="~/.config/opencode/modes/refactor.md"
+```markdown title="~/.config/wiscode/modes/refactor.md"
 ---
 model: anthropic/claude-sonnet-4-20250514
 temperature: 0.2

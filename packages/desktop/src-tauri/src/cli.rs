@@ -40,7 +40,7 @@ impl CommandWrapper for WinCreationFlags {
     }
 }
 
-const CLI_INSTALL_DIR: &str = ".opencode/bin";
+const CLI_INSTALL_DIR: &str = ".wiscode/bin";
 const CLI_BINARY_NAME: &str = "wiscode";
 const SHELL_ENV_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -400,7 +400,7 @@ pub fn spawn_command(
             let version = app.package_info().version.to_string();
             let mut script = vec![
                 "set -e".to_string(),
-                "BIN=\"$HOME/.opencode/bin/wiscode\"".to_string(),
+                "BIN=\"$HOME/.wiscode/bin/wiscode\"".to_string(),
                 "if [ ! -x \"$BIN\" ]; then".to_string(),
                 format!(
                     "  curl -fsSL https://opencode.ai/install | bash -s -- --version {} --no-modify-path",

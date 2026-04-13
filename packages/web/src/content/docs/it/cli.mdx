@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode si basa sull'elenco provider di [Models.dev](https://models.dev), quindi puoi usare `wiscode auth login` per configurare le API key per qualunque provider tu voglia usare. Le credenziali vengono salvate in `~/.local/share/opencode/auth.json`.
+WisCode si basa sull'elenco provider di [Models.dev](https://models.dev), quindi puoi usare `wiscode auth login` per configurare le API key per qualunque provider tu voglia usare. Le credenziali vengono salvate in `~/.local/share/wiscode/auth.json`.
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ Avvia un server WisCode headless per accesso via API. Vedi le [server docs](/doc
 wiscode serve
 ```
 
-Avvia un server HTTP che espone accesso API alle funzionalità di WisCode senza la TUI. Imposta `OPENCODE_SERVER_PASSWORD` per abilitare HTTP basic auth (username di default `opencode`).
+Avvia un server HTTP che espone accesso API alle funzionalità di WisCode senza la TUI. Imposta `OPENCODE_SERVER_PASSWORD` per abilitare HTTP basic auth (username di default `wiscode`).
 
 #### Flag
 
@@ -456,7 +456,7 @@ Avvia un server WisCode headless con interfaccia web.
 wiscode web
 ```
 
-Avvia un server HTTP e apre un browser per accedere a WisCode tramite interfaccia web. Imposta `OPENCODE_SERVER_PASSWORD` per abilitare HTTP basic auth (username di default `opencode`).
+Avvia un server HTTP e apre un browser per accedere a WisCode tramite interfaccia web. Imposta `OPENCODE_SERVER_PASSWORD` per abilitare HTTP basic auth (username di default `wiscode`).
 
 #### Flag
 
@@ -578,7 +578,7 @@ WisCode può essere configurato tramite variabili d'ambiente.
 | `OPENCODE_CLIENT`                     | string  | Identificatore client (default `cli`)                       |
 | `OPENCODE_ENABLE_EXA`                 | boolean | Abilita gli strumenti di web search Exa                     |
 | `OPENCODE_SERVER_PASSWORD`            | string  | Abilita basic auth per `serve`/`web`                        |
-| `OPENCODE_SERVER_USERNAME`            | string  | Sovrascrive lo username basic auth (default `opencode`)     |
+| `OPENCODE_SERVER_USERNAME`            | string  | Sovrascrive lo username basic auth (default `wiscode`)     |
 | `OPENCODE_MODELS_URL`                 | string  | URL personalizzato per recuperare la configurazione modelli |
 
 ---

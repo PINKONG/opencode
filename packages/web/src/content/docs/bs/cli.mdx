@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode pokreće lista provajdera na [Models.dev](https://models.dev), tako da možete koristiti `wiscode auth login` da konfigurirate API ključeve za bilo kojeg provajdera kojeg želite koristiti. Ovo je pohranjeno u `~/.local/share/opencode/auth.json`.
+WisCode pokreće lista provajdera na [Models.dev](https://models.dev), tako da možete koristiti `wiscode auth login` da konfigurirate API ključeve za bilo kojeg provajdera kojeg želite koristiti. Ovo je pohranjeno u `~/.local/share/wiscode/auth.json`.
 
 ```bash
 wiscode auth login
@@ -357,7 +357,7 @@ Pokrenite WisCode headless server za API pristup. Pogledajte [server docs](/docs
 wiscode serve
 ```
 
-Ovo pokreće HTTP server koji pruža API pristup funkcionalnosti WisCode-a bez TUI interfejsa. Postavite `OPENCODE_SERVER_PASSWORD` da omogućite HTTP osnovnu auth (korisničko ime je zadano na `opencode`).
+Ovo pokreće HTTP server koji pruža API pristup funkcionalnosti WisCode-a bez TUI interfejsa. Postavite `OPENCODE_SERVER_PASSWORD` da omogućite HTTP osnovnu auth (korisničko ime je zadano na `wiscode`).
 
 #### Opcije
 
@@ -453,7 +453,7 @@ Pokrenite WisCode headless server sa web interfejsom.
 wiscode web
 ```
 
-Ovo pokreće HTTP server i otvara web pretraživač za pristup WisCode-u preko web interfejsa. Postavite `OPENCODE_SERVER_PASSWORD` da omogućite HTTP osnovnu auth (korisničko ime je zadano na `opencode`).
+Ovo pokreće HTTP server i otvara web pretraživač za pristup WisCode-u preko web interfejsa. Postavite `OPENCODE_SERVER_PASSWORD` da omogućite HTTP osnovnu auth (korisničko ime je zadano na `wiscode`).
 
 #### Opcije
 
@@ -575,7 +575,7 @@ WisCode se može konfigurirati pomoću varijabli okruženja.
 | `OPENCODE_CLIENT`                     | string  | Identifikator klijenta (zadano na `cli`)                           |
 | `OPENCODE_ENABLE_EXA`                 | boolean | Omogući Exa alate za web pretraživanje                             |
 | `OPENCODE_SERVER_PASSWORD`            | string  | Omogući osnovnu autentifikaciju za `serve`/`web`                   |
-| `OPENCODE_SERVER_USERNAME`            | string  | Poništi osnovno korisničko ime autentifikacije (zadano `opencode`) |
+| `OPENCODE_SERVER_USERNAME`            | string  | Poništi osnovno korisničko ime autentifikacije (zadano `wiscode`) |
 | `OPENCODE_MODELS_URL`                 | string  | Prilagođeni URL za dohvaćanje konfiguracije modela                 |
 
 ---

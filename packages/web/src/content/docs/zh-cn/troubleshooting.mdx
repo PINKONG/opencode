@@ -11,8 +11,8 @@ description: 常见问题及其解决方法。
 
 日志文件写入位置：
 
-- **macOS/Linux**: `~/.local/share/opencode/log/`
-- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.local\share\opencode\log`
+- **macOS/Linux**: `~/.local/share/wiscode/log/`
+- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.local\share\wiscode\log`
 
 日志文件以时间戳命名（例如 `2025-01-09T123456.log`），并保留最近的 10 个日志文件。
 
@@ -24,8 +24,8 @@ description: 常见问题及其解决方法。
 
 WisCode 将会话数据和其他应用数据存储在磁盘上：
 
-- **macOS/Linux**: `~/.local/share/opencode/`
-- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.local\share\opencode`
+- **macOS/Linux**: `~/.local/share/wiscode/`
+- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.local\share\wiscode`
 
 该目录包含：
 
@@ -39,7 +39,7 @@ WisCode 将会话数据和其他应用数据存储在磁盘上：
 
 ## 桌面应用
 
-WisCode Desktop 会在后台运行一个本地 WisCode 服务器（即 `opencode-cli` 附属进程）。大多数问题是由插件异常、缓存损坏或错误的服务器设置引起的。
+WisCode Desktop 会在后台运行一个本地 WisCode 服务器（即 `wiscode-cli` 附属进程）。大多数问题是由插件异常、缓存损坏或错误的服务器设置引起的。
 
 ### 快速检查
 
@@ -57,9 +57,9 @@ WisCode Desktop 会在后台运行一个本地 WisCode 服务器（即 `opencode
 
 打开你的全局配置文件，查找 `plugin` 键。
 
-- **macOS/Linux**: `~/.config/opencode/opencode.jsonc`（或 `~/.config/opencode/opencode.json`）
-- **macOS/Linux**（旧版安装）: `~/.local/share/opencode/opencode.jsonc`
-- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.config\opencode\opencode.jsonc`
+- **macOS/Linux**: `~/.config/wiscode/wiscode.jsonc`（或 `~/.config/wiscode/wiscode.json`）
+- **macOS/Linux**（旧版安装）: `~/.local/share/wiscode/wiscode.jsonc`
+- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.config\wiscode\wiscode.jsonc`
 
 如果你配置了插件，请通过移除该键或将其设置为空数组来临时禁用它们：
 
@@ -75,10 +75,10 @@ WisCode Desktop 会在后台运行一个本地 WisCode 服务器（即 `opencode
 WisCode 还可以从磁盘加载本地插件。临时将这些插件移走（或重命名文件夹），然后重新启动桌面应用：
 
 - **全局插件**
-  - **macOS/Linux**: `~/.config/opencode/plugins/`
-  - **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.config\opencode\plugins`
+  - **macOS/Linux**: `~/.config/wiscode/plugins/`
+  - **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.config\wiscode\plugins`
 - **项目插件**（仅当你使用了项目级配置时）
-  - `<your-project>/.opencode/plugins/`
+  - `<your-project>/.wiscode/plugins/`
 
 如果应用恢复正常，请逐个重新启用插件，找出导致问题的那个。
 
@@ -91,9 +91,9 @@ WisCode 还可以从磁盘加载本地插件。临时将这些插件移走（或
 1. 完全退出 WisCode Desktop。
 2. 删除缓存目录：
 
-- **macOS**: Finder -> `Cmd+Shift+G` -> 粘贴 `~/.cache/opencode`
-- **Linux**: 删除 `~/.cache/opencode`（或运行 `rm -rf ~/.cache/opencode`）
-- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.cache\opencode`
+- **macOS**: Finder -> `Cmd+Shift+G` -> 粘贴 `~/.cache/wiscode`
+- **Linux**: 删除 `~/.cache/wiscode`（或运行 `rm -rf ~/.cache/wiscode`）
+- **Windows**: 按 `WIN+R` 并粘贴 `%USERPROFILE%\.cache\wiscode`
 
 3. 重新启动 WisCode Desktop。
 
@@ -111,7 +111,7 @@ WisCode Desktop 可以启动自己的本地服务器（默认行为），也可�
 
 #### 从配置中移除 `server.port` / `server.hostname`
 
-如果你的 `opencode.json(c)` 包含 `server` 部分，请临时移除该部分并重新启动桌面应用。
+如果你的 `wiscode.json(c)` 包含 `server` 部分，请临时移除该部分并重新启动桌面应用。
 
 #### 检查环境变量
 
@@ -177,7 +177,7 @@ WisCode Desktop 仅在以下情况下显示系统通知：
 
    报告 Bug 或请求功能的最佳方式是通过我们的 GitHub 仓库：
 
-   [**github.com/anomalyco/opencode/issues**](https://github.com/anomalyco/opencode/issues)
+   [**github.com/PINKONG/opencode/issues**](https://github.com/PINKONG/opencode/issues)
 
    在创建新 Issue 之前，请先搜索已有的 Issue，看看你的问题是否已被报告。
 
@@ -240,10 +240,10 @@ WisCode Desktop 仅在以下情况下显示系统通知：
 2. 如果问题仍然存在，请尝试清除已存储的配置：
 
    ```bash
-   rm -rf ~/.local/share/opencode
+   rm -rf ~/.local/share/wiscode
    ```
 
-   在 Windows 上，按 `WIN+R` 并删除：`%USERPROFILE%\.local\share\opencode`
+   在 Windows 上，按 `WIN+R` 并删除：`%USERPROFILE%\.local\share\wiscode`
 
 3. 在 TUI 中使用 `/connect` 命令重新与提供商进行身份验证。
 
@@ -258,10 +258,10 @@ WisCode Desktop 仅在以下情况下显示系统通知：
 1. 清除提供商包缓存：
 
    ```bash
-   rm -rf ~/.cache/opencode
+   rm -rf ~/.cache/wiscode
    ```
 
-   在 Windows 上，按 `WIN+R` 并删除：`%USERPROFILE%\.cache\opencode`
+   在 Windows 上，按 `WIN+R` 并删除：`%USERPROFILE%\.cache\wiscode`
 
 2. 重新启动 WisCode 以重新安装最新的提供商包
 

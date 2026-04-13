@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode は [Models.dev](https://models.dev) のプロバイダーリストを利用しているため、`wiscode auth login` を使用して、使用したいプロバイダーの API キーを構成できます。これは `~/.local/share/opencode/auth.json` に保存されます。
+WisCode は [Models.dev](https://models.dev) のプロバイダーリストを利用しているため、`wiscode auth login` を使用して、使用したいプロバイダーの API キーを構成できます。これは `~/.local/share/wiscode/auth.json` に保存されます。
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ API アクセスのためにヘッドレス WisCode サーバーを起動しま�
 wiscode serve
 ```
 
-これにより、TUI インターフェイスを使用せずに WisCode 機能への API アクセスを提供する HTTP サーバーが起動します。 `OPENCODE_SERVER_PASSWORD` を設定して HTTP 基本認証を有効にします (ユーザー名のデフォルトは `opencode`)。
+これにより、TUI インターフェイスを使用せずに WisCode 機能への API アクセスを提供する HTTP サーバーが起動します。 `OPENCODE_SERVER_PASSWORD` を設定して HTTP 基本認証を有効にします (ユーザー名のデフォルトは `wiscode`)。
 
 #### フラグ
 
@@ -456,7 +456,7 @@ Web インターフェイスを使用してヘッドレス WisCode サーバー�
 wiscode web
 ```
 
-これにより、HTTP サーバーが起動し、Web ブラウザが開き、Web インターフェイスを通じて WisCode にアクセスします。 `OPENCODE_SERVER_PASSWORD` を設定して HTTP 基本認証を有効にします (ユーザー名のデフォルトは `opencode`)。
+これにより、HTTP サーバーが起動し、Web ブラウザが開き、Web インターフェイスを通じて WisCode にアクセスします。 `OPENCODE_SERVER_PASSWORD` を設定して HTTP 基本認証を有効にします (ユーザー名のデフォルトは `wiscode`)。
 
 #### フラグ
 
@@ -577,7 +577,7 @@ WisCode は環境変数を使用して構成できます。
 | `OPENCODE_CLIENT`                     | 文字列   | クライアント識別子 (デフォルトは `cli`)                             |
 | `OPENCODE_ENABLE_EXA`                 | ブール値 | Exa Web 検索ツールを有効にする                                      |
 | `OPENCODE_SERVER_PASSWORD`            | 文字列   | `serve`/`web` の基本認証を有効にする                                |
-| `OPENCODE_SERVER_USERNAME`            | 文字列   | 基本認証ユーザー名 (デフォルト `opencode`) をオーバーライドします。 |
+| `OPENCODE_SERVER_USERNAME`            | 文字列   | 基本認証ユーザー名 (デフォルト `wiscode`) をオーバーライドします。 |
 | `OPENCODE_MODELS_URL`                 | 文字列   | モデル設定を取得するためのカスタム URL                              |
 
 ---

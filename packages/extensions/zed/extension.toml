@@ -1,36 +1,36 @@
-id = "opencode"
-name = "OpenCode"
+id = "wiscode"
+name = "WisCode"
 description = "The open source coding agent."
-version = "1.4.0"
+version = "1.0.0"
 schema_version = 1
-authors = ["Anomaly"]
-repository = "https://github.com/anomalyco/opencode"
+authors = ["PINKONG"]
+repository = "https://github.com/PINKONG/opencode"
 
-[agent_servers.opencode]
-name = "OpenCode"
+[agent_servers.wiscode]
+name = "WisCode"
 icon = "./icons/opencode.svg"
 
-[agent_servers.opencode.targets.darwin-aarch64]
-archive = "https://github.com/anomalyco/opencode/releases/download/v1.4.0/opencode-darwin-arm64.zip"
-cmd = "./opencode"
+[agent_servers.wiscode.targets.darwin-aarch64]
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.0/wiscode-cli-darwin-arm64.zip"
+cmd = "./wiscode-cli"
 args = ["acp"]
 
-[agent_servers.opencode.targets.darwin-x86_64]
-archive = "https://github.com/anomalyco/opencode/releases/download/v1.4.0/opencode-darwin-x64.zip"
-cmd = "./opencode"
+[agent_servers.wiscode.targets.darwin-x86_64]
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.0/wiscode-cli-darwin-x64.zip"
+cmd = "./wiscode-cli"
 args = ["acp"]
 
-[agent_servers.opencode.targets.linux-aarch64]
-archive = "https://github.com/anomalyco/opencode/releases/download/v1.4.0/opencode-linux-arm64.tar.gz"
-cmd = "./opencode"
+[agent_servers.wiscode.targets.linux-aarch64]
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.0/wiscode-cli-linux-arm64.tar.gz"
+cmd = "./wiscode-cli"
 args = ["acp"]
 
-[agent_servers.opencode.targets.linux-x86_64]
-archive = "https://github.com/anomalyco/opencode/releases/download/v1.4.0/opencode-linux-x64.tar.gz"
-cmd = "./opencode"
+[agent_servers.wiscode.targets.linux-x86_64]
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.0/wiscode-cli-linux-x64.tar.gz"
+cmd = "./wiscode-cli"
 args = ["acp"]
 
-[agent_servers.opencode.targets.windows-x86_64]
-archive = "https://github.com/anomalyco/opencode/releases/download/v1.4.0/opencode-windows-x64.zip"
-cmd = "./opencode.exe"
+[agent_servers.wiscode.targets.windows-x86_64]
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.0/wiscode-cli-windows-x64.zip"
+cmd = "./wiscode-cli.exe"
 args = ["acp"]

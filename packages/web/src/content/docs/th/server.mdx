@@ -36,7 +36,7 @@ wiscode serve --cors http://localhost:5173 --cors https://app.example.com
 
 ### การรับรองความถูกต้อง
 
-ตั้งค่า `OPENCODE_SERVER_PASSWORD` เพื่อปกป้องเซิร์ฟเวอร์ด้วย HTTP การตรวจสอบสิทธิ์ขั้นพื้นฐาน ชื่อผู้ใช้มีค่าเริ่มต้นเป็น `opencode` หรือตั้งค่า `OPENCODE_SERVER_USERNAME` เพื่อแทนที่ชื่อผู้ใช้ สิ่งนี้ใช้ได้กับทั้ง `wiscode serve` และ `wiscode web`
+ตั้งค่า `OPENCODE_SERVER_PASSWORD` เพื่อปกป้องเซิร์ฟเวอร์ด้วย HTTP การตรวจสอบสิทธิ์ขั้นพื้นฐาน ชื่อผู้ใช้มีค่าเริ่มต้นเป็น `wiscode` หรือตั้งค่า `OPENCODE_SERVER_USERNAME` เพื่อแทนที่ชื่อผู้ใช้ สิ่งนี้ใช้ได้กับทั้ง `wiscode serve` และ `wiscode web`
 
 ```bash
 OPENCODE_SERVER_PASSWORD=your-password wiscode serve
@@ -46,7 +46,7 @@ OPENCODE_SERVER_PASSWORD=your-password wiscode serve
 
 ### มันทำงานอย่างไร
 
-เมื่อคุณรัน `opencode` มันจะเริ่มต้น TUI และเซิร์ฟเวอร์ โดยที่ TUI คือ
+เมื่อคุณรัน `wiscode` มันจะเริ่มต้น TUI และเซิร์ฟเวอร์ โดยที่ TUI คือ
 ลูกค้าที่พูดคุยกับเซิร์ฟเวอร์ เซิร์ฟเวอร์เปิดเผยข้อมูลจำเพาะของ OpenAPI 3.1
 จุดสิ้นสุด ตำแหน่งข้อมูลนี้ยังใช้เพื่อสร้าง [SDK](/docs/sdk)
 

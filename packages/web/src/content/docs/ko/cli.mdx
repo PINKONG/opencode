@@ -119,7 +119,7 @@ wiscode auth [command]
 
 #### login
 
-WisCode는 [Models.dev](https://models.dev)의 provider 목록을 기반으로 동작하므로, `wiscode auth login`으로 원하는 provider의 API 키를 설정할 수 있습니다. 인증 정보는 `~/.local/share/opencode/auth.json`에 저장됩니다.
+WisCode는 [Models.dev](https://models.dev)의 provider 목록을 기반으로 동작하므로, `wiscode auth login`으로 원하는 provider의 API 키를 설정할 수 있습니다. 인증 정보는 `~/.local/share/wiscode/auth.json`에 저장됩니다.
 
 ```bash
 wiscode auth login
@@ -360,7 +360,7 @@ API 접근용 headless WisCode 서버를 시작합니다. 전체 HTTP 인터페�
 wiscode serve
 ```
 
-이 명령은 TUI 없이 WisCode 기능에 접근할 수 있는 HTTP 서버를 시작합니다. `OPENCODE_SERVER_PASSWORD`를 설정하면 HTTP basic auth가 활성화됩니다(기본 사용자명: `opencode`).
+이 명령은 TUI 없이 WisCode 기능에 접근할 수 있는 HTTP 서버를 시작합니다. `OPENCODE_SERVER_PASSWORD`를 설정하면 HTTP basic auth가 활성화됩니다(기본 사용자명: `wiscode`).
 
 #### 플래그
 
@@ -456,7 +456,7 @@ wiscode import https://opncd.ai/s/abc123
 wiscode web
 ```
 
-이 명령은 HTTP 서버를 시작하고 웹 브라우저를 열어 웹 인터페이스로 WisCode에 접속합니다. `OPENCODE_SERVER_PASSWORD`를 설정하면 HTTP basic auth가 활성화됩니다(기본 사용자명: `opencode`).
+이 명령은 HTTP 서버를 시작하고 웹 브라우저를 열어 웹 인터페이스로 WisCode에 접속합니다. `OPENCODE_SERVER_PASSWORD`를 설정하면 HTTP basic auth가 활성화됩니다(기본 사용자명: `wiscode`).
 
 #### 플래그
 
@@ -577,7 +577,7 @@ WisCode는 환경 변수로도 구성할 수 있습니다.
 | `OPENCODE_CLIENT`                     | string  | 클라이언트 식별자(기본값: `cli`)               |
 | `OPENCODE_ENABLE_EXA`                 | boolean | Exa 웹 검색 도구 활성화                        |
 | `OPENCODE_SERVER_PASSWORD`            | string  | `serve`/`web` 기본 인증 활성화                 |
-| `OPENCODE_SERVER_USERNAME`            | string  | 기본 인증 사용자명 오버라이드(기본 `opencode`) |
+| `OPENCODE_SERVER_USERNAME`            | string  | 기본 인증 사용자명 오버라이드(기본 `wiscode`) |
 | `OPENCODE_MODELS_URL`                 | string  | 모델 설정을 가져올 사용자 지정 URL             |
 
 ---

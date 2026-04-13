@@ -18,7 +18,7 @@ WisCode は [AI SDK](https://ai-sdk.dev/) および [Models.dev](https://models.
 ### 認証情報
 
 `/connect` コマンドを使用してプロバイダーの API キーを追加すると、それらは保存されます
-`~/.local/share/opencode/auth.json`で。
+`~/.local/share/wiscode/auth.json`で。
 
 ---
 
@@ -33,7 +33,7 @@ config.
 
 `baseURL` オプションを設定することで、任意のプロバイダーのベース URL をカスタマイズできます。これは、プロキシサービスまたはカスタムエンドポイントを使用する場合に便利です。
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -193,9 +193,9 @@ WisCode で Amazon Bedrock を使用するには:
 
    #### 設定ファイル (推奨)
 
-   プロジェクト固有の設定または永続的な設定の場合は、`opencode.json` を使用します。
+   プロジェクト固有の設定または永続的な設定の場合は、`wiscode.json` を使用します。
 
-   ```json title="opencode.json"
+   ```json title="wiscode.json"
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -224,7 +224,7 @@ WisCode で Amazon Bedrock を使用するには:
 
    Bedrock の VPC エンドポイントを使用している場合:
 
-   ```json title="opencode.json"
+   ```json title="wiscode.json"
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -273,7 +273,7 @@ WisCode で Amazon Bedrock を使用するには:
 カスタム推論プロファイルの場合、キーでモデルとプロバイダー名を使用し、`id` プロパティを arn に設定します。これにより、正しいキャッシュが保証されます。
 :::
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -523,7 +523,7 @@ Cloudflare AI Gatewayを使用すると、統合エンドポイントを通じ�
 
 WisCode 設定を通じてモデルを追加することもできます。
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -762,7 +762,7 @@ STACKIT AI Model Serving は、Llama、Mistral、Qwen などの LLM に焦点を
 WisCode は、セッションタイトルの生成などの一部の AI タスクに小規模なモデルを使用します。
 デフォルトでは、Zen によってホストされる gpt-5-nano を使用するように構成されています。 WisCode をロックするには
 自分の GitLab でホストされているインスタンスのみを使用するには、次の行を
-`opencode.json` ファイル。セッション共有を無効にすることもお勧めします。
+`wiscode.json` ファイル。セッション共有を無効にすることもお勧めします。
 
 ```json
 {
@@ -823,9 +823,9 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 ##### 設定
 
-`opencode.json` を通じてカスタマイズします。
+`wiscode.json` を通じてカスタマイズします。
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -842,7 +842,7 @@ export GITLAB_OAUTH_CLIENT_ID=your_application_id_here
 
 GitLab ツール (マージリクエスト、問題、パイプライン、CI/CD など) にアクセスするには:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-gitlab-plugin"]
@@ -1026,7 +1026,7 @@ WisCode を通じて自動的に構成されていない Helicone の機能ま�
 
 これは [Helicone のモデルディレクトリ](https://helicone.ai/models) です。追加するモデルの ID を取得するためにこれが必要になります。
 
-```jsonc title="~/.config/opencode/opencode.jsonc"
+```jsonc title="~/.config/wiscode/wiscode.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1054,7 +1054,7 @@ WisCode を通じて自動的に構成されていない Helicone の機能ま�
 
 Helicone は、キャッシュ、ユーザー追跡、セッション管理などの機能のカスタムヘッダーをサポートしています。 `options.headers` を使用してプロバイダー設定に追加します。
 
-```jsonc title="~/.config/opencode/opencode.jsonc"
+```jsonc title="~/.config/wiscode/wiscode.jsonc"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1083,7 +1083,7 @@ npm install -g opencode-helicone-session
 
 それを設定に追加します。
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "plugin": ["opencode-helicone-session"]
 }
@@ -1108,7 +1108,7 @@ npm install -g opencode-helicone-session
 
 [llama.cpp の s](https://github.com/ggml-org/llama.cpp) llama-server ユーティリティ] を通じて、ローカルモデルを使用するように WisCode を構成できます。
 
-```json title="opencode.json" "llama.cpp" {5, 6, 8, 10-15}
+```json title="wiscode.json" "llama.cpp" {5, 6, 8, 10-15}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1175,7 +1175,7 @@ IO.NET は、さまざまなユースケースに最適化された 17 のモデ
 
 LM Studio を通じてローカルモデルを使用するように WisCode を構成できます。
 
-```json title="opencode.json" "lmstudio" {5, 6, 8, 10-14}
+```json title="wiscode.json" "lmstudio" {5, 6, 8, 10-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1296,7 +1296,7 @@ Ollama を通じてローカルモデルを使用するように WisCode を構�
 Ollama は WisCode 用に自動的に構成できます。詳細については、[Ollama 統合 docs](https://docs.ollama.com/integrations/opencode)」を参照してください。
 :::
 
-```json title="opencode.json" "ollama" {5, 6, 8, 10-14}
+```json title="wiscode.json" "ollama" {5, 6, 8, 10-14}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1458,7 +1458,7 @@ WisCode Zen は、WisCode チームによって提供される、テストおよ
 
 WisCode 設定を通じて追加のモデルを追加することもできます。
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1473,7 +1473,7 @@ WisCode 設定を通じて追加のモデルを追加することもできます
 
 5. WisCode 設定を通じてカスタマイズすることもできます。プロバイダーを指定する例を次に示します。
 
-   ```json title="opencode.json"
+   ```json title="wiscode.json"
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -1689,7 +1689,7 @@ Vercel AI Gateway を使用すると、統合エンドポイントを通じて O
 
 WisCode 設定を通じてモデルをカスタマイズすることもできます。プロバイダーのルーティング順序を指定する例を次に示します。
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1799,7 +1799,7 @@ WisCode 設定を通じてモデルをカスタマイズすることもできま
 
 WisCode 設定を通じて追加のモデルを追加することもできます。
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -1858,16 +1858,16 @@ OpenAI と互換性のある任意のプロバイダーを WisCode で使用で�
 
    ┌  Add credential
    │
-   ▲  This only stores a credential for myprovider - you will need to configure it in opencode.json, check the docs for examples.
+   ▲  This only stores a credential for myprovider - you will need to configure it in wiscode.json, check the docs for examples.
    │
    ◇  Enter your API key
    │  sk-...
    └
    ```
 
-4. プロジェクトディレクトリで `opencode.json` ファイルを作成または更新します。
+4. プロジェクトディレクトリで `wiscode.json` ファイルを作成または更新します。
 
-   ```json title="opencode.json" ""myprovider"" {5-15}
+   ```json title="wiscode.json" ""myprovider"" {5-15}
    {
      "$schema": "https://opencode.ai/config.json",
      "provider": {
@@ -1906,7 +1906,7 @@ OpenAI と互換性のある任意のプロバイダーを WisCode で使用で�
 
 次に、`apiKey`、`headers`、およびモデル `limit` オプションを設定する例を示します。
 
-```json title="opencode.json" {9,11,17-20}
+```json title="wiscode.json" {9,11,17-20}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
