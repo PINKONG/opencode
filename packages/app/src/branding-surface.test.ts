@@ -41,4 +41,19 @@ describe("app branding surface", () => {
     expect(electron).toContain('<Logo class="w-32 opacity-15" />')
     expect(electron).not.toContain("<Splash")
   })
+
+  test("uses wiscode config file names in visible app copy", async () => {
+    const root = new URL(".", import.meta.url).pathname
+    const locales = await Array.fromAsync(new Bun.Glob("i18n/*.ts").scan({ cwd: root, absolute: true }))
+    const status = await read("./components/status-popover-body.tsx")
+    const errors = await read("./utils/server-errors.ts")
+
+    for (const file of locales) {
+      expect(await Bun.file(file).text()).not.toContain("opencode.json")
+    }
+    expect(status).toContain('"wiscode.json"')
+    expect(status).not.toContain('"opencode.json"')
+    expect(errors).toContain("Check your config (wiscode.json) provider/model names")
+    expect(errors).not.toContain("Check your config (opencode.json) provider/model names")
+  })
 })
