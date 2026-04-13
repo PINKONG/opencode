@@ -121,11 +121,9 @@ export function createMenu(deps: Deps) {
       label: "Help",
       submenu: [
         {
-          label: "WisCode Documentation",
+          label: "WisCode Repository",
           click: () => shell.openExternal("https://github.com/PINKONG/opencode"),
         },
-        { label: "Support Forum", click: () => shell.openExternal("https://discord.com/invite/opencode") },
-        { type: "separator" },
         {
           label: "Share Feedback",
           click: () =>

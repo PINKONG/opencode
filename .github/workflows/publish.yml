@@ -354,7 +354,7 @@ jobs:
           releaseId: ${{ needs.version.outputs.release }}
           tagName: ${{ needs.version.outputs.tag }}
           releaseDraft: true
-          releaseAssetNamePattern: opencode-desktop-[platform]-[arch][ext]
+          releaseAssetNamePattern: wiscode-desktop-[platform]-[arch][ext]
           repo: ${{ (github.ref_name == 'beta' && 'opencode-beta') || '' }}
           releaseCommitish: ${{ github.sha }}
         env:
@@ -374,7 +374,7 @@ jobs:
         shell: pwsh
         run: |
           $files = @(
-            "${{ github.workspace }}\packages\desktop\src-tauri\sidecars\opencode-cli-${{ matrix.settings.target }}.exe"
+            "${{ github.workspace }}\packages\desktop\src-tauri\sidecars\wiscode-cli-${{ matrix.settings.target }}.exe"
           )
           $files += Get-ChildItem "${{ github.workspace }}\packages\desktop\src-tauri\target\${{ matrix.settings.target }}\release\bundle\nsis\*.exe" | Select-Object -ExpandProperty FullName
 
