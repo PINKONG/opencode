@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { Agent } from "@opencode-ai/sdk/v2/client"
+import type { Agent, Model, ProviderListResponse } from "@opencode-ai/sdk/v2/client"
 import { normalizeAgentList, normalizeList, normalizeProviderList } from "./utils"
 
 const agent = (name = "build") =>
@@ -10,20 +10,52 @@ const agent = (name = "build") =>
     options: {},
   }) as Agent
 
-const model = (status?: "alpha" | "beta" | "deprecated") => ({
+const model = (status?: Model["status"]): Model => ({
   id: "gpt-4o-mini",
+  providerID: "openai",
+  api: {
+    id: "gpt-4o-mini",
+    url: "https://api.openai.com/v1",
+    npm: "@ai-sdk/openai",
+  },
   name: "GPT-4o mini",
-  release_date: "2024-01-01",
-  attachment: false,
-  reasoning: false,
-  temperature: true,
-  tool_call: true,
+  capabilities: {
+    temperature: true,
+    reasoning: false,
+    attachment: false,
+    toolcall: true,
+    input: {
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      pdf: false,
+    },
+    output: {
+      text: true,
+      audio: false,
+      image: false,
+      video: false,
+      pdf: false,
+    },
+    interleaved: false,
+  },
+  cost: {
+    input: 0,
+    output: 0,
+    cache: {
+      read: 0,
+      write: 0,
+    },
+  },
   limit: {
     context: 128_000,
     output: 4_096,
   },
+  status: status ?? "active",
   options: {},
-  status,
+  headers: {},
+  release_date: "2024-01-01",
 })
 
 describe("normalizeAgentList", () => {
@@ -70,8 +102,9 @@ describe("normalizeProviderList", () => {
           {
             id: "openai",
             name: "OpenAI",
+            source: "env",
             env: [],
-            npm: "",
+            options: {},
             models: {
               good: model("beta"),
               old: model("deprecated"),
@@ -86,8 +119,9 @@ describe("normalizeProviderList", () => {
         {
           id: "openai",
           name: "OpenAI",
+          source: "env",
           env: [],
-          npm: "",
+          options: {},
           models: {
             good: model("beta"),
           },
