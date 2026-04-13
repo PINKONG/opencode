@@ -122,7 +122,7 @@ Si te interesa contribuir a WisCode, lee nuestras [docs de contribución](./CONT
 
 ### Construyendo sobre WisCode
 
-Si estás trabajando en un proyecto relacionado con WisCode y usas "WisCode" como parte del nombre; por ejemplo, "opencode-dashboard" u "opencode-mobile", agrega una nota en tu README para aclarar que no está construido por el equipo de WisCode y que no está afiliado con nosotros de ninguna manera.
+Si estás trabajando en un proyecto relacionado con WisCode y usas "WisCode" como parte del nombre; por ejemplo, "opencode-dashboard" u "opencode-mobile", agrega una nota en tu README para aclarar que no está construido por el equipo de OpenCode y que no está afiliado con nosotros de ninguna manera.
 
 ### FAQ
 
@@ -131,7 +131,7 @@ Si estás trabajando en un proyecto relacionado con WisCode y usas "WisCode" com
 Es muy similar a Claude Code en cuanto a capacidades. Estas son las diferencias clave:
 
 - 100% open source
-- No está acoplado a ningún proveedor. Aunque recomendamos los modelos que ofrecemos a través de [WisCode Zen](https://opencode.ai/zen); WisCode se puede usar con Claude, OpenAI, Google o incluso modelos locales. A medida que evolucionan los modelos, las brechas se cerrarán y los precios bajarán, por lo que ser agnóstico al proveedor es importante.
+- No está acoplado a ningún proveedor. Aunque recomendamos los modelos disponibles a través de [OpenCode Zen](https://opencode.ai/zen); WisCode se puede usar con Claude, OpenAI, Google o incluso modelos locales. A medida que evolucionan los modelos, las brechas se cerrarán y los precios bajarán, por lo que ser agnóstico al proveedor es importante.
 - Soporte LSP listo para usar
 - Un enfoque en la TUI. WisCode está construido por usuarios de neovim y los creadores de [terminal.shop](https://terminal.shop); vamos a empujar los límites de lo que es posible en la terminal.
 - Arquitectura cliente/servidor. Esto, por ejemplo, permite ejecutar WisCode en tu computadora mientras lo controlas de forma remota desde una app móvil. Esto significa que el frontend TUI es solo uno de los posibles clientes.

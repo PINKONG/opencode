@@ -122,7 +122,7 @@ WisCode'a katkıda bulunmak istiyorsanız, lütfen bir pull request göndermeden
 
 ### WisCode Üzerine Geliştirme
 
-WisCode ile ilgili bir proje üzerinde çalışıyorsanız ve projenizin adının bir parçası olarak "WisCode" kullanıyorsanız (örneğin, "opencode-dashboard" veya "opencode-mobile"), lütfen README dosyanıza projenin WisCode ekibi tarafından geliştirilmediğini ve bizimle hiçbir şekilde bağlantılı olmadığını belirten bir not ekleyin.
+WisCode ile ilgili bir proje üzerinde çalışıyorsanız ve projenizin adının bir parçası olarak "WisCode" kullanıyorsanız (örneğin, "opencode-dashboard" veya "opencode-mobile"), lütfen README dosyanıza projenin OpenCode ekibi tarafından geliştirilmediğini ve bizimle hiçbir şekilde bağlantılı olmadığını belirten bir not ekleyin.
 
 ### SSS
 
@@ -131,7 +131,7 @@ WisCode ile ilgili bir proje üzerinde çalışıyorsanız ve projenizin adını
 Yetenekler açısından Claude Code'a çok benzer. İşte temel farklar:
 
 - %100 açık kaynak
-- Herhangi bir sağlayıcıya bağlı değil. [WisCode Zen](https://opencode.ai/zen) üzerinden sunduğumuz modelleri önermekle birlikte; WisCode, Claude, OpenAI, Google veya hatta yerel modellerle kullanılabilir. Modeller geliştikçe aralarındaki farklar kapanacak ve fiyatlar düşecek, bu nedenle sağlayıcıdan bağımsız olmak önemlidir.
+- Herhangi bir sağlayıcıya bağlı değil. [OpenCode Zen](https://opencode.ai/zen) üzerinden sunulan modelleri önermekle birlikte; WisCode, Claude, OpenAI, Google veya hatta yerel modellerle kullanılabilir. Modeller geliştikçe aralarındaki farklar kapanacak ve fiyatlar düşecek, bu nedenle sağlayıcıdan bağımsız olmak önemlidir.
 - Kurulum gerektirmeyen hazır LSP desteği
 - TUI odaklı yaklaşım. WisCode, neovim kullanıcıları ve [terminal.shop](https://terminal.shop)'un geliştiricileri tarafından geliştirilmektedir; terminalde olabileceklerin sınırlarını zorlayacağız.
 - İstemci/sunucu (client/server) mimarisi. Bu, örneğin WisCode'un bilgisayarınızda çalışması ve siz onu bir mobil uygulamadan uzaktan yönetmenizi sağlar. TUI arayüzü olası istemcilerden sadece biridir.

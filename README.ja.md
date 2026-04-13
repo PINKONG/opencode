@@ -131,7 +131,7 @@ WisCode に関連するプロジェクトで、名前に "WisCode"（例: "openc
 機能面では Claude Code と非常に似ています。主な違いは次のとおりです。
 
 - 100% オープンソース
-- 特定のプロバイダーに依存しません。[WisCode Zen](https://opencode.ai/zen) で提供しているモデルを推奨しますが、WisCode は Claude、OpenAI、Google、またはローカルモデルでも利用できます。モデルが進化すると差は縮まり価格も下がるため、provider-agnostic であることが重要です。
+- 特定のプロバイダーに依存しません。[OpenCode Zen](https://opencode.ai/zen) で提供しているモデルを推奨しますが、WisCode は Claude、OpenAI、Google、またはローカルモデルでも利用できます。モデルが進化すると差は縮まり価格も下がるため、provider-agnostic であることが重要です。
 - そのまま使える LSP サポート
 - TUI にフォーカス。WisCode は neovim ユーザーと [terminal.shop](https://terminal.shop) の制作者によって作られており、ターミナルで可能なことの限界を押し広げます。
 - クライアント/サーバー構成。例えば WisCode をあなたのPCで動かし、モバイルアプリからリモート操作できます。TUI フロントエンドは複数あるクライアントの1つにすぎません。

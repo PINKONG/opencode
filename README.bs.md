@@ -122,7 +122,7 @@ Ako želiš doprinositi WisCode-u, pročitaj [upute za doprinošenje](./CONTRIBU
 
 ### Gradnja na WisCode-u
 
-Ako radiš na projektu koji je povezan s WisCode-om i koristi "WisCode" kao dio naziva, npr. "opencode-dashboard" ili "opencode-mobile", dodaj napomenu u svoj README da projekat nije napravio WisCode tim i da nije povezan s nama.
+Ako radiš na projektu koji je povezan s WisCode-om i koristi "WisCode" kao dio naziva, npr. "opencode-dashboard" ili "opencode-mobile", dodaj napomenu u svoj README da projekat nije napravio OpenCode tim i da nije povezan s nama.
 
 ### FAQ
 
@@ -131,7 +131,7 @@ Ako radiš na projektu koji je povezan s WisCode-om i koristi "WisCode" kao dio 
 Po mogućnostima je vrlo sličan Claude Code-u. Ključne razlike su:
 
 - 100% open source
-- Nije vezan za jednog provajdera. Iako preporučujemo modele koje nudimo kroz [WisCode Zen](https://opencode.ai/zen), WisCode možeš koristiti s Claude, OpenAI, Google ili čak lokalnim modelima. Kako modeli napreduju, razlike među njima će se smanjivati, a cijene padati, zato je nezavisnost od provajdera važna.
+- Nije vezan za jednog provajdera. Iako preporučujemo modele dostupne kroz [OpenCode Zen](https://opencode.ai/zen), WisCode možeš koristiti s Claude, OpenAI, Google ili čak lokalnim modelima. Kako modeli napreduju, razlike među njima će se smanjivati, a cijene padati, zato je nezavisnost od provajdera važna.
 - LSP podrška odmah po instalaciji
 - Fokus na TUI. WisCode grade neovim korisnici i kreatori [terminal.shop](https://terminal.shop); pomjeraćemo granice onoga što je moguće u terminalu.
 - Klijent/server arhitektura. To, recimo, omogućava da WisCode radi na tvom računaru dok ga daljinski koristiš iz mobilne aplikacije, što znači da je TUI frontend samo jedan od mogućih klijenata.

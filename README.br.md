@@ -122,7 +122,7 @@ Se você tem interesse em contribuir com o WisCode, leia os [contributing docs](
 
 ### Construindo com WisCode
 
-Se você estiver trabalhando em um projeto relacionado ao WisCode e estiver usando "WisCode" como parte do nome (por exemplo, "opencode-dashboard" ou "opencode-mobile"), adicione uma nota no README para deixar claro que não foi construído pela equipe do WisCode e não é afiliado a nós de nenhuma forma.
+Se você estiver trabalhando em um projeto relacionado ao WisCode e estiver usando "WisCode" como parte do nome (por exemplo, "opencode-dashboard" ou "opencode-mobile"), adicione uma nota no README para deixar claro que não foi construído pela equipe do OpenCode e não é afiliado a nós de nenhuma forma.
 
 ### FAQ
 
@@ -131,7 +131,7 @@ Se você estiver trabalhando em um projeto relacionado ao WisCode e estiver usan
 É muito parecido com o Claude Code em termos de capacidade. Aqui estão as principais diferenças:
 
 - 100% open source
-- Não está acoplado a nenhum provedor. Embora recomendemos os modelos que oferecemos pelo [WisCode Zen](https://opencode.ai/zen); o WisCode pode ser usado com Claude, OpenAI, Google ou até modelos locais. À medida que os modelos evoluem, as diferenças diminuem e os preços caem, então ser provider-agnostic é importante.
+- Não está acoplado a nenhum provedor. Embora recomendemos os modelos disponíveis pelo [OpenCode Zen](https://opencode.ai/zen); o WisCode pode ser usado com Claude, OpenAI, Google ou até modelos locais. À medida que os modelos evoluem, as diferenças diminuem e os preços caem, então ser provider-agnostic é importante.
 - Suporte a LSP pronto para uso
 - Foco em TUI. O WisCode é construído por usuários de neovim e pelos criadores do [terminal.shop](https://terminal.shop); vamos levar ao limite o que é possível no terminal.
 - Arquitetura cliente/servidor. Isso, por exemplo, permite executar o WisCode no seu computador enquanto você o controla remotamente por um aplicativo mobile. Isso significa que o frontend TUI é apenas um dos possíveis clientes.

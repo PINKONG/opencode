@@ -56,4 +56,91 @@ describe("app branding surface", () => {
     expect(errors).toContain("Check your config (wiscode.json) provider/model names")
     expect(errors).not.toContain("Check your config (opencode.json) provider/model names")
   })
+
+  test("keeps upstream provider names for opencode services in app copy", async () => {
+    const root = new URL(".", import.meta.url).pathname
+    const locales = await Array.fromAsync(new Bun.Glob("i18n/*.ts").scan({ cwd: root, absolute: true }))
+
+    for (const file of locales) {
+      const text = await Bun.file(file).text()
+      expect(text).not.toContain("WisCode Zen")
+      expect(text).not.toContain("WisCode Go")
+    }
+  })
+
+  test("keeps upstream provider names for opencode services across user-facing docs", async () => {
+    const root = new URL("../../..", import.meta.url).pathname
+    const files = [
+      ...(await Array.fromAsync(new Bun.Glob("README*.md").scan({ cwd: root, absolute: true }))),
+      ...(await Array.fromAsync(
+        new Bun.Glob("packages/console/app/src/i18n/*.ts").scan({ cwd: root, absolute: true }),
+      )),
+      ...(await Array.fromAsync(
+        new Bun.Glob("packages/web/src/content/docs/**/*.mdx").scan({ cwd: root, absolute: true }),
+      )),
+    ]
+
+    for (const file of files) {
+      const text = await Bun.file(file).text()
+      expect(text).not.toContain("WisCode Zen")
+      expect(text).not.toContain("WisCode Go")
+    }
+  })
+
+  test("does not attribute OpenCode providers to the WisCode team", async () => {
+    const root = new URL("../../..", import.meta.url).pathname
+    const files = [
+      ...(await Array.fromAsync(new Bun.Glob("README*.md").scan({ cwd: root, absolute: true }))),
+      ...(await Array.fromAsync(
+        new Bun.Glob("packages/web/src/content/docs/**/*.mdx").scan({ cwd: root, absolute: true }),
+      )),
+    ]
+    const banned = [
+      "provided by the WisCode team",
+      "tested and verified by the WisCode team",
+      "models we provide through [OpenCode Zen]",
+      "النماذج التي نوفرها عبر [OpenCode Zen]",
+      "τα μοντέλα που παρέχουμε μέσω του [OpenCode Zen]",
+      "los modelos que ofrecemos a través de [OpenCode Zen]",
+      "[OpenCode Zen](https://opencode.ai/zen) üzerinden sunduğumuz modelleri",
+      "моделі, які надаємо через [OpenCode Zen]",
+      "modele koje nudimo kroz [OpenCode Zen]",
+      "os modelos que oferecemos pelo [OpenCode Zen]",
+      "modellene vi tilbyr gjennom [OpenCode Zen]",
+      "由 WisCode 提供的精选模型列表",
+      "由 WisCode 提供的精選模型列表",
+      "由 WisCode 团队提供",
+      "由 WisCode 團隊提供",
+      "WisCode チームが提供する",
+      "WisCode チームによって提供される",
+      "fournie par l'équipe WisCode",
+      "fournis par l'équipe WisCode",
+      "proporcionada por el equipo WisCode",
+      "proporcionados por el equipo WisCode",
+      "WisCode 팀이 제공하는",
+      "командой WisCode",
+      "WisCode ekibi tarafından",
+      "ทีม WisCode",
+      "equipe do WisCode",
+      "WisCode tim",
+      "zespół WisCode",
+      "WisCode-teamet",
+      "فريق WisCode",
+    ]
+
+    for (const file of files) {
+      const text = await Bun.file(file).text()
+      const lines = text.split("\n")
+      const hits = lines.flatMap((line, index) => {
+        if (!line.includes("OpenCode Zen") && !line.includes("OpenCode Go")) return []
+        return [lines[index - 1] ?? "", line, lines[index + 1] ?? ""].join("\n")
+      })
+
+      for (const hit of hits) {
+        for (const item of banned) {
+          expect(hit).not.toContain(item)
+        }
+      }
+    }
+  })
 })

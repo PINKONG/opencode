@@ -122,7 +122,7 @@ Jeśli chcesz współtworzyć WisCode, przeczytaj [contributing docs](./CONTRIBU
 
 ### Budowanie na WisCode
 
-Jeśli pracujesz nad projektem związanym z WisCode i używasz "WisCode" jako części nazwy (na przykład "opencode-dashboard" lub "opencode-mobile"), dodaj proszę notatkę do swojego README, aby wyjaśnić, że projekt nie jest tworzony przez zespół WisCode i nie jest z nami w żaden sposób powiązany.
+Jeśli pracujesz nad projektem związanym z WisCode i używasz "WisCode" jako części nazwy (na przykład "opencode-dashboard" lub "opencode-mobile"), dodaj proszę notatkę do swojego README, aby wyjaśnić, że projekt nie jest tworzony przez zespół OpenCode i nie jest z nami w żaden sposób powiązany.
 
 ### FAQ
 
@@ -131,7 +131,7 @@ Jeśli pracujesz nad projektem związanym z WisCode i używasz "WisCode" jako cz
 Jest bardzo podobne do Claude Code pod względem możliwości. Oto kluczowe różnice:
 
 - 100% open source
-- Niezależne od dostawcy. Chociaż polecamy modele oferowane przez [WisCode Zen](https://opencode.ai/zen); WisCode może być używany z Claude, OpenAI, Google, a nawet z modelami lokalnymi. W miarę jak modele ewoluują, różnice będą się zmniejszać, a ceny spadać, więc ważna jest niezależność od dostawcy.
+- Niezależne od dostawcy. Chociaż polecamy modele oferowane przez [OpenCode Zen](https://opencode.ai/zen); WisCode może być używany z Claude, OpenAI, Google, a nawet z modelami lokalnymi. W miarę jak modele ewoluują, różnice będą się zmniejszać, a ceny spadać, więc ważna jest niezależność od dostawcy.
 - Wbudowane wsparcie LSP
 - Skupienie na TUI. WisCode jest budowany przez użytkowników neovim i twórców [terminal.shop](https://terminal.shop); przesuwamy granice tego, co jest możliwe w terminalu.
 - Architektura klient/serwer. Pozwala np. uruchomić WisCode na twoim komputerze, a sterować nim zdalnie z aplikacji mobilnej. To znaczy, że frontend TUI jest tylko jednym z możliwych klientów.
