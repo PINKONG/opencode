@@ -67,6 +67,10 @@ bun run typecheck
 echo "==> build frontend"
 bun run build
 
+echo "==> clean stale dmg artifacts"
+find "${root}/packages/desktop/src-tauri/target/release/bundle/macos" -maxdepth 1 \
+  \( -name 'WisCode*.dmg' -o -name 'rw.*.dmg' \) -delete
+
 echo "==> tauri prod build"
 args=(build --config src-tauri/tauri.prod.conf.json)
 if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" && -z "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]]; then
