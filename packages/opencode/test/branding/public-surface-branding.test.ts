@@ -80,6 +80,15 @@ describe("public surface branding", () => {
     expect(ext).not.toContain('cmd = "./opencode.exe"')
   })
 
+  test("install script pulls WisCode CLI releases instead of upstream OpenCode", async () => {
+    const script = await Bun.file(join(root, "install")).text()
+
+    expect(script).toContain("https://github.com/PINKONG/opencode/releases/latest")
+    expect(script).toContain("https://github.com/PINKONG/opencode/releases/download/")
+    expect(script).not.toContain("https://github.com/anomalyco/opencode/releases")
+    expect(script).not.toContain("https://opencode.ai/install")
+  })
+
   test("web locale values no longer expose old OpenCode branding", async () => {
     for (const lang of langs) {
       const txt = await Bun.file(join(root, "packages/web/src/content/i18n", lang)).text()

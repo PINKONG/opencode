@@ -63,16 +63,36 @@ describe("installation", () => {
       )
       expect(result).toBe("npm")
     })
+
+    test("does not detect upstream opencode brew formula as WisCode", async () => {
+      const layer = testLayer(
+        () => jsonResponse({}),
+        (cmd, args) => {
+          if (cmd === "brew" && args.includes("opencode")) return "opencode"
+          return ""
+        },
+      )
+
+      const result = await Effect.runPromise(
+        Installation.Service.use((svc) => svc.method()).pipe(Effect.provide(layer)),
+      )
+      expect(result).toBe("unknown")
+    })
   })
 
   describe("latest", () => {
-    test("reads release version from GitHub releases", async () => {
-      const layer = testLayer(() => jsonResponse({ tag_name: "v1.2.3" }))
+    test("reads release version from WisCode GitHub releases", async () => {
+      let url = ""
+      const layer = testLayer((request) => {
+        url = request.url.toString()
+        return jsonResponse({ tag_name: "v1.2.3" })
+      })
 
       const result = await Effect.runPromise(
         Installation.Service.use((svc) => svc.latest("unknown")).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("1.2.3")
+      expect(url).toBe("https://api.github.com/repos/PINKONG/opencode/releases/latest")
     })
 
     test("strips v prefix from GitHub release tag", async () => {
@@ -117,21 +137,31 @@ describe("installation", () => {
     })
 
     test("reads scoop manifest versions", async () => {
-      const layer = testLayer(() => jsonResponse({ version: "2.3.4" }))
+      let url = ""
+      const layer = testLayer((request) => {
+        url = request.url.toString()
+        return jsonResponse({ version: "2.3.4" })
+      })
 
       const result = await Effect.runPromise(
         Installation.Service.use((svc) => svc.latest("scoop")).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("2.3.4")
+      expect(url).toBe("https://raw.githubusercontent.com/ScoopInstaller/Extras/master/bucket/wiscode.json")
     })
 
     test("reads chocolatey feed versions", async () => {
-      const layer = testLayer(() => jsonResponse({ d: { results: [{ Version: "3.4.5" }] } }))
+      let url = ""
+      const layer = testLayer((request) => {
+        url = request.url.toString()
+        return jsonResponse({ d: { results: [{ Version: "3.4.5" }] } })
+      })
 
       const result = await Effect.runPromise(
         Installation.Service.use((svc) => svc.latest("choco")).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("3.4.5")
+      expect(url).toContain("Id%20eq%20%27wiscode%27")
     })
 
     test("reads brew formulae API versions", async () => {
@@ -139,8 +169,8 @@ describe("installation", () => {
         () => jsonResponse({ versions: { stable: "2.0.0" } }),
         (cmd, args) => {
           // getBrewFormula: return core formula (no tap)
-          if (cmd === "brew" && args.includes("--formula") && args.includes("anomalyco/tap/opencode")) return ""
-          if (cmd === "brew" && args.includes("--formula") && args.includes("opencode")) return "opencode"
+          if (cmd === "brew" && args.includes("--formula") && args.includes("PINKONG/tap/wiscode")) return ""
+          if (cmd === "brew" && args.includes("--formula") && args.includes("wiscode")) return "wiscode"
           return ""
         },
       )
@@ -158,7 +188,7 @@ describe("installation", () => {
       const layer = testLayer(
         () => jsonResponse({}), // HTTP not used for tap formula
         (cmd, args) => {
-          if (cmd === "brew" && args.includes("anomalyco/tap/opencode") && args.includes("--formula")) return "opencode"
+          if (cmd === "brew" && args.includes("PINKONG/tap/wiscode") && args.includes("--formula")) return "wiscode"
           if (cmd === "brew" && args.includes("--json=v2")) return brewInfoJson
           return ""
         },
@@ -168,6 +198,47 @@ describe("installation", () => {
         Installation.Service.use((svc) => svc.latest("brew")).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("2.1.0")
+    })
+  })
+
+  describe("upgrade", () => {
+    test("upgrades npm installs via wiscode-ai package", async () => {
+      const seen: string[] = []
+      const layer = testLayer(
+        () => jsonResponse({}),
+        (cmd, args) => {
+          seen.push([cmd, ...args].join(" "))
+          return ""
+        },
+      )
+
+      await Effect.runPromise(
+        Installation.Service.use((svc) => svc.upgrade("npm", "1.0.1")).pipe(Effect.provide(layer)),
+      )
+
+      expect(seen).toContain("npm install -g wiscode-ai@1.0.1")
+      expect(seen).toContain(`${process.execPath} --version`)
+    })
+
+    test("upgrades curl installs from the WisCode install source", async () => {
+      let url = ""
+      const prev = process.env.WISCODE_INSTALL_URL
+      delete process.env.WISCODE_INSTALL_URL
+      const layer = testLayer((request) => {
+        url = request.url.toString()
+        return new Response("#!/usr/bin/env bash\n", { status: 200 })
+      })
+
+      try {
+        await Effect.runPromise(
+          Installation.Service.use((svc) => svc.upgrade("curl", "1.0.1")).pipe(Effect.provide(layer)),
+        )
+      } finally {
+        if (prev === undefined) delete process.env.WISCODE_INSTALL_URL
+        else process.env.WISCODE_INSTALL_URL = prev
+      }
+
+      expect(url).toBe("https://raw.githubusercontent.com/PINKONG/opencode/refs/heads/wiscode/install")
     })
   })
 })

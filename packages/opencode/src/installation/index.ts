@@ -10,12 +10,29 @@ import { BusEvent } from "@/bus/bus-event"
 import { Flag } from "../flag/flag"
 import { Log } from "../util/log"
 import { CHANNEL as channel, VERSION as version } from "./meta"
+import { Product } from "@/product"
 
 import semver from "semver"
 
 export namespace Installation {
   const log = Log.create({ service: "installation" })
   const npm = "wiscode-ai"
+  const brew = "wiscode"
+  const win = "wiscode"
+
+  function repo() {
+    const url = Product.github().replace(/\/+$/, "")
+    const [owner = "PINKONG", name = "opencode"] = url
+      .replace(/^https?:\/\/github\.com\//, "")
+      .replace(/\.git$/, "")
+      .split("/")
+    return { owner, name }
+  }
+
+  function raw() {
+    const { owner, name } = repo()
+    return `https://raw.githubusercontent.com/${owner}/${name}/refs/heads/wiscode/install`
+  }
 
   export type Method = "curl" | "npm" | "yarn" | "pnpm" | "bun" | "brew" | "scoop" | "choco" | "unknown"
 
@@ -138,16 +155,16 @@ export namespace Installation {
         )
 
         const getBrewFormula = Effect.fnUntraced(function* () {
-          const tapFormula = yield* text(["brew", "list", "--formula", "anomalyco/tap/opencode"])
-          if (tapFormula.includes("opencode")) return "anomalyco/tap/opencode"
-          const coreFormula = yield* text(["brew", "list", "--formula", "opencode"])
-          if (coreFormula.includes("opencode")) return "opencode"
-          return "opencode"
+          const tapFormula = yield* text(["brew", "list", "--formula", "PINKONG/tap/wiscode"])
+          if (tapFormula.includes(brew)) return "PINKONG/tap/wiscode"
+          const coreFormula = yield* text(["brew", "list", "--formula", brew])
+          if (coreFormula.includes(brew)) return brew
+          return brew
         })
 
         const upgradeCurl = Effect.fnUntraced(
           function* (target: string) {
-            const response = yield* httpOk.execute(HttpClientRequest.get("https://opencode.ai/install"))
+            const response = yield* httpOk.execute(HttpClientRequest.get(process.env.WISCODE_INSTALL_URL || raw()))
             const body = yield* response.text
             const bodyBytes = new TextEncoder().encode(body)
             const proc = ChildProcess.make("bash", [], {
@@ -177,9 +194,9 @@ export namespace Installation {
             { name: "yarn", command: () => text(["yarn", "global", "list"]) },
             { name: "pnpm", command: () => text(["pnpm", "list", "-g", "--depth=0"]) },
             { name: "bun", command: () => text(["bun", "pm", "ls", "-g"]) },
-            { name: "brew", command: () => text(["brew", "list", "--formula", "opencode"]) },
-            { name: "scoop", command: () => text(["scoop", "list", "opencode"]) },
-            { name: "choco", command: () => text(["choco", "list", "--limit-output", "opencode"]) },
+            { name: "brew", command: () => text(["brew", "list", "--formula", brew]) },
+            { name: "scoop", command: () => text(["scoop", "list", win]) },
+            { name: "choco", command: () => text(["choco", "list", "--limit-output", win]) },
           ]
 
           checks.sort((a, b) => {
@@ -192,7 +209,7 @@ export namespace Installation {
 
           for (const check of checks) {
             const output = yield* check.command()
-            const installedName = check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "opencode" : npm
+            const installedName = check.name === "brew" ? brew : check.name === "choco" || check.name === "scoop" ? win : npm
             if (output.includes(installedName)) {
               return check.name
             }
@@ -212,7 +229,7 @@ export namespace Installation {
               return info.formulae[0].versions.stable
             }
             const response = yield* httpOk.execute(
-              HttpClientRequest.get("https://formulae.brew.sh/api/formula/opencode.json").pipe(
+              HttpClientRequest.get(`https://formulae.brew.sh/api/formula/${brew}.json`).pipe(
                 HttpClientRequest.acceptJson,
               ),
             )
@@ -233,7 +250,7 @@ export namespace Installation {
           if (detectedMethod === "choco") {
             const response = yield* httpOk.execute(
               HttpClientRequest.get(
-                "https://community.chocolatey.org/api/v2/Packages?$filter=Id%20eq%20%27opencode%27%20and%20IsLatestVersion&$select=Version",
+                "https://community.chocolatey.org/api/v2/Packages?$filter=Id%20eq%20%27wiscode%27%20and%20IsLatestVersion&$select=Version",
               ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json;odata=verbose" })),
             )
             const data = yield* HttpClientResponse.schemaBodyJson(ChocoPackage)(response)
@@ -243,15 +260,16 @@ export namespace Installation {
           if (detectedMethod === "scoop") {
             const response = yield* httpOk.execute(
               HttpClientRequest.get(
-                "https://raw.githubusercontent.com/ScoopInstaller/Main/master/bucket/opencode.json",
+                "https://raw.githubusercontent.com/ScoopInstaller/Extras/master/bucket/wiscode.json",
               ).pipe(HttpClientRequest.setHeaders({ Accept: "application/json" })),
             )
             const data = yield* HttpClientResponse.schemaBodyJson(ScoopManifest)(response)
             return data.version
           }
 
+          const { owner, name } = repo()
           const response = yield* httpOk.execute(
-            HttpClientRequest.get("https://api.github.com/repos/anomalyco/opencode/releases/latest").pipe(
+            HttpClientRequest.get(`https://api.github.com/repos/${owner}/${name}/releases/latest`).pipe(
               HttpClientRequest.acceptJson,
             ),
           )
@@ -278,13 +296,13 @@ export namespace Installation {
               const formula = yield* getBrewFormula()
               const env = { HOMEBREW_NO_AUTO_UPDATE: "1" }
               if (formula.includes("/")) {
-                const tap = yield* run(["brew", "tap", "anomalyco/tap"], { env })
+                const tap = yield* run(["brew", "tap", "PINKONG/tap"], { env })
                 if (tap.code !== 0) {
                   result = tap
                   break
                 }
-                const repo = yield* text(["brew", "--repo", "anomalyco/tap"])
-                const dir = repo.trim()
+                const src = yield* text(["brew", "--repo", "PINKONG/tap"])
+                const dir = src.trim()
                 if (dir) {
                   const pull = yield* run(["git", "pull", "--ff-only"], { cwd: dir, env })
                   if (pull.code !== 0) {
@@ -297,10 +315,10 @@ export namespace Installation {
               break
             }
             case "choco":
-              result = yield* run(["choco", "upgrade", "opencode", `--version=${target}`, "-y"])
+              result = yield* run(["choco", "upgrade", win, `--version=${target}`, "-y"])
               break
             case "scoop":
-              result = yield* run(["scoop", "install", `opencode@${target}`])
+              result = yield* run(["scoop", "install", `${win}@${target}`])
               break
             default:
               return yield* new UpgradeFailedError({ stderr: `Unknown method: ${m}` })
