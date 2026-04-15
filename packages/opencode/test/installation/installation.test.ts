@@ -213,10 +213,10 @@ describe("installation", () => {
       )
 
       await Effect.runPromise(
-        Installation.Service.use((svc) => svc.upgrade("npm", "1.0.1")).pipe(Effect.provide(layer)),
+        Installation.Service.use((svc) => svc.upgrade("npm", "1.0.2")).pipe(Effect.provide(layer)),
       )
 
-      expect(seen).toContain("npm install -g wiscode-ai@1.0.1")
+      expect(seen).toContain("npm install -g wiscode-ai@1.0.2")
       expect(seen).toContain(`${process.execPath} --version`)
     })
 
@@ -231,7 +231,7 @@ describe("installation", () => {
 
       try {
         await Effect.runPromise(
-          Installation.Service.use((svc) => svc.upgrade("curl", "1.0.1")).pipe(Effect.provide(layer)),
+          Installation.Service.use((svc) => svc.upgrade("curl", "1.0.2")).pipe(Effect.provide(layer)),
         )
       } finally {
         if (prev === undefined) delete process.env.WISCODE_INSTALL_URL
