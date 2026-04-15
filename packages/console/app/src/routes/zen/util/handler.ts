@@ -41,6 +41,7 @@ import { createRateLimiter as createKeyRateLimiter } from "./keyRateLimiter"
 import { createDataDumper } from "./dataDumper"
 import { createTrialLimiter } from "./trialLimiter"
 import { createStickyTracker } from "./stickyProviderTracker"
+import { workspaceUrl } from "./url"
 import { LiteData } from "@opencode-ai/console-core/lite.js"
 import { Resource } from "@opencode-ai/console-resource"
 import { i18n, type Key } from "~/i18n"
@@ -739,8 +740,8 @@ export async function handler(
 
     // Validate pay as you go billing
     const billing = authInfo.billing
-    const billingUrl = `https://opencode.ai/workspace/${authInfo.workspaceID}/billing`
-    const membersUrl = `https://opencode.ai/workspace/${authInfo.workspaceID}/members`
+    const billingUrl = workspaceUrl(authInfo.workspaceID, "billing")
+    const membersUrl = workspaceUrl(authInfo.workspaceID, "members")
     if (!billing.paymentMethodID) throw new CreditsError(t("zen.api.error.noPaymentMethod", { billingUrl }))
     if (billing.balance <= 0) throw new CreditsError(t("zen.api.error.insufficientBalance", { billingUrl }))
 
