@@ -713,6 +713,7 @@ export const McpDebugCommand = cmd({
                 clientId: oauthConfig?.clientId,
                 clientSecret: oauthConfig?.clientSecret,
                 scope: oauthConfig?.scope,
+                redirectUri: oauthConfig?.redirectUri,
               },
               {
                 onRedirect: async () => {},
