@@ -32,6 +32,18 @@ fi
 echo "==> root: ${root}"
 echo "==> arch: ${arch}"
 
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "Missing cargo in PATH. Install the Rust toolchain first." >&2
+  echo "Recommended: curl https://sh.rustup.rs -sSf | sh" >&2
+  exit 1
+fi
+
+if ! command -v rustc >/dev/null 2>&1; then
+  echo "Missing rustc in PATH. Install the Rust toolchain first." >&2
+  echo "Recommended: curl https://sh.rustup.rs -sSf | sh" >&2
+  exit 1
+fi
+
 if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" && -n "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]]; then
   if [[ ! -f "${TAURI_SIGNING_PRIVATE_KEY_PATH}" ]]; then
     echo "Missing signing key file: ${TAURI_SIGNING_PRIVATE_KEY_PATH}" >&2
@@ -68,8 +80,11 @@ echo "==> build frontend"
 bun run build
 
 echo "==> clean stale dmg artifacts"
-find "${root}/packages/desktop/src-tauri/target/release/bundle/macos" -maxdepth 1 \
-  \( -name 'WisCode*.dmg' -o -name 'rw.*.dmg' \) -delete
+macos_bundle="${root}/packages/desktop/src-tauri/target/release/bundle/macos"
+if [[ -d "${macos_bundle}" ]]; then
+  find "${macos_bundle}" -maxdepth 1 \
+    \( -name 'WisCode*.dmg' -o -name 'rw.*.dmg' \) -delete
+fi
 
 echo "==> tauri prod build"
 args=(build --config src-tauri/tauri.prod.conf.json)

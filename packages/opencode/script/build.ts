@@ -247,9 +247,15 @@ for (const item of targets) {
     },
   })
 
+  const binaryPath = `dist/${name}/bin/${cli}`
+  if (item.os === "darwin" && process.platform === "darwin") {
+    await $`codesign --remove-signature ${binaryPath}`.nothrow()
+    console.log(`Ad-hoc signing ${binaryPath}`)
+    await $`codesign --force --sign - ${binaryPath}`
+  }
+
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
-    const binaryPath = `dist/${name}/bin/${cli}`
     console.log(`Running smoke test: ${binaryPath} --version`)
     try {
       const versionOutput = await $`${binaryPath} --version`.text()

@@ -66,7 +66,10 @@ export async function copyBinaryToSidecarFolder(source: string) {
   if (process.platform === "win32" && process.env.GITHUB_ACTIONS === "true") {
     await $`pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ../../script/sign-windows.ps1 ${dest}`
   }
-  if (process.platform === "darwin") await $`codesign --force --sign - ${dest}`
+  if (process.platform === "darwin") {
+    await $`codesign --remove-signature ${dest}`.nothrow()
+    await $`codesign --force --sign - ${dest}`
+  }
 
   console.log(`Copied ${source} to ${dest}`)
 }
