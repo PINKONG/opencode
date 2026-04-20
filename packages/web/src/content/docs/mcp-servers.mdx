@@ -159,7 +159,63 @@ The `url` is the URL of the remote MCP server and with the `headers` option you 
 | `enabled` | Boolean |          | Enable or disable the MCP server on startup.                                        |
 | `headers` | Object  |          | Headers to send with the request.                                                   |
 | `oauth`   | Object  |          | OAuth authentication configuration. See [OAuth](#oauth) section below.              |
+| `auth`    | Object  |          | Advanced remote authentication for providers that require per-request signing.       |
 | `timeout` | Number  |          | Timeout in ms for fetching tools from the MCP server. Defaults to 5000 (5 seconds). |
+
+---
+
+### MaxKB
+
+MaxKB exposes MCP over remote `streamable-http`, but it does not use static API-key headers or OAuth.
+
+Instead, MaxKB requires WisCode to sign **every HTTP request** with:
+
+- `X-MCP-App-Key`
+- `X-MCP-Timestamp`
+- `X-MCP-Nonce`
+- `X-MCP-Signature`
+
+Use the built-in MaxKB auth mode for this:
+
+You must include `oauth: false` in the config. Omitting it will not work for MaxKB.
+
+```json title="wiscode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "maxkb": {
+      "type": "remote",
+      "url": "https://maxkb.example.com/mcp/",
+      "oauth": false,
+      "auth": {
+        "type": "maxkb-hmac",
+        "appKey": "{env:MAXKB_APP_KEY}",
+        "appSecret": "{env:MAXKB_APP_SECRET}"
+      }
+    }
+  }
+}
+```
+
+Important notes:
+
+- `oauth` must be `false` for MaxKB. Do not combine `auth.type: "maxkb-hmac"` with OAuth config.
+- Static `headers` are not enough for MaxKB because the signature depends on the exact request method, path, query string, and body.
+- The MCP path must match exactly when signing. If your MaxKB server is mounted at `/mcp/`, do not configure it as `/mcp`.
+- Keep `appSecret` in your user-level config or environment, not in project config checked into git.
+
+MaxKB currently exposes browsing resources such as:
+
+- `maxkb://datasets`
+- `maxkb://datasets/{dataset_id}/documents`
+- `maxkb://datasets/{dataset_id}/documents/{document_id}/paragraphs`
+
+If MaxKB authentication fails, verify:
+
+- the endpoint path is correct, including trailing slash
+- the `appKey` and `appSecret` are current
+- the local machine clock is accurate
+- requests are not being replayed with the same nonce
 
 ---
 

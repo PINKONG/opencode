@@ -755,6 +755,33 @@ test(
   ),
 )
 
+test(
+  "maxkb remote does not create sse fallback transport",
+  withInstance({}, (mcp) =>
+    Effect.gen(function* () {
+      lastCreatedClientName = "maxkb-remote"
+      getOrCreateClientState("maxkb-remote")
+
+      const before = transportCloseCount
+      const result = yield* mcp.add("maxkb-remote", {
+        type: "remote",
+        url: "http://localhost:9999/mcp/",
+        timeout: 100,
+        oauth: false,
+        auth: {
+          type: "maxkb-hmac",
+          appKey: "mcp_test",
+          appSecret: "ms_test",
+        },
+      })
+
+      const serverStatus = (result.status as any)["maxkb-remote"] ?? result.status
+      expect(serverStatus.status === "connected" || serverStatus.status === "failed" || serverStatus.status === "disabled").toBe(true)
+      expect(transportCloseCount - before).toBeLessThanOrEqual(1)
+    }),
+  ),
+)
+
 // ========================================================================
 // Test: transport leak — failed remote transports not closed (#19168)
 // ========================================================================

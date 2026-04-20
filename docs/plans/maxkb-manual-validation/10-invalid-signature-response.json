@@ -1,0 +1,17 @@
+{
+  "status": 401,
+  "contentType": "application/json",
+  "text": "{\"code\":\"MCP_AUTH_INVALID_SIGNATURE\",\"message\":\"invalid signature\"}",
+  "logs": [
+    {
+      "msg": "maxkb auth request failed",
+      "data": {
+        "status": 401,
+        "method": "POST",
+        "path": "/mcp/",
+        "errorCode": "MCP_AUTH_INVALID_SIGNATURE",
+        "requestId": ""
+      }
+    }
+  ]
+}

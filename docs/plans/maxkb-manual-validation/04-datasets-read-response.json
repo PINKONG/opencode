@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "sessionId": "session-fixture-001",
+  "contentType": "text/event-stream",
+  "text": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"contents\":[{\"uri\":\"maxkb://datasets\",\"mimeType\":\"application/json\",\"text\":\"{\\n  \\\"datasets\\\": [\\n    {\\n      \\\"id\\\": \\\"dataset-fixture-001\\\",\\n      \\\"name\\\": \\\"Redacted Dataset\\\",\\n      \\\"desc\\\": \\\"Redacted dataset description\\\",\\n      \\\"document_count\\\": 1,\\n      \\\"mcp_exposed\\\": true\\n    }\\n  ],\\n  \\\"truncated\\\": false\\n}\"}]}}\r\n\r\n"
+}

@@ -366,12 +366,25 @@ export namespace Config {
     })
   export type McpOAuth = z.infer<typeof McpOAuth>
 
+  export const McpRemoteAuthMaxkbHmac = z
+    .object({
+      type: z.literal("maxkb-hmac"),
+      appKey: z.string().describe("MaxKB MCP app key"),
+      appSecret: z.string().describe("MaxKB MCP app secret"),
+    })
+    .strict()
+    .meta({
+      ref: "McpRemoteAuthMaxkbHmacConfig",
+    })
+  export type McpRemoteAuthMaxkbHmac = z.infer<typeof McpRemoteAuthMaxkbHmac>
+
   export const McpRemote = z
     .object({
       type: z.literal("remote").describe("Type of MCP server connection"),
       url: z.string().describe("URL of the remote MCP server"),
       enabled: z.boolean().optional().describe("Enable or disable the MCP server on startup"),
       headers: z.record(z.string(), z.string()).optional().describe("Headers to send with the request"),
+      auth: McpRemoteAuthMaxkbHmac.optional().describe("Advanced remote MCP authentication"),
       oauth: z
         .union([McpOAuth, z.literal(false)])
         .optional()
@@ -386,6 +399,15 @@ export namespace Config {
         .describe("Timeout in ms for MCP server requests. Defaults to 5000 (5 seconds) if not specified."),
     })
     .strict()
+    .superRefine((value, ctx) => {
+      if (value.auth?.type === "maxkb-hmac" && value.oauth !== false) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["oauth"],
+          message: "oauth must be false when auth.type is maxkb-hmac",
+        })
+      }
+    })
     .meta({
       ref: "McpRemoteConfig",
     })

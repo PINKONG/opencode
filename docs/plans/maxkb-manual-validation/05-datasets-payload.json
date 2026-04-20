@@ -1,0 +1,12 @@
+{
+  "datasets": [
+    {
+      "id": "dataset-fixture-001",
+      "name": "Redacted Dataset",
+      "desc": "Redacted dataset description",
+      "document_count": 1,
+      "mcp_exposed": true
+    }
+  ],
+  "truncated": false
+}

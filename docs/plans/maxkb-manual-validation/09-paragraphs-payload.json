@@ -1,0 +1,37 @@
+{
+  "dataset": {
+    "id": "dataset-fixture-001",
+    "name": "Redacted Dataset"
+  },
+  "document": {
+    "id": "document-fixture-001",
+    "name": "redacted-document.md"
+  },
+  "paragraphs": [
+    {
+      "id": "paragraph-fixture-001",
+      "document_id": "document-fixture-001",
+      "dataset_id": "dataset-fixture-001",
+      "title": "# Redacted Overview",
+      "content": "Redacted paragraph content preserving the MaxKB paragraph schema.",
+      "status": "nn2",
+      "hit_num": 0,
+      "is_active": true,
+      "create_time": "2025-08-29T07:20:57.480519Z",
+      "update_time": "2025-08-29T07:20:57.480564Z"
+    },
+    {
+      "id": "paragraph-fixture-002",
+      "document_id": "document-fixture-001",
+      "dataset_id": "dataset-fixture-001",
+      "title": "# Redacted Details",
+      "content": "Second redacted paragraph content used to preserve list rendering behavior.",
+      "status": "nn2",
+      "hit_num": 0,
+      "is_active": true,
+      "create_time": "2025-08-29T07:20:57.480666Z",
+      "update_time": "2025-08-29T07:20:57.480674Z"
+    }
+  ],
+  "truncated": false
+}

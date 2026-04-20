@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "sessionId": "session-fixture-001",
+  "contentType": "text/event-stream",
+  "text": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"contents\":[{\"uri\":\"maxkb://datasets/dataset-fixture-001/documents\",\"mimeType\":\"application/json\",\"text\":\"{\\n  \\\"dataset\\\": {\\n    \\\"id\\\": \\\"dataset-fixture-001\\\",\\n    \\\"name\\\": \\\"Redacted Dataset\\\",\\n    \\\"desc\\\": \\\"Redacted dataset description\\\"\\n  },\\n  \\\"documents\\\": [\\n    {\\n      \\\"id\\\": \\\"document-fixture-001\\\",\\n      \\\"dataset_id\\\": \\\"dataset-fixture-001\\\",\\n      \\\"name\\\": \\\"redacted-document.md\\\",\\n      \\\"char_length\\\": 12345,\\n      \\\"status\\\": \\\"nn2\\\",\\n      \\\"is_active\\\": true,\\n      \\\"hit_handling_method\\\": \\\"optimization\\\",\\n      \\\"directly_return_similarity\\\": 0.7,\\n      \\\"create_time\\\": \\\"2025-08-29T07:20:57.477531Z\\\",\\n      \\\"update_time\\\": \\\"2025-10-14T02:27:51.202021Z\\\"\\n    }\\n  ],\\n  \\\"truncated\\\": false\\n}\"}]}}\r\n\r\n"
+}

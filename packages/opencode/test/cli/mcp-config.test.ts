@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import fs from "fs/promises"
 import path from "path"
 import { parse as parseJsonc } from "jsonc-parser"
+import { Config } from "../../src/config/config"
 import * as mcp from "../../src/cli/cmd/mcp"
 import { tmpdir } from "../fixture/fixture"
 
@@ -173,5 +174,60 @@ describe("mcp config isolation", () => {
         docs: { type: "local", command: ["echo", "next"] },
       },
     })
+  })
+
+  test("accepts remote maxkb hmac auth config", () => {
+    const out = Config.Mcp.parse({
+      type: "remote",
+      url: "http://127.0.0.1:8081/mcp/",
+      oauth: false,
+      auth: {
+        type: "maxkb-hmac",
+        appKey: "mcp_test",
+        appSecret: "ms_test",
+      },
+    })
+
+    expect(out).toEqual({
+      type: "remote",
+      url: "http://127.0.0.1:8081/mcp/",
+      oauth: false,
+      auth: {
+        type: "maxkb-hmac",
+        appKey: "mcp_test",
+        appSecret: "ms_test",
+      },
+    })
+  })
+
+  test("rejects maxkb hmac auth when oauth object is also configured", () => {
+    const out = Config.Mcp.safeParse({
+      type: "remote",
+      url: "http://127.0.0.1:8081/mcp/",
+      oauth: {
+        clientId: "abc",
+      },
+      auth: {
+        type: "maxkb-hmac",
+        appKey: "mcp_test",
+        appSecret: "ms_test",
+      },
+    })
+
+    expect(out.success).toBe(false)
+  })
+
+  test("rejects maxkb hmac auth when oauth is omitted", () => {
+    const out = Config.Mcp.safeParse({
+      type: "remote",
+      url: "http://127.0.0.1:8081/mcp/",
+      auth: {
+        type: "maxkb-hmac",
+        appKey: "mcp_test",
+        appSecret: "ms_test",
+      },
+    })
+
+    expect(out.success).toBe(false)
   })
 })

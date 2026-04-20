@@ -20,6 +20,7 @@ import { AppFileSystem } from "@/filesystem"
 import { McpOAuthProvider } from "./oauth-provider"
 import { McpOAuthCallback } from "./oauth-callback"
 import { McpAuth } from "./auth"
+import { createMaxkbSignedFetch } from "./maxkb"
 import { BusEvent } from "../bus/bus-event"
 import { Bus } from "@/bus"
 import { TuiEvent } from "@/cli/cmd/tui/event"
@@ -280,11 +281,12 @@ export namespace MCP {
         key: string,
         mcp: Config.Mcp & { type: "remote" },
       ) {
+        const maxkb = mcp.auth?.type === "maxkb-hmac" ? mcp.auth : undefined
         const oauthDisabled = mcp.oauth === false
         const oauthConfig = typeof mcp.oauth === "object" ? mcp.oauth : undefined
         let authProvider: McpOAuthProvider | undefined
 
-        if (!oauthDisabled) {
+        if (!maxkb && !oauthDisabled) {
           authProvider = new McpOAuthProvider(
             key,
             mcp.url,
@@ -303,22 +305,38 @@ export namespace MCP {
           )
         }
 
+        const requestInit = mcp.headers ? { headers: mcp.headers } : undefined
+        const signedFetch = maxkb
+          ? createMaxkbSignedFetch(
+              {
+                appKey: maxkb.appKey,
+                appSecret: maxkb.appSecret,
+              },
+              fetch,
+              log.warn.bind(log),
+            )
+          : undefined
+
         const transports: Array<{ name: string; transport: TransportWithAuth }> = [
           {
             name: "StreamableHTTP",
             transport: new StreamableHTTPClientTransport(new URL(mcp.url), {
               authProvider,
-              requestInit: mcp.headers ? { headers: mcp.headers } : undefined,
-            }),
-          },
-          {
-            name: "SSE",
-            transport: new SSEClientTransport(new URL(mcp.url), {
-              authProvider,
-              requestInit: mcp.headers ? { headers: mcp.headers } : undefined,
+              requestInit,
+              fetch: signedFetch,
             }),
           },
         ]
+
+        if (!maxkb) {
+          transports.push({
+            name: "SSE",
+            transport: new SSEClientTransport(new URL(mcp.url), {
+              authProvider,
+              requestInit,
+            }),
+          })
+        }
 
         const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
         let lastStatus: Status | undefined

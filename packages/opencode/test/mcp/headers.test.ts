@@ -6,13 +6,14 @@ import type { MCP as MCPNS } from "../../src/mcp/index"
 const transportCalls: Array<{
   type: "streamable" | "sse"
   url: string
-  options: { authProvider?: unknown; requestInit?: RequestInit }
+  options: { authProvider?: unknown; requestInit?: RequestInit; fetch?: unknown }
 }> = []
+let maxkbWarn: unknown
 
 // Mock the transport constructors to capture their arguments
 mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
   StreamableHTTPClientTransport: class MockStreamableHTTP {
-    constructor(url: URL, options?: { authProvider?: unknown; requestInit?: RequestInit }) {
+    constructor(url: URL, options?: { authProvider?: unknown; requestInit?: RequestInit; fetch?: unknown }) {
       transportCalls.push({
         type: "streamable",
         url: url.toString(),
@@ -27,7 +28,7 @@ mock.module("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
 
 mock.module("@modelcontextprotocol/sdk/client/sse.js", () => ({
   SSEClientTransport: class MockSSE {
-    constructor(url: URL, options?: { authProvider?: unknown; requestInit?: RequestInit }) {
+    constructor(url: URL, options?: { authProvider?: unknown; requestInit?: RequestInit; fetch?: unknown }) {
       transportCalls.push({
         type: "sse",
         url: url.toString(),
@@ -40,8 +41,16 @@ mock.module("@modelcontextprotocol/sdk/client/sse.js", () => ({
   },
 }))
 
+mock.module("../../src/mcp/maxkb", () => ({
+  createMaxkbSignedFetch: (_auth: unknown, _next?: unknown, warn?: unknown) => {
+    maxkbWarn = warn
+    return async () => new Response("ok")
+  },
+}))
+
 beforeEach(() => {
   transportCalls.length = 0
+  maxkbWarn = undefined
 })
 
 // Import MCP after mocking
@@ -173,6 +182,41 @@ test("no requestInit when headers are not provided", async () => {
         // No headers means requestInit should be undefined
         expect(call.options.requestInit).toBeUndefined()
       }
+    },
+  })
+})
+
+test("maxkb hmac remote uses signed fetch and disables oauth", async () => {
+  await using tmp = await tmpdir()
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      transportCalls.length = 0
+
+      await AppRuntime.runPromise(
+        Effect.gen(function* () {
+          const mcp = yield* service
+          yield* mcp
+            .add("maxkb", {
+              type: "remote",
+              url: "https://example.com/mcp/",
+              oauth: false,
+              auth: {
+                type: "maxkb-hmac",
+                appKey: "mcp_test",
+                appSecret: "ms_test",
+              },
+            })
+            .pipe(Effect.catch(() => Effect.void))
+        }),
+      )
+
+      expect(transportCalls.length).toBe(1)
+      expect(transportCalls[0]?.type).toBe("streamable")
+      expect(transportCalls[0]?.options.authProvider).toBeUndefined()
+      expect(transportCalls[0]?.options.fetch).toBeDefined()
+      expect(typeof maxkbWarn).toBe("function")
     },
   })
 })

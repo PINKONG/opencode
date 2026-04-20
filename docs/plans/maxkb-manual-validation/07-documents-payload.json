@@ -1,0 +1,22 @@
+{
+  "dataset": {
+    "id": "dataset-fixture-001",
+    "name": "Redacted Dataset",
+    "desc": "Redacted dataset description"
+  },
+  "documents": [
+    {
+      "id": "document-fixture-001",
+      "dataset_id": "dataset-fixture-001",
+      "name": "redacted-document.md",
+      "char_length": 12345,
+      "status": "nn2",
+      "is_active": true,
+      "hit_handling_method": "optimization",
+      "directly_return_similarity": 0.7,
+      "create_time": "2025-08-29T07:20:57.477531Z",
+      "update_time": "2025-10-14T02:27:51.202021Z"
+    }
+  ],
+  "truncated": false
+}
