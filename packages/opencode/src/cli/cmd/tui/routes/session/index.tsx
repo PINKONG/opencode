@@ -62,6 +62,7 @@ import { DialogConfirm } from "@tui/ui/dialog-confirm"
 import { DialogTimeline } from "./dialog-timeline"
 import { DialogForkFromTimeline } from "./dialog-fork-from-timeline"
 import { DialogSessionRename } from "../../component/dialog-session-rename"
+import { DialogKb } from "../../component/dialog-kb"
 import { Sidebar } from "./sidebar"
 import { SubagentFooter } from "./subagent-footer.tsx"
 import { Flag } from "@/flag/flag"
@@ -463,6 +464,17 @@ export function Session() {
             sessionID={route.sessionID}
           />
         ))
+      },
+    },
+    {
+      title: "Browse knowledge base",
+      value: "kb.browse",
+      category: "MCP",
+      slash: {
+        name: "kb",
+      },
+      onSelect: (dialog) => {
+        dialog.replace(() => <DialogKb />)
       },
     },
     {

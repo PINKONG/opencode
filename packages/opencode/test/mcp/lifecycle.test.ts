@@ -14,6 +14,12 @@ interface MockClientState {
   listResourcesShouldFail: boolean
   prompts: Array<{ name: string; description?: string }>
   resources: Array<{ name: string; uri: string; description?: string }>
+  resourceText: Record<string, string>
+  toolResult: Record<string, unknown>
+  toolOptions?: {
+    resetTimeoutOnProgress?: boolean
+    timeout?: number
+  }
   closed: boolean
   notificationHandlers: Map<unknown, (...args: any[]) => any>
 }
@@ -41,6 +47,9 @@ function getOrCreateClientState(name?: string): MockClientState {
       listResourcesShouldFail: false,
       prompts: [],
       resources: [],
+      resourceText: {},
+      toolResult: {},
+      toolOptions: undefined,
       closed: false,
       notificationHandlers: new Map(),
     }
@@ -147,6 +156,30 @@ mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
         throw new Error("listResources failed")
       }
       return { resources: this._state?.resources ?? [] }
+    }
+
+    async readResource(input: { uri: string }) {
+      return {
+        contents: [
+          {
+            uri: input.uri,
+            mimeType: "application/json",
+            text: this._state?.resourceText[input.uri] ?? "",
+          },
+        ],
+      }
+    }
+
+    async callTool(
+      input: { name: string; arguments?: Record<string, unknown> },
+      _schema?: unknown,
+      opts?: {
+        resetTimeoutOnProgress?: boolean
+        timeout?: number
+      },
+    ) {
+      this._state.toolOptions = opts
+      return this._state?.toolResult[input.name] ?? { content: [], structuredContent: input.arguments ?? {} }
     }
 
     async close() {
@@ -519,6 +552,122 @@ test(
         const key = Object.keys(resources)[0]
         expect(key).toContain("resource-server")
         expect(key).toContain("my-resource")
+      }),
+  ),
+)
+
+test(
+  "readResource() returns resource contents from a connected server",
+  withInstance(
+    {
+      "resource-server": {
+        type: "local",
+        command: ["echo", "test"],
+      },
+    },
+    (mcp) =>
+      Effect.gen(function* () {
+        lastCreatedClientName = "resource-server"
+        const serverState = getOrCreateClientState("resource-server")
+        serverState.resourceText["maxkb://datasets"] = JSON.stringify({ datasets: [], truncated: false })
+
+        yield* mcp.add("resource-server", {
+          type: "local",
+          command: ["echo", "test"],
+        })
+
+        const result = yield* mcp.readResource("resource-server", "maxkb://datasets")
+        const content = result?.contents[0]
+        expect(content && "text" in content ? content.text : undefined).toBe(
+          JSON.stringify({ datasets: [], truncated: false }),
+        )
+      }),
+  ),
+)
+
+test(
+  "callTool() returns tool result from a connected server",
+  withInstance(
+    {
+      "tool-server": {
+        type: "local",
+        command: ["echo", "test"],
+      },
+    },
+    (mcp) =>
+      Effect.gen(function* () {
+        lastCreatedClientName = "tool-server"
+        const serverState = getOrCreateClientState("tool-server")
+        serverState.toolResult.list_dataset_documents = {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                page: {
+                  records: [],
+                  total: 0,
+                },
+              }),
+            },
+          ],
+          structuredContent: {
+            page: {
+              records: [],
+              total: 0,
+            },
+          },
+        }
+
+        yield* mcp.add("tool-server", {
+          type: "local",
+          command: ["echo", "test"],
+        })
+
+        const result = yield* mcp.callTool("tool-server", "list_dataset_documents", {
+          dataset_id: "dataset-1",
+          current_page: 1,
+        })
+
+        expect(result && "structuredContent" in result ? result.structuredContent : undefined).toEqual({
+          page: {
+            records: [],
+            total: 0,
+          },
+        })
+      }),
+  ),
+)
+
+test(
+  "callTool() passes configured timeout to the MCP client",
+  withInstance(
+    {
+      "tool-timeout-server": {
+        type: "local",
+        command: ["echo", "test"],
+        timeout: 4321,
+      },
+    },
+    (mcp) =>
+      Effect.gen(function* () {
+        lastCreatedClientName = "tool-timeout-server"
+        const serverState = getOrCreateClientState("tool-timeout-server")
+
+        yield* mcp.add("tool-timeout-server", {
+          type: "local",
+          command: ["echo", "test"],
+          timeout: 4321,
+        })
+
+        yield* mcp.callTool("tool-timeout-server", "list_dataset_documents", {
+          dataset_id: "dataset-1",
+          current_page: 1,
+        })
+
+        expect(serverState.toolOptions).toEqual({
+          resetTimeoutOnProgress: true,
+          timeout: 4321,
+        })
       }),
   ),
 )

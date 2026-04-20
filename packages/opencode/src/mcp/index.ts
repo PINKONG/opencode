@@ -237,6 +237,11 @@ export namespace MCP {
       clientName: string,
       resourceUri: string,
     ) => Effect.Effect<Awaited<ReturnType<MCPClient["readResource"]>> | undefined>
+    readonly callTool: (
+      clientName: string,
+      name: string,
+      args?: Record<string, unknown>,
+    ) => Effect.Effect<Awaited<ReturnType<MCPClient["callTool"]>> | undefined>
     readonly startAuth: (mcpName: string) => Effect.Effect<{ authorizationUrl: string; oauthState: string }>
     readonly authenticate: (mcpName: string) => Effect.Effect<Status>
     readonly finishAuth: (mcpName: string, authorizationCode: string) => Effect.Effect<Status>
@@ -742,6 +747,36 @@ export namespace MCP {
         })
       })
 
+      const callTool = Effect.fn("MCP.callTool")(function* (
+        clientName: string,
+        name: string,
+        args?: Record<string, unknown>,
+      ) {
+        const cfg = yield* cfgSvc.get()
+        const defaultTimeout = cfg.experimental?.mcp_timeout
+        const entry = yield* getMcpConfig(clientName)
+        const timeout = entry?.timeout ?? defaultTimeout
+        return yield* withClient(
+          clientName,
+          (client) =>
+            client.callTool(
+              {
+                name,
+                arguments: args ?? {},
+              },
+              CallToolResultSchema,
+              {
+                resetTimeoutOnProgress: true,
+                timeout,
+              },
+            ),
+          "callTool",
+          {
+            toolName: name,
+          },
+        )
+      })
+
       const getMcpConfig = Effect.fnUntraced(function* (mcpName: string) {
         const cfg = yield* cfgSvc.get()
         const mcpConfig = cfg.mcp?.[mcpName]
@@ -923,6 +958,7 @@ export namespace MCP {
         disconnect,
         getPrompt,
         readResource,
+        callTool,
         startAuth,
         authenticate,
         finishAuth,

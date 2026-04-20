@@ -38,6 +38,27 @@ const ConsoleSwitchBody = z.object({
   orgID: z.string(),
 })
 
+const ResourceReadBody = z.object({
+  client: z.string(),
+  uri: z.string().refine((value) => value.startsWith("maxkb://"), {
+    message: "Only maxkb:// resources are supported",
+  }),
+})
+
+const ToolCallBody = z.object({
+  client: z.string(),
+  name: z.enum(["list_dataset_documents", "get_document_paragraphs"]),
+  arguments: z.record(z.string(), z.unknown()).optional(),
+})
+
+const McpToolCallResult = z
+  .object({
+    content: z.array(z.any()).optional(),
+    structuredContent: z.any().optional(),
+    isError: z.boolean().optional(),
+  })
+  .passthrough()
+
 export const ExperimentalRoutes = lazy(() =>
   new Hono()
     .route("/httpapi", HttpApiRoutes())
@@ -234,6 +255,38 @@ export const ExperimentalRoutes = lazy(() =>
         )
       },
     )
+    .post(
+      "/tool/call",
+      describeRoute({
+        summary: "Call MaxKB MCP browse tool",
+        description:
+          "Call a whitelisted MaxKB MCP browse tool from a connected MCP server. This experimental route is used by knowledge base browsing UI.",
+        operationId: "experimental.tool.call",
+        responses: {
+          200: {
+            description: "MCP tool call result",
+            content: {
+              "application/json": {
+                schema: resolver(McpToolCallResult),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator("json", ToolCallBody),
+      async (c) => {
+        const body = c.req.valid("json")
+        return c.json(
+          await AppRuntime.runPromise(
+            Effect.gen(function* () {
+              const mcp = yield* MCP.Service
+              return yield* mcp.callTool(body.client, body.name, body.arguments)
+            }),
+          ),
+        )
+      },
+    )
     .route("/workspace", WorkspaceRoutes())
     .post(
       "/worktree",
@@ -417,6 +470,37 @@ export const ExperimentalRoutes = lazy(() =>
             Effect.gen(function* () {
               const mcp = yield* MCP.Service
               return yield* mcp.resources()
+            }),
+          ),
+        )
+      },
+    )
+    .post(
+      "/resource/read",
+      describeRoute({
+        summary: "Read MCP resource",
+        description: "Read a MaxKB MCP resource from a connected MCP server. This experimental route is used by TUI /kb.",
+        operationId: "experimental.resource.read",
+        responses: {
+          200: {
+            description: "MCP resource read result",
+            content: {
+              "application/json": {
+                schema: resolver(z.any()),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator("json", ResourceReadBody),
+      async (c) => {
+        const body = c.req.valid("json")
+        return c.json(
+          await AppRuntime.runPromise(
+            Effect.gen(function* () {
+              const mcp = yield* MCP.Service
+              return yield* mcp.readResource(body.client, body.uri)
             }),
           ),
         )

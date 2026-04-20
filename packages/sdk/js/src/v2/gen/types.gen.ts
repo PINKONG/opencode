@@ -1176,7 +1176,7 @@ export type ServerConfig = {
    */
   mdns?: boolean
   /**
-   * Custom domain name for mDNS service (default: opencode.local)
+   * Custom domain name for mDNS service (default: wiscode.local)
    */
   mdnsDomain?: string
   /**
@@ -1402,6 +1402,21 @@ export type McpLocalConfig = {
   timeout?: number
 }
 
+/**
+ * Advanced remote MCP authentication
+ */
+export type McpRemoteAuthMaxkbHmacConfig = {
+  type: "maxkb-hmac"
+  /**
+   * MaxKB MCP app key
+   */
+  appKey: string
+  /**
+   * MaxKB MCP app secret
+   */
+  appSecret: string
+}
+
 export type McpOAuthConfig = {
   /**
    * OAuth client ID. If not provided, dynamic client registration (RFC 7591) will be attempted.
@@ -1440,6 +1455,7 @@ export type McpRemoteConfig = {
   headers?: {
     [key: string]: string
   }
+  auth?: McpRemoteAuthMaxkbHmacConfig
   /**
    * OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection.
    */
@@ -2871,6 +2887,45 @@ export type ToolListResponses = {
 
 export type ToolListResponse = ToolListResponses[keyof ToolListResponses]
 
+export type ExperimentalToolCallData = {
+  body?: {
+    client: string
+    name: "list_dataset_documents" | "get_document_paragraphs"
+    arguments?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/experimental/tool/call"
+}
+
+export type ExperimentalToolCallErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ExperimentalToolCallError = ExperimentalToolCallErrors[keyof ExperimentalToolCallErrors]
+
+export type ExperimentalToolCallResponses = {
+  /**
+   * MCP tool call result
+   */
+  200: {
+    content?: Array<unknown>
+    structuredContent?: unknown
+    isError?: boolean
+    [key: string]: unknown | Array<unknown> | boolean | undefined
+  }
+}
+
+export type ExperimentalToolCallResponse = ExperimentalToolCallResponses[keyof ExperimentalToolCallResponses]
+
 export type ExperimentalWorkspaceAdaptorListData = {
   body?: never
   path?: never
@@ -3176,6 +3231,35 @@ export type ExperimentalResourceListResponses = {
 
 export type ExperimentalResourceListResponse =
   ExperimentalResourceListResponses[keyof ExperimentalResourceListResponses]
+
+export type ExperimentalResourceReadData = {
+  body?: {
+    client: string
+    uri: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/experimental/resource/read"
+}
+
+export type ExperimentalResourceReadErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ExperimentalResourceReadError = ExperimentalResourceReadErrors[keyof ExperimentalResourceReadErrors]
+
+export type ExperimentalResourceReadResponses = {
+  /**
+   * MCP resource read result
+   */
+  200: unknown
+}
 
 export type SessionListData = {
   body?: never
