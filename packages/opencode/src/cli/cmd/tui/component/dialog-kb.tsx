@@ -6,6 +6,7 @@ import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
 import {
   maxkbAll,
+  maxkbCanMore,
   maxkbCategoriesUri,
   maxkbDatasetText,
   maxkbDocumentDetailUri,
@@ -368,13 +369,12 @@ function DialogKbDocuments(props: { client: string; dataset: string; name: strin
       ))
     })
 
-    if (rows.length < out.data.page.total) {
+    if (maxkbCanMore({ loading: result.loading, more: rows.length < out.data.page.total })) {
       items.push({
         title: maxkbMore(rows.length, out.data.page.total),
         description: `Load page ${store().page + 1}`,
         value: `more:${store().page + 1}`,
         category: out.data.dataset.name,
-        footer: result.loading ? <text fg={theme.warning}>loading</text> : undefined,
         onSelect: () => {
           setStore((value) => ({ ...value, page: value.page + 1 }))
         },
@@ -467,13 +467,12 @@ function DialogKbParagraphs(props: { client: string; dataset: string; document: 
 
     const list = paragraphs(rows, out.data.document.name)
 
-    if (out.data.page.has_more) {
+    if (maxkbCanMore({ loading: result.loading, more: out.data.page.has_more })) {
       list.push({
         title: maxkbMore(rows.length, out.data.page.total),
         description: `Load offset ${rows.length}`,
         value: `more:${rows.length}`,
         category: out.data.document.name,
-        footer: result.loading ? <text fg={theme.warning}>loading</text> : undefined,
         onSelect: () => {
           setStore((value) => ({ ...value, offset: value.rows.length }))
         },

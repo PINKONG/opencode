@@ -42,6 +42,10 @@ export function maxkbMore(size: number, total: number) {
   return `Load more (${size}/${total})`
 }
 
+export function maxkbCanMore(input: { loading: boolean; more: boolean }) {
+  return !input.loading && input.more
+}
+
 function shorten(text: string, size = 120) {
   const value = text.replace(/\s+/g, " ").trim()
   if (value.length <= size) return value

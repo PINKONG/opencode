@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   findMaxkbServers,
   maxkbAll,
+  maxkbCanMore,
   maxkbCategoriesUri,
   maxkbDatasetText,
   maxkbDocumentDetailUri,
@@ -66,6 +67,12 @@ describe("maxkb browser helpers", () => {
   test("exports stable category sentinel and load-more label", () => {
     expect(maxkbAll).toBe("__all__")
     expect(maxkbMore(20, 338)).toBe("Load more (20/338)")
+  })
+
+  test("blocks load-more while a page is still loading", () => {
+    expect(maxkbCanMore({ loading: true, more: true })).toBe(false)
+    expect(maxkbCanMore({ loading: false, more: false })).toBe(false)
+    expect(maxkbCanMore({ loading: false, more: true })).toBe(true)
   })
 
   test("formats dataset text for browsing", () => {
