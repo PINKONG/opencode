@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
 import { createQuery } from "@tanstack/solid-query"
+import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { useLanguage } from "@/context/language"
 import { useSDK } from "@/context/sdk"
@@ -14,14 +15,16 @@ import {
   resetParagraphList,
   shouldAppendParagraphPage,
 } from "./paragraph-list"
-import { paragraphLoadMoreVisible } from "./paragraphs-view"
+import { paragraphHasContent, paragraphLoadMoreVisible } from "./paragraphs-view"
 import { loadDocument, loadParagraphs } from "./paragraph-data"
+import { DialogKnowledgeParagraph } from "./dialog-knowledge-paragraph"
 
 const retry = (count: number, err: unknown) => shouldRetryMaxkb({ count, err })
 
 export function ParagraphsPage(props: { client: string; dataset: string; document: string }) {
   const language = useLanguage()
   const sdk = useSDK()
+  const dialog = useDialog()
   const api = createMemo(() => createKnowledgeApi(sdk.client, props.client))
   const [term, setTerm] = createSignal("")
   const [list, setList] = createSignal(resetParagraphList())
@@ -121,7 +124,19 @@ export function ParagraphsPage(props: { client: string; dataset: string; documen
           </Show>
           <For each={rows()}>
             {(item, index) => (
-              <div class="rounded-lg border border-border-weak-base px-4 py-4">
+              <button
+                type="button"
+                class="rounded-lg border border-border-weak-base px-4 py-4 text-left hover:bg-surface-raised-base-hover transition-colors"
+                disabled={!paragraphHasContent({ content: item.content })}
+                onClick={() =>
+                  dialog.show(() => (
+                    <DialogKnowledgeParagraph
+                      title={paragraphLabel(item, index() + 1)}
+                      item={item}
+                    />
+                  ))
+                }
+              >
                 <div class="text-14-medium text-text-strong">{paragraphLabel(item, index() + 1)}</div>
                 <div class="mt-2 text-13-regular text-text-weak">{paragraphPreview(item.content, 160)}</div>
                 <div class="mt-2 text-12-medium text-text-weaker">
@@ -130,7 +145,7 @@ export function ParagraphsPage(props: { client: string; dataset: string; documen
                     state: item.is_active ? "active" : "inactive",
                   })}
                 </div>
-              </div>
+              </button>
             )}
           </For>
           <Show when={!page.isPending && !page.error && rows().length === 0 && list().records.length === 0}>

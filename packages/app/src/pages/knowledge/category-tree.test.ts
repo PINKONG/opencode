@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { buildCategoryTree, filterCategoryTree, knowledgeCategoryValue, uncategorizedValue } from "./category-tree"
+import { buildCategoryTree, categoryLabel, filterCategoryTree, knowledgeCategoryValue, uncategorizedValue } from "./category-tree"
 
 describe("knowledge category tree helpers", () => {
   test("prepends virtual all and uncategorized nodes", () => {
@@ -124,5 +124,25 @@ describe("knowledge category tree helpers", () => {
     expect(knowledgeCategoryValue(undefined)).toBe("__all__")
     expect(knowledgeCategoryValue("uncategorized")).toBe("uncategorized")
     expect(knowledgeCategoryValue("category-1")).toBe("category-1")
+  })
+
+  test("uses category names instead of raw ids for selected labels", () => {
+    const tree = buildCategoryTree({
+      all: 7,
+      uncategorized: 1,
+      categories: [
+        {
+          id: "category-1",
+          name: "行业标准",
+          document_count: 0,
+          children: [],
+        },
+      ],
+    })
+
+    expect(categoryLabel(tree, "__all__")).toBe("All documents")
+    expect(categoryLabel(tree, "uncategorized")).toBe("Uncategorized")
+    expect(categoryLabel(tree, "category-1")).toBe("行业标准")
+    expect(categoryLabel(tree, "unknown")).toBe("unknown")
   })
 })

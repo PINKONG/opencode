@@ -708,6 +708,7 @@ export const dict = {
   "knowledge.paragraphs.meta": "{{paragraphs}} paragraphs | {{chars}} chars",
   "knowledge.paragraphs.status": "Mode: {{mode}} | State: {{state}}",
   "knowledge.paragraphs.recordMeta": "{{chars}} chars | {{state}}",
+  "knowledge.paragraphs.copy": "Copy full text",
   "knowledge.paragraphs.empty": "No paragraphs found.",
   "knowledge.paragraphs.emptyFilter": "No loaded paragraphs match the current search.",
   "sidebar.workspaces.enable": "Enable workspaces",

@@ -9,8 +9,6 @@ export function KnowledgeHeader(props: {
   datasetName?: string
   document?: string
   client?: string
-  title: string
-  description: string
 }) {
   const language = useLanguage()
   const sdk = useSDK()
@@ -27,38 +25,32 @@ export function KnowledgeHeader(props: {
 
   return (
     <div class="flex w-full items-start justify-between gap-4">
-      <div class="flex min-w-0 flex-col gap-2">
-        <div class="flex items-center gap-2 text-13-medium text-text-weak">
-          <Show when={props.dataset}>
-            <A
-              href={knowledgeParentHref(sdk.directory, props.dataset, props.document, props.client)}
-              class="rounded-md px-2 py-1 -ml-2 hover:bg-surface-raised-base-hover hover:text-text-strong transition-colors"
-            >
-              {language.t("common.goBack")}
-            </A>
-            <span class="text-text-weaker">/</span>
-          </Show>
-          <For each={crumbs()}>
-            {(item, index) => (
-              <>
-                <Show when={index() > 0}>
-                  <span class="text-text-weaker">/</span>
-                </Show>
-                <A
-                  href={item.href}
-                  class="truncate hover:text-text-strong transition-colors"
-                  classList={{ "text-text-strong": index() === crumbs().length - 1 }}
-                >
-                  {item.label}
-                </A>
-              </>
-            )}
-          </For>
-        </div>
-        <div class="flex flex-col gap-1">
-          <h1 class="text-22-semibold text-text-strong">{props.title}</h1>
-          <p class="text-14-regular text-text-weak">{props.description}</p>
-        </div>
+      <div class="flex min-w-0 items-center gap-2 text-13-medium text-text-weak">
+        <Show when={props.dataset}>
+          <A
+            href={knowledgeParentHref(sdk.directory, props.dataset, props.document, props.client)}
+            class="rounded-md px-2 py-1 -ml-2 hover:bg-surface-raised-base-hover hover:text-text-strong transition-colors"
+          >
+            {language.t("common.goBack")}
+          </A>
+          <span class="text-text-weaker">/</span>
+        </Show>
+        <For each={crumbs()}>
+          {(item, index) => (
+            <>
+              <Show when={index() > 0}>
+                <span class="text-text-weaker">/</span>
+              </Show>
+              <A
+                href={item.href}
+                class="truncate hover:text-text-strong transition-colors"
+                classList={{ "text-text-strong": index() === crumbs().length - 1 }}
+              >
+                {item.label}
+              </A>
+            </>
+          )}
+        </For>
       </div>
       <A
         href={knowledgeExitHref(sdk.directory)}

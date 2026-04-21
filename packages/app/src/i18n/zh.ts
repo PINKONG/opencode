@@ -630,6 +630,7 @@ export const dict = {
   "knowledge.paragraphs.meta": "{{paragraphs}} 个分段 | {{chars}} 字符",
   "knowledge.paragraphs.status": "命中方式：{{mode}} | 状态：{{state}}",
   "knowledge.paragraphs.recordMeta": "{{chars}} 字符 | {{state}}",
+  "knowledge.paragraphs.copy": "复制全文",
   "knowledge.paragraphs.empty": "暂无分段。",
   "knowledge.paragraphs.emptyFilter": "当前搜索条件下没有匹配的已加载分段。",
   "sidebar.workspaces.enable": "启用工作区",

@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/language"
 import { useSDK } from "@/context/sdk"
 import { createKnowledgeApi } from "@/data/knowledge-api"
 import { shouldRetryMaxkb } from "@/data/maxkb"
-import { allValue, buildCategoryTree, filterCategoryTree, knowledgeCategoryValue } from "./category-tree"
+import { allValue, buildCategoryTree, categoryLabel, filterCategoryTree, knowledgeCategoryValue } from "./category-tree"
 import {
   appendDocumentPage,
   canLoadMoreDocuments,
@@ -14,6 +14,7 @@ import {
   resetDocumentList,
   shouldAppendDocumentPage,
 } from "./document-list"
+import { documentView } from "./documents-view"
 import { knowledgeHref } from "./route"
 
 const retry = (count: number, err: unknown) => shouldRetryMaxkb({ count, err })
@@ -43,6 +44,7 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
   })
   const filtered = createMemo(() => filterCategoryTree(tree(), search()))
   const current = createMemo(() => selected())
+  const currentLabel = createMemo(() => categoryLabel(tree(), current()))
   const list = createQuery(() => ({
     queryKey: ["knowledge", "documents", sdk.directory, props.client, props.dataset, current(), term(), page()],
     queryFn: () => {
@@ -81,15 +83,15 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
     })
 
   return (
-    <div class="grid size-full min-h-0 grid-cols-[280px_minmax(0,1fr)] gap-6 p-6">
-      <div class="min-h-0 rounded-xl border border-border-weak-base bg-surface-base p-4">
+    <div class={documentView.root}>
+      <div class={`${documentView.pane} p-4`}>
         <div class="mb-3 text-14-medium text-text-strong">{language.t("knowledge.documents.categories")}</div>
         <TextField
           value={search()}
           onChange={setSearch}
           placeholder={language.t("knowledge.documents.searchCategory")}
         />
-        <div class="mt-4 flex min-h-0 flex-col gap-1 overflow-y-auto">
+        <div class={documentView.category}>
           <Show when={data.isPending}>
             <div class="text-13-regular text-text-weak">{language.t("knowledge.documents.loadingCategories")}</div>
           </Show>
@@ -113,11 +115,11 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
           </For>
         </div>
       </div>
-      <div class="min-h-0 rounded-xl border border-border-weak-base bg-surface-base p-6">
+      <div class={`${documentView.pane} p-6`}>
         <div class="flex flex-col gap-2">
           <div class="text-18-medium text-text-strong">{language.t("knowledge.page.dataset")}</div>
           <div class="text-13-regular text-text-weak">
-            {language.t("knowledge.documents.selectedCategory", { value: current() })}
+            {language.t("knowledge.documents.selectedCategory", { value: currentLabel() })}
           </div>
         </div>
         <div class="mt-4 flex items-center justify-between gap-3">
@@ -132,7 +134,7 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
             </div>
           </Show>
         </div>
-        <div class="mt-4 flex min-h-0 flex-col gap-2 overflow-y-auto">
+        <div class={documentView.documents}>
           <Show when={list.error}>
             <div class="text-13-regular text-text-danger-base">
               {list.error instanceof Error ? list.error.message : String(list.error)}

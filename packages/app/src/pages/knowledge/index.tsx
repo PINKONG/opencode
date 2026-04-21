@@ -55,20 +55,6 @@ export default function KnowledgePage() {
     if (selected() === picked) return
     setSelected(picked)
   })
-  const title = createMemo(() => {
-    if (document()) return language.t("knowledge.page.document")
-    if (dataset()) return language.t("knowledge.page.dataset")
-    return language.t("knowledge.page.root")
-  })
-  const description = createMemo(() => {
-    if (document()) return language.t("knowledge.page.documentReady")
-    if (dataset()) return language.t("knowledge.page.datasetReady")
-    if (clients().length > 1) return language.t("knowledge.client.pick")
-    if (datasets.isPending) return language.t("knowledge.loading.datasets")
-    if (datasets.error) return datasets.error instanceof Error ? datasets.error.message : String(datasets.error)
-    if (data()) return language.t("knowledge.page.datasetsReady", { count: data()!.datasets.length })
-    return language.t("knowledge.page.rootReady")
-  })
   const datasetName = createMemo(() => {
     if (!dataset()) return undefined
     if (document()) return documentMeta.data?.dataset.name
@@ -82,8 +68,6 @@ export default function KnowledgePage() {
         datasetName={datasetName()}
         document={document()}
         client={client()}
-        title={title()}
-        description={description()}
       />
       <Show when={!dataset() && !document() && clients().length > 1}>
         <div class="flex flex-col gap-2">

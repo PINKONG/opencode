@@ -627,6 +627,7 @@ export const dict = {
   "knowledge.paragraphs.meta": "{{paragraphs}} 個分段 | {{chars}} 字符",
   "knowledge.paragraphs.status": "命中方式：{{mode}} | 狀態：{{state}}",
   "knowledge.paragraphs.recordMeta": "{{chars}} 字符 | {{state}}",
+  "knowledge.paragraphs.copy": "複製全文",
   "knowledge.paragraphs.empty": "暫無分段。",
   "knowledge.paragraphs.emptyFilter": "目前搜尋條件下沒有匹配的已載入分段。",
   "sidebar.workspaces.enable": "啟用工作區",

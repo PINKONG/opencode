@@ -68,3 +68,15 @@ export function filterCategoryTree(list: CategoryNode[], search: string) {
 
   return list.map(walk).filter((x): x is CategoryNode => !!x)
 }
+
+export function categoryLabel(list: CategoryNode[], value: string) {
+  const walk = (items: CategoryNode[]): string | undefined => {
+    for (const item of items) {
+      if (item.value === value) return item.name
+      const child = walk(item.children)
+      if (child) return child
+    }
+  }
+
+  return walk(list) ?? value
+}
