@@ -12,6 +12,7 @@ import {
   displayName,
   effectiveWorkspaceOrder,
   errorMessage,
+  hasSidebarProject,
   hasProjectPermissions,
   latestRootSession,
   workspaceKey,
@@ -215,6 +216,12 @@ describe("layout workspace helpers", () => {
   test("formats fallback project display name", () => {
     expect(displayName({ worktree: "/tmp/app" })).toBe("app")
     expect(displayName({ worktree: "/tmp/app", name: "My App" })).toBe("My App")
+  })
+
+  test("guards sidebar workspace rendering until project is available", () => {
+    expect(hasSidebarProject(undefined)).toBe(false)
+    expect(hasSidebarProject({ worktree: "" })).toBe(false)
+    expect(hasSidebarProject({ worktree: "/tmp/app" })).toBe(true)
   })
 
   test("extracts api error message and fallback", () => {

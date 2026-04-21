@@ -62,6 +62,9 @@ export const childSessionOnPath = (sessions: Session[] | undefined, rootID: stri
 export const displayName = (project: { name?: string; worktree: string }) =>
   project.name || getFilename(project.worktree)
 
+export const hasSidebarProject = (project: { worktree: string } | undefined): project is { worktree: string } =>
+  typeof project?.worktree === "string" && project.worktree.length > 0
+
 export const errorMessage = (err: unknown, fallback: string) => {
   if (err && typeof err === "object" && "data" in err) {
     const data = (err as { data?: { message?: string } }).data

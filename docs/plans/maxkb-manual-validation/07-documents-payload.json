@@ -1,15 +1,18 @@
 {
   "dataset": {
-    "id": "dataset-fixture-001",
-    "name": "Redacted Dataset",
-    "desc": "Redacted dataset description"
+    "id": "6a74c37a-46aa-11f0-a78f-0242ac130002",
+    "name": "MoreDev",
+    "desc": "MoreDev"
   },
   "documents": [
     {
-      "id": "document-fixture-001",
-      "dataset_id": "dataset-fixture-001",
-      "name": "redacted-document.md",
-      "char_length": 12345,
+      "id": "b4fc508e-84a8-11f0-93a2-0242ac120003",
+      "dataset_id": "6a74c37a-46aa-11f0-a78f-0242ac130002",
+      "category_id": null,
+      "category_name": null,
+      "name": "安装部署.md",
+      "char_length": 204881,
+      "paragraph_count": 338,
       "status": "nn2",
       "is_active": true,
       "hit_handling_method": "optimization",

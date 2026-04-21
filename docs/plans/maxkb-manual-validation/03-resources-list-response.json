@@ -1,6 +1,6 @@
 {
   "status": 200,
-  "sessionId": "session-fixture-001",
+  "sessionId": "d7ba8460f6f14affb4e18effe03722b6",
   "contentType": "text/event-stream",
   "text": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"resources\":[{\"uri\":\"maxkb://datasets\",\"name\":\"datasets\",\"description\":\"List MCP exposed datasets visible to the current credential.\",\"mimeType\":\"application/json\"}]}}\r\n\r\n"
 }

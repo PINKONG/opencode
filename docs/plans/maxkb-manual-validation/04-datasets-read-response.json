@@ -1,6 +1,6 @@
 {
   "status": 200,
-  "sessionId": "session-fixture-001",
+  "sessionId": "d7ba8460f6f14affb4e18effe03722b6",
   "contentType": "text/event-stream",
-  "text": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"contents\":[{\"uri\":\"maxkb://datasets\",\"mimeType\":\"application/json\",\"text\":\"{\\n  \\\"datasets\\\": [\\n    {\\n      \\\"id\\\": \\\"dataset-fixture-001\\\",\\n      \\\"name\\\": \\\"Redacted Dataset\\\",\\n      \\\"desc\\\": \\\"Redacted dataset description\\\",\\n      \\\"document_count\\\": 1,\\n      \\\"mcp_exposed\\\": true\\n    }\\n  ],\\n  \\\"truncated\\\": false\\n}\"}]}}\r\n\r\n"
+  "text": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"contents\":[{\"uri\":\"maxkb://datasets\",\"mimeType\":\"application/json\",\"text\":\"{\\n  \\\"datasets\\\": [\\n    {\\n      \\\"id\\\": \\\"6a74c37a-46aa-11f0-a78f-0242ac130002\\\",\\n      \\\"name\\\": \\\"MoreDev\\\",\\n      \\\"desc\\\": \\\"MoreDev\\\",\\n      \\\"type\\\": \\\"0\\\",\\n      \\\"type_label\\\": \\\"general\\\",\\n      \\\"document_count\\\": 1,\\n      \\\"char_length\\\": 204881,\\n      \\\"application_mapping_count\\\": 0,\\n      \\\"username\\\": \\\"admin\\\",\\n      \\\"create_time\\\": \\\"2025-06-11T09:56:59.292961Z\\\",\\n      \\\"update_time\\\": \\\"2026-04-20T03:38:53.883563Z\\\",\\n      \\\"mcp_exposed\\\": true\\n    }\\n  ],\\n  \\\"truncated\\\": false\\n}\"}]}}\r\n\r\n"
 }

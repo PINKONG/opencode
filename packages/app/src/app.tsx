@@ -47,6 +47,7 @@ import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 
 const HomeRoute = lazy(() => import("@/pages/home"))
+const Knowledge = lazy(() => import("@/pages/knowledge"))
 const loadSession = () => import("@/pages/session")
 const Session = lazy(loadSession)
 const Loading = () => <div class="size-full" />
@@ -62,6 +63,9 @@ const SessionRoute = () => (
 )
 
 const SessionIndexRoute = () => <Navigate href="session" />
+const KnowledgeIndexRoute = () => <Knowledge />
+const KnowledgeDatasetRoute = () => <Knowledge />
+const KnowledgeDocumentRoute = () => <Knowledge />
 
 function UiI18nBridge(props: ParentProps) {
   const language = useLanguage()
@@ -298,6 +302,9 @@ export function AppInterface(props: {
                 <Route path="/" component={HomeRoute} />
                 <Route path="/:dir" component={DirectoryLayout}>
                   <Route path="/" component={SessionIndexRoute} />
+                  <Route path="/knowledge" component={KnowledgeIndexRoute} />
+                  <Route path="/knowledge/:dataset" component={KnowledgeDatasetRoute} />
+                  <Route path="/knowledge/:dataset/:document" component={KnowledgeDocumentRoute} />
                   <Route path="/session/:id?" component={SessionRoute} />
                 </Route>
               </Dynamic>
