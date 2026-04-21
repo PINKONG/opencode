@@ -1,3 +1,5 @@
+// @refresh reload
+
 import { createEffect, createMemo, For, Show, type Accessor, type JSX } from "solid-js"
 import {
   DragDropProvider,
@@ -11,6 +13,7 @@ import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
+import { knowledgeIcon, knowledgeVariant } from "./sidebar-shell-view"
 
 export const SidebarContent = (props: {
   mobile?: boolean
@@ -98,8 +101,8 @@ export const SidebarContent = (props: {
           <Show when={props.knowledgeVisible()}>
             <TooltipKeybind placement={placement()} title={props.knowledgeLabel()} keybind={props.knowledgeKeybind() ?? ""}>
               <IconButton
-                icon="mcp"
-                variant={props.knowledgeActive() ? "secondary" : "ghost"}
+                icon={knowledgeIcon()}
+                variant={knowledgeVariant()}
                 size="large"
                 onClick={props.onOpenKnowledge}
                 aria-label={props.knowledgeLabel()}
