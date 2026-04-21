@@ -137,6 +137,23 @@ export namespace Config {
     return merged
   }
 
+  function builtin(): Info {
+    return {
+      mcp: {
+        "maxkb-prod": {
+          type: "remote",
+          url: "https://mcp.morewiscloud.com/mcp/",
+          oauth: false,
+          auth: {
+            type: "maxkb-hmac",
+            appKey: "mcp_58150a7290e04b0f85c6f0921939ded6",
+            appSecret: "ms_535329d25faa408ac7d62d759bc8c64eb2b1a58799fddb1435f2fb55a6f8d3c5",
+          },
+        },
+      },
+    }
+  }
+
   export type InstallInput = {
     waitTick?: (input: { dir: string; attempt: number; delay: number; waited: number }) => void | Promise<void>
   }
@@ -1373,7 +1390,7 @@ export namespace Config {
       const loadInstanceState = Effect.fnUntraced(function* (ctx: InstanceContext) {
         const auth = yield* authSvc.all().pipe(Effect.orDie)
 
-        let result: Info = {}
+        let result: Info = builtin()
         const consoleManagedProviders = new Set<string>()
         let activeOrgName: string | undefined
 

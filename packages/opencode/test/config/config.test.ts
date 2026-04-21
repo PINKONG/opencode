@@ -117,6 +117,154 @@ test("loads config with defaults when no files exist", async () => {
   })
 })
 
+test("includes built-in MaxKB production MCP by default", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.mcp?.["maxkb-prod"]).toEqual({
+        type: "remote",
+        url: "https://mcp.morewiscloud.com/mcp/",
+        oauth: false,
+        auth: {
+          type: "maxkb-hmac",
+          appKey: "mcp_58150a7290e04b0f85c6f0921939ded6",
+          appSecret: "ms_535329d25faa408ac7d62d759bc8c64eb2b1a58799fddb1435f2fb55a6f8d3c5",
+        },
+      })
+    },
+  })
+})
+
+test("allows user config to disable built-in MaxKB production MCP", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://opencode.ai/config.json",
+        mcp: {
+          "maxkb-prod": {
+            enabled: false,
+          },
+        },
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.mcp?.["maxkb-prod"]).toEqual({
+        type: "remote",
+        url: "https://mcp.morewiscloud.com/mcp/",
+        oauth: false,
+        enabled: false,
+        auth: {
+          type: "maxkb-hmac",
+          appKey: "mcp_58150a7290e04b0f85c6f0921939ded6",
+          appSecret: "ms_535329d25faa408ac7d62d759bc8c64eb2b1a58799fddb1435f2fb55a6f8d3c5",
+        },
+      })
+    },
+  })
+})
+
+test("allows user config to override built-in MaxKB production MCP", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://opencode.ai/config.json",
+        mcp: {
+          "maxkb-prod": {
+            type: "remote",
+            url: "https://maxkb.example.com/mcp/",
+            oauth: false,
+            auth: {
+              type: "maxkb-hmac",
+              appKey: "custom",
+              appSecret: "secret",
+            },
+          },
+        },
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.mcp?.["maxkb-prod"]).toEqual({
+        type: "remote",
+        url: "https://maxkb.example.com/mcp/",
+        oauth: false,
+        auth: {
+          type: "maxkb-hmac",
+          appKey: "custom",
+          appSecret: "secret",
+        },
+      })
+    },
+  })
+})
+
+test("preserves built-in MaxKB when user adds another MCP client", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeConfig(dir, {
+        $schema: "https://opencode.ai/config.json",
+        mcp: {
+          "maxkb-local": {
+            type: "remote",
+            url: "http://127.0.0.1:8081/mcp/",
+            oauth: false,
+            auth: {
+              type: "maxkb-hmac",
+              appKey: "local",
+              appSecret: "secret",
+            },
+          },
+        },
+      })
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.mcp?.["maxkb-prod"]).toBeDefined()
+      expect(config.mcp?.["maxkb-local"]).toEqual({
+        type: "remote",
+        url: "http://127.0.0.1:8081/mcp/",
+        oauth: false,
+        auth: {
+          type: "maxkb-hmac",
+          appKey: "local",
+          appSecret: "secret",
+        },
+      })
+    },
+  })
+})
+
+test("does not reuse mutable built-in MaxKB config between loads", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      if (config.mcp?.["maxkb-prod"]) config.mcp["maxkb-prod"].enabled = false
+    },
+  })
+  await clear(true)
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await load()
+      expect(config.mcp?.["maxkb-prod"]?.enabled).toBeUndefined()
+    },
+  })
+})
+
 test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
