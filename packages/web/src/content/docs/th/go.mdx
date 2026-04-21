@@ -59,6 +59,8 @@ OpenCode Go ทำงานเหมือนกับผู้ให้บร�
 - **MiMo-V2-Pro**
 - **MiMo-V2-Omni**
 - **MiniMax M2.5**
+- **Qwen3.5 Plus**
+- **Qwen3.6 Plus**
 - **MiniMax M2.7**
 
 รายชื่อโมเดลอาจมีการเปลี่ยนแปลงเมื่อเราทำการทดสอบและเพิ่มโมเดลใหม่ๆ
@@ -77,17 +79,19 @@ OpenCode Go มีขีดจำกัดดังต่อไปนี้:
 
 ตารางด้านล่างแสดงจำนวน request โดยประมาณตามรูปแบบการใช้งานปกติของ Go:
 
-|                        | GLM-5.1 | GLM-5 | Kimi K2.5 | MiMo-V2-Pro | MiMo-V2-Omni | MiniMax M2.7 | MiniMax M2.5 |
-| ---------------------- | ------- | ----- | --------- | ----------- | ------------ | ------------ | ------------ |
-| requests ต่อ 5 ชั่วโมง | 880     | 1,150 | 1,850     | 1,290       | 2,150        | 14,000       | 20,000       |
-| requests ต่อสัปดาห์    | 2,150   | 2,880 | 4,630     | 3,225       | 5,450        | 35,000       | 50,000       |
-| requests ต่อเดือน      | 4,300   | 5,750 | 9,250     | 6,450       | 10,900       | 70,000       | 100,000      |
+|                        | GLM-5.1 | GLM-5 | Kimi K2.5 | MiMo-V2-Pro | MiMo-V2-Omni | MiniMax M2.7 | MiniMax M2.5 | Qwen3.6 Plus | Qwen3.5 Plus |
+| ---------------------- | ------- | ----- | --------- | ----------- | ------------ | ------------ | ------------ | ------------ | ------------ |
+| requests ต่อ 5 ชั่วโมง | 880     | 1,150 | 1,850     | 1,290       | 2,150        | 14,000       | 20,000       | 3,300        | 10,200       |
+| requests ต่อสัปดาห์    | 2,150   | 2,880 | 4,630     | 3,225       | 5,450        | 35,000       | 50,000       | 8,200        | 25,200       |
+| requests ต่อเดือน      | 4,300   | 5,750 | 9,250     | 6,450       | 10,900       | 70,000       | 100,000      | 20,500       | 50,500       |
 
 การประมาณการอ้างอิงจากรูปแบบการใช้งาน request โดยเฉลี่ยที่สังเกตพบ:
 
 - GLM-5/5.1 — 700 input, 52,000 cached, 150 output tokens ต่อ request
 - Kimi K2.5 — 870 input, 55,000 cached, 200 output tokens ต่อ request
 - MiniMax M2.7/M2.5 — 300 input, 55,000 cached, 125 output tokens ต่อ request
+- Qwen3.5 Plus — 410 input, 47,000 cached, 140 output tokens per request
+- Qwen3.6 Plus — 500 input, 57,000 cached, 190 output tokens per request
 - MiMo-V2-Pro — 350 input, 41,000 cached, 250 output tokens ต่อ request
 - MiMo-V2-Omni — 1000 input, 60,000 cached, 140 output tokens ต่อ request
 
@@ -120,6 +124,8 @@ OpenCode Go มีขีดจำกัดดังต่อไปนี้:
 | MiMo-V2-Omni | mimo-v2-omni | `https://opencode.ai/zen/go/v1/chat/completions` | `@ai-sdk/openai-compatible` |
 | MiniMax M2.7 | minimax-m2.7 | `https://opencode.ai/zen/go/v1/messages`         | `@ai-sdk/anthropic`         |
 | MiniMax M2.5 | minimax-m2.5 | `https://opencode.ai/zen/go/v1/messages`         | `@ai-sdk/anthropic`         |
+| Qwen3.6 Plus | qwen3.6-plus | `https://opencode.ai/zen/go/v1/chat/completions` | `@ai-sdk/alibaba`           |
+| Qwen3.5 Plus | qwen3.5-plus | `https://opencode.ai/zen/go/v1/chat/completions` | `@ai-sdk/alibaba`           |
 
 [model id](/docs/config/#models) ใน WisCode config ของคุณจะใช้รูปแบบ `opencode-go/<model-id>` ตัวอย่างเช่น สำหรับ Kimi K2.5 คุณจะใช้ `opencode-go/kimi-k2.5` ใน config ของคุณ
 
