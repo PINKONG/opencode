@@ -110,7 +110,7 @@ if (!Script.preview) {
         await $`cd ./dist/aur-${pkg} && git commit -m "Update to v${Script.version}"`
         await $`cd ./dist/aur-${pkg} && git push`
         break
-      } catch (e) {
+      } catch {
         continue
       }
     }

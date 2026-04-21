@@ -151,23 +151,6 @@ description: 管理 LLM 可以使用的工具。
 
 ---
 
-### list
-
-列出指定路徑下的檔案和目錄。
-
-```json title="wiscode.json" {4}
-{
-  "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "list": "allow"
-  }
-}
-```
-
-該工具用於列出目錄內容。它接受 glob 模式來過濾結果。
-
----
-
 ### lsp（實驗性）
 
 與已設定的 LSP 伺服器互動，取得程式碼智慧功能，如定義跳轉、參考查找、懸停資訊和呼叫階層結構。
@@ -341,7 +324,7 @@ MCP（Model Context Protocol）伺服器允許您整合外部工具和服務，�
 
 ## 內部機制
 
-在內部，`grep`、`glob` 和 `list` 等工具底層使用 [ripgrep](https://github.com/BurntSushi/ripgrep)。預設情況下，ripgrep 遵循 `.gitignore` 中的模式，這意味著 `.gitignore` 中列出的檔案和目錄將被排除在搜尋和列表結果之外。
+在內部，`grep` 和 `glob` 等工具底層使用 [ripgrep](https://github.com/BurntSushi/ripgrep)。預設情況下，ripgrep 遵循 `.gitignore` 中的模式，這意味著 `.gitignore` 中列出的檔案和目錄將被排除在搜尋和列表結果之外。
 
 ---
 

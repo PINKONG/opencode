@@ -1,4 +1,4 @@
-import { base64Encode } from "@opencode-ai/util/encode"
+import { base64Encode } from "@opencode-ai/shared/util/encode"
 
 export function knowledgeHref(dir: string, dataset?: string, document?: string, client?: string) {
   const slug = base64Encode(dir)

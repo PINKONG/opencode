@@ -7,13 +7,15 @@ import { UI } from "../ui"
 import { MCP } from "../../mcp"
 import { McpAuth } from "../../mcp/auth"
 import { McpOAuthProvider } from "../../mcp/oauth-provider"
-import { Config } from "../../config/config"
+import { Config } from "../../config"
+import { ConfigMCP } from "../../config/mcp"
 import { Instance } from "../../project/instance"
 import { Installation } from "../../installation"
+import { InstallationVersion } from "../../installation/version"
 import path from "path"
 import { Global } from "../../global"
 import { modify, applyEdits } from "jsonc-parser"
-import { Filesystem } from "../../util/filesystem"
+import { Filesystem } from "../../util"
 import { Bus } from "../../bus"
 import { ConfigPaths } from "../../config/paths"
 import { AppRuntime } from "../../effect/app-runtime"
@@ -43,7 +45,7 @@ function getAuthStatusText(status: MCP.AuthStatus): string {
 
 type McpEntry = NonNullable<Config.Info["mcp"]>[string]
 
-type McpConfigured = Config.Mcp
+type McpConfigured = ConfigMCP.Info
 function isMcpConfigured(config: McpEntry): config is McpConfigured {
   return typeof config === "object" && config !== null && "type" in config
 }
@@ -447,7 +449,7 @@ async function resolveConfigPath(baseDir: string, global = false) {
 
 export { resolveConfigPath as resolveMcpConfig }
 
-async function addMcpToConfig(name: string, mcpConfig: Config.Mcp, configPath: { read?: string; write: string }) {
+async function addMcpToConfig(name: string, mcpConfig: ConfigMCP.Info, configPath: { read?: string; write: string }) {
   let text = "{}"
   const source = configPath.read ?? configPath.write
   if (await Filesystem.exists(source)) {
@@ -538,7 +540,7 @@ export const McpAddCommand = cmd({
           })
           if (prompts.isCancel(command)) throw new UI.CancelledError()
 
-          const mcpConfig: Config.Mcp = {
+          const mcpConfig: ConfigMCP.Info = {
             type: "local",
             command: command.split(" "),
           }
@@ -568,7 +570,7 @@ export const McpAddCommand = cmd({
           })
           if (prompts.isCancel(useOAuth)) throw new UI.CancelledError()
 
-          let mcpConfig: Config.Mcp
+          let mcpConfig: ConfigMCP.Info
 
           if (useOAuth) {
             const hasClientId = await prompts.confirm({
@@ -722,7 +724,7 @@ export const McpDebugCommand = cmd({
               params: {
                 protocolVersion: "2024-11-05",
                 capabilities: {},
-                clientInfo: { name: "opencode-debug", version: Installation.VERSION },
+                clientInfo: { name: "opencode-debug", version: InstallationVersion },
               },
               id: 1,
             }),
@@ -771,7 +773,7 @@ export const McpDebugCommand = cmd({
             try {
               const client = new Client({
                 name: "opencode-debug",
-                version: Installation.VERSION,
+                version: InstallationVersion,
               })
               await client.connect(transport)
               prompts.log.success("Connection successful (already authenticated)")

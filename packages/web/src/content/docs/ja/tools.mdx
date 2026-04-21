@@ -151,23 +151,6 @@ WisCode で利用可能なすべての組み込みツールを次に示します
 
 ---
 
-### list
-
-指定されたパス内のファイルとディレクトリを一覧表示します。
-
-```json title="wiscode.json" {4}
-{
-  "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "list": "allow"
-  }
-}
-```
-
-このツールはディレクトリの内容を一覧表示します。結果をフィルタリングするための glob パターンを受け入れます。
-
----
-
 ### lsp (実験的)
 
 構成された LSP サーバーと対話して、定義、参照、ホバー情報、呼び出し階層などのコードインテリジェンス機能を取得します。
@@ -341,7 +324,7 @@ MCP (Model Context Protocol) サーバーを使用すると、外部ツールと
 
 ## 内部動作
 
-内部的には、`grep`、`glob`、`list` などのツールは内部で [ripgrep](https://github.com/BurntSushi/ripgrep) を使用します。デフォルトでは、ripgrep は `.gitignore` パターンを尊重します。つまり、`.gitignore` にリストされているファイルとディレクトリは検索とリストから除外されます。
+内部的には、`grep`、`glob` などのツールは内部で [ripgrep](https://github.com/BurntSushi/ripgrep) を使用します。デフォルトでは、ripgrep は `.gitignore` パターンを尊重します。つまり、`.gitignore` にリストされているファイルとディレクトリは検索とリストから除外されます。
 
 ---
 

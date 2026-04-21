@@ -1,8 +1,8 @@
 import { TextAttributes } from "@opentui/core"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { Clipboard } from "@tui/util/clipboard"
+import * as Clipboard from "@tui/util/clipboard"
 import { createSignal } from "solid-js"
-import { Installation } from "@/installation"
+import { InstallationVersion } from "@/installation/version"
 import { win32FlushInputBuffer } from "../win32"
 import { getScrollAcceleration } from "../util/scroll"
 
@@ -26,7 +26,7 @@ export function ErrorComponent(props: {
 
   useKeyboard((evt) => {
     if (evt.ctrl && evt.name === "c") {
-      handleExit()
+      void handleExit()
     }
   })
   const [copied, setCopied] = createSignal(false)
@@ -41,14 +41,14 @@ export function ErrorComponent(props: {
   }
 
   const report = [
-    `wiscode-version: ${Installation.VERSION}`,
+    `wiscode-version: ${InstallationVersion}`,
     `message: ${props.error.message || "unknown error"}`,
     "",
     props.error.stack || "no stack trace",
   ].join("\n")
 
   const copyIssueURL = () => {
-    Clipboard.copy(report).then(() => {
+    void Clipboard.copy(report).then(() => {
       setCopied(true)
     })
   }

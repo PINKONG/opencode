@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { AccountTransportError } from "../../src/account/schema"
 import { FormatError } from "../../src/cli/error"
-import { Provider } from "../../src/provider/provider"
+import { Provider } from "../../src/provider"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 
 describe("cli.error", () => {
