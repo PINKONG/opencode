@@ -186,8 +186,21 @@ export type MaxkbDataset = z.infer<typeof MaxkbDatasetPayload>["datasets"][numbe
 export type MaxkbDocument = z.infer<typeof MaxkbDocumentPayload>["documents"][number]
 export type MaxkbParagraph = z.infer<typeof MaxkbParagraphPayload>["paragraphs"][number]
 
+function decode(blob: string) {
+  try {
+    const raw =
+      typeof atob === "function"
+        ? atob(blob)
+        : Buffer.from(blob, "base64").toString("latin1")
+    return new TextDecoder().decode(Uint8Array.from(raw, (ch) => ch.charCodeAt(0)))
+  } catch (err) {
+    throw new Error("Invalid MaxKB resource blob", { cause: err })
+  }
+}
+
 export function extractMaxkbText(result: unknown) {
-  const text = (result as { contents?: Array<{ text?: unknown }> })?.contents?.[0]?.text
+  const item = (result as { contents?: Array<{ text?: unknown; blob?: unknown }> })?.contents?.[0]
+  const text = typeof item?.text === "string" ? item.text : typeof item?.blob === "string" ? decode(item.blob) : undefined
   if (typeof text !== "string") throw new Error("MaxKB resource response missing contents[0].text")
   return text
 }

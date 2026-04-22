@@ -168,6 +168,20 @@ describe("maxkb payload parsing", () => {
     expect(out).toBe("{\"datasets\":[],\"truncated\":false}")
   })
 
+  test("extracts text from blob resource result", () => {
+    const out = extractMaxkbResourceText({
+      contents: [
+        {
+          uri: "maxkb://datasets",
+          mimeType: "application/json",
+          blob: btoa("{\"datasets\":[],\"truncated\":false}"),
+        },
+      ],
+    })
+
+    expect(out).toBe("{\"datasets\":[],\"truncated\":false}")
+  })
+
   test("extracts text from tool result", () => {
     const out = extractMaxkbToolText({
       content: [

@@ -53,6 +53,20 @@ describe("maxkb resource parsing", () => {
     expect(text).toBe("{\"datasets\":[],\"truncated\":false}")
   })
 
+  test("extracts text from blob mcp read resource result", () => {
+    const text = extractMaxkbText({
+      contents: [
+        {
+          uri: "maxkb://datasets",
+          mimeType: "application/json",
+          blob: btoa("{\"datasets\":[],\"truncated\":false}"),
+        },
+      ],
+    })
+
+    expect(text).toBe("{\"datasets\":[],\"truncated\":false}")
+  })
+
   test("rejects missing text content", () => {
     expect(() => extractMaxkbText({ contents: [] })).toThrow("MaxKB resource response missing contents[0].text")
   })
