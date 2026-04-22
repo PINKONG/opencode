@@ -183,6 +183,98 @@ cd packages/app && bun test --preload ./happydom.ts ./src/pages/layout/helpers.t
 - 本机构建成功
 - 或对应平台已做一次手工验证
 
+## 浏览器 / 本地 Web 调试补充
+
+这部分不是只给 merge 用。
+
+以后只要出现“浏览器端异常、桌面端正常、源码看起来已经修了”的情况，优先按下面顺序排查。
+
+### 1. 先确认前后端是不是同一版
+
+这次知识库问题的真实根因不是前端代码没改对，而是：
+- 浏览器前端已经是新代码
+- `4096` 上跑着的 WisCode 后端还是旧进程
+- 前后端版本错位，导致浏览器命中旧行为
+
+先查本地进程：
+
+```bash
+lsof -iTCP:4096 -sTCP:LISTEN -n -P
+ps -p <pid> -o pid=,lstart=,etime=,command=
+```
+
+如果进程启动时间早于本次代码变更，优先重启后端，再继续看问题。
+
+默认启动命令：
+
+```bash
+cd packages/opencode
+bun run --conditions=browser ./src/index.ts serve
+```
+
+### 2. 浏览器开发时，不要把旧进程当成“源码行为”
+
+本地 Web 调试推荐固定成两段：
+
+```bash
+cd packages/opencode && bun run --conditions=browser ./src/index.ts serve --port 4096
+cd packages/app && bun dev -- --port 3001
+```
+
+如果浏览器访问的是 Vite 页面，但接口连的是一个几小时前启动的旧 `serve` 进程，页面会表现得像“前端修复无效”。
+
+### 3. 知识库报 `contents[0].text` 时，先区分是解析问题还是服务端回了 HTML
+
+这次排查里，表面错误是：
+
+```text
+MaxKB resource response missing contents[0].text
+```
+
+但真实返回其实是：
+- `GET /experimental/resource/read?...`
+- `content-type: text/html;charset=UTF-8`
+- body 是整页 HTML，不是 MCP `contents`
+
+所以这类错误不要立刻认定为 MaxKB payload 结构变了。
+
+先直接验证接口：
+
+```bash
+curl -sv 'http://127.0.0.1:4096/experimental/resource/read?client=<client>&uri=maxkb%3A%2F%2Fdatasets&directory=<dir>'
+```
+
+重点看：
+- `content-type` 是不是 `application/json`
+- body 是 MCP JSON，还是 HTML 页面
+
+### 4. SDK 收到 `text/html;charset=UTF-8` 也要当成服务端版本不匹配
+
+这次还暴露了一个次级问题：
+- SDK 过去只拦截 `content-type === "text/html"`
+- 遇到真实响应 `text/html;charset=UTF-8` 会漏掉
+- 最终在上层误报成业务字段缺失
+
+现在 SDK 已修成只要 `content-type` 包含 `text/html` 就直接报：
+- `Request is not supported by this version of OpenCode Server (Server responded with text/html)`
+
+以后如果再看到这个错误，优先怀疑：
+- 后端版本过旧
+- 路由没命中 API，回落到了 UI 页面
+- 代理/入口配错了，打到了错误服务
+
+### 5. 这类问题的排查顺序
+
+按这个顺序，不要反过来：
+- 先确认前端 dev server 是否真是最新源码
+- 再确认 `4096` 后端进程是不是最新启动
+- 再直接抓 `/experimental/resource/read` 的真实响应
+- 最后才去怀疑 MaxKB payload 或前端解析逻辑
+
+经验结论：
+- “源码已修但浏览器仍报旧错”，优先查旧后端进程
+- “业务字段缺失”如果响应是 HTML，本质是链路/版本问题，不是业务数据问题
+
 ## 提交规范
 
 ### 1. merge commit 只包含本次同步需要的内容
