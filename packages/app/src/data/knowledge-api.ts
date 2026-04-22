@@ -10,27 +10,24 @@ import {
 } from "./maxkb"
 import z from "zod"
 
-type Read = (input?: {
-  directory?: string
-  workspace?: string
-  client?: string
-  uri?: string
-}) => Promise<unknown>
-type Call = (input?: {
-  directory?: string
-  workspace?: string
-  client?: string
-  name?: "list_dataset_documents" | "get_document_paragraphs"
-  arguments?: Record<string, unknown>
-}) => Promise<unknown>
-
 type Sdk = {
   experimental: {
     resource: {
-      read: Read
+      read(input: {
+        directory?: string
+        workspace?: string
+        client: string
+        uri: string
+      }): Promise<{ data?: unknown }>
     }
     tool: {
-      call: Call
+      call(input: {
+        directory?: string
+        workspace?: string
+        client?: string
+        name?: "list_dataset_documents" | "get_document_paragraphs"
+        arguments?: Record<string, unknown>
+      }): Promise<{ data?: unknown }>
     }
   }
 }

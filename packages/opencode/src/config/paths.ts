@@ -6,6 +6,8 @@ import { Flag } from "@/flag/flag"
 import { Global } from "@/global"
 import { unique } from "remeda"
 import { JsonError } from "./error"
+import * as Effect from "effect/Effect"
+import { AppFileSystem } from "@opencode-ai/shared/filesystem"
 
 const dirs = [".wiscode", ".opencode"] as const
 
@@ -19,37 +21,38 @@ function writeNames(name: string) {
   return ["wiscode", "opencode"]
 }
 
-export async function projectFiles(name: string, directory: string, worktree?: string) {
-  return Filesystem.findUp(
-    readNames(name).flatMap((item) => [`${item}.jsonc`, `${item}.json`]),
-    directory,
-    worktree,
-    { rootFirst: true },
-  )
-}
+export const files = Effect.fn("ConfigPaths.projectFiles")(function* (
+  name: string,
+  directory: string,
+  worktree?: string,
+) {
+  const afs = yield* AppFileSystem.Service
+  return (yield* afs.up({
+    targets: readNames(name).flatMap((item) => [`${item}.jsonc`, `${item}.json`]),
+    start: directory,
+    stop: worktree,
+  })).toReversed()
+})
 
-export async function directories(directory: string, worktree?: string) {
+export const directories = Effect.fn("ConfigPaths.directories")(function* (directory: string, worktree?: string) {
+  const afs = yield* AppFileSystem.Service
   return unique([
     Global.Path.config,
     ...(!Flag.OPENCODE_DISABLE_PROJECT_CONFIG
-      ? await Array.fromAsync(
-          Filesystem.up({
-            targets: [...dirs].toReversed(),
-            start: directory,
-            stop: worktree,
-          }),
-        )
+      ? yield* afs.up({
+          targets: [...dirs].toReversed(),
+          start: directory,
+          stop: worktree,
+        })
       : []),
-    ...(await Array.fromAsync(
-      Filesystem.up({
-        targets: [...dirs].toReversed(),
-        start: Global.Path.home,
-        stop: Global.Path.home,
-      }),
-    )),
+    ...(yield* afs.up({
+      targets: [...dirs].toReversed(),
+      start: Global.Path.home,
+      stop: Global.Path.home,
+    })),
     ...(Flag.OPENCODE_CONFIG_DIR ? [Flag.OPENCODE_CONFIG_DIR] : []),
   ])
-}
+})
 
 export function fileInDirectory(dir: string, name: string) {
   return readNames(name).flatMap((item) => [path.join(dir, `${item}.json`), path.join(dir, `${item}.jsonc`)])

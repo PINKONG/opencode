@@ -3,6 +3,21 @@
 - The default branch in this repo is `dev`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
+- For any upstream OpenCode sync or cherry-pick, follow [docs/wiscode-upstream-merge-checklist.md](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-upstream-merge-checklist.md).
+
+## Upstream Merge Rules
+
+- Treat [docs/wiscode-upstream-merge-checklist.md](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-upstream-merge-checklist.md) as mandatory for every upstream merge.
+- High-risk merge files require manual review, especially:
+  [packages/app/src/pages/layout.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/layout.tsx),
+  [packages/app/src/pages/session.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/session.tsx),
+  [packages/app/src/pages/session/session-side-panel.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/session/session-side-panel.tsx),
+  [packages/app/src/components/session/session-header.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/session/session-header.tsx),
+  [packages/desktop/src/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src/index.tsx),
+  [packages/desktop-electron/src/renderer/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop-electron/src/renderer/index.tsx).
+- Preserve WisCode branding, config isolation, update sources, and release endpoints during conflict resolution.
+- For Solid UI merges, be extra careful with `<Show>` render-function children, keyed vs non-keyed control flow, leaked accessors, and non-null assertions over dynamic values.
+- Do not conclude an upstream merge until package-level typecheck, focused tests, and a desktop smoke test have completed.
 
 ## Style Guide
 
@@ -14,6 +29,7 @@
 - Use Bun APIs when possible, like `Bun.file()`
 - Rely on type inference when possible; avoid explicit type annotations or interfaces unless necessary for exports or clarity
 - Prefer functional array methods (flatMap, filter, map) over for loops; use type guards on filter to maintain type inference downstream
+- In `src/config`, follow the existing self-export pattern at the top of the file (for example `export * as ConfigAgent from "./agent"`) when adding a new config module.
 
 Reduce total variable count by inlining when a value is only used once.
 
