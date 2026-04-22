@@ -412,6 +412,24 @@ Steps:
 
 Skip this task in the first implementation pass unless parity is explicitly required.
 
+#### Task 4 status memo
+
+Task 4 is intentionally skipped for the Phase 2 MVP.
+
+Reason:
+
+- the Phase 2 goal is session answer-time retrieval, and that path is fully
+  served by `session/prompt.ts` through server-side `mcp.tools()`
+- Web/App browsing already uses the Phase 1 experimental browse route
+- Web/App does not currently call `search_knowledge` or `search_dataset`
+  directly
+- expanding `/experimental/tool/call` plus regenerating the SDK would add
+  maintenance diff without user-facing benefit in the current product scope
+
+Revisit Task 4 only when Web/App needs direct retrieval calls, for example a
+future Web chat-side knowledge-base QA entry point or SDK-based retrieval
+debugging flow.
+
 ## 12. Risks
 
 ### Risk 1. Unknown tool input/output contract
