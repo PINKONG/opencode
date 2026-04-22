@@ -67,4 +67,15 @@ describe("session prompt branding", () => {
       expect(txt).toContain("compatibility reference")
     })
   }
+
+  for (const name of routed) {
+    test(`${name} includes MaxKB retrieval guidance for knowledge-base questions`, async () => {
+      const txt = (await Bun.file(join(root, name)).text()).toLowerCase()
+
+      expect(txt).toContain("when a connected maxkb knowledge base is available")
+      expect(txt).toContain("prefer search_knowledge when the relevant dataset is unclear")
+      expect(txt).toContain("prefer search_dataset only when a dataset is obvious or already identified")
+      expect(txt).toContain("do not use maxkb retrieval for repo-local engineering tasks")
+    })
+  }
 })

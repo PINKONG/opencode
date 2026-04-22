@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "sessionId": "28cf6c482de3492d88c97d9499c73c81",
+  "contentType": "text/event-stream",
+  "text": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":\"b4725860-01e8-4422-b1b3-7ef8f711574e\",\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Error executing tool search_dataset: (403, 'The knowledge base is not authorized【6a74c37a-46aa-11f0-a78f-0242ac130002】')\"}],\"isError\":true}}\r\n\r\n"
+}

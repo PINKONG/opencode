@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "sessionId": "217dad00c716477c903afddc70b095d3",
+  "contentType": "text/event-stream",
+  "text": "event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":\"9aecd466-7324-4b41-940b-9e62723152c5\",\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Error executing tool search_dataset: 1 validation error for search_dataset_toolArguments\\nquery_text\\n  Field required [type=missing, input_value={'dataset_id': '0141f9ba-...'query': '仓库管理'}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\"}],\"isError\":true}}\r\n\r\n"
+}

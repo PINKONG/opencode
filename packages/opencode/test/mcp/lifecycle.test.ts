@@ -268,6 +268,54 @@ test(
   ),
 )
 
+test(
+  "tools() preserves raw MCP isError tool results for non-MaxKB tools",
+  withInstance({}, (mcp) =>
+    Effect.gen(function* () {
+      lastCreatedClientName = "generic"
+      const state = getOrCreateClientState("generic")
+      state.tools = [
+        {
+          name: "echo",
+          description: "Echo one value",
+          inputSchema: { type: "object", properties: { value: { type: "string" } } },
+        },
+      ]
+      state.toolResult.echo = {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "No echo target was available",
+          },
+        ],
+      }
+
+      yield* mcp.add("generic", {
+        type: "local",
+        command: ["echo", "test"],
+      })
+
+      const tools = yield* mcp.tools()
+      const out = yield* Effect.promise(() =>
+        tools["generic_echo"]?.execute?.(
+          { value: "hi" },
+          {
+            toolCallId: "call_1",
+            messages: [],
+            abortSignal: new AbortController().signal,
+          },
+        ) ?? Promise.resolve(undefined),
+      )
+
+      expect(out).toMatchObject({
+        isError: true,
+        content: [{ type: "text", text: "No echo target was available" }],
+      })
+    }),
+  ),
+)
+
 // ========================================================================
 // Test: tool change notifications refresh the cache
 // ========================================================================

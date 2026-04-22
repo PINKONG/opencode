@@ -63,6 +63,58 @@ IMPORTANT:
 - This tool provides your final answer - no further actions are taken after calling it`
 
 const STRUCTURED_OUTPUT_SYSTEM_PROMPT = `IMPORTANT: The user has requested structured output. You MUST use the StructuredOutput tool to provide your final response. Do NOT respond with plain text - you MUST call the StructuredOutput tool with your answer formatted according to the schema.`
+const KB_NOTE = ["use only for knowledge-base questions.", "avoid for local repo/code editing questions."].join(" ")
+
+function showMcpTool(key: string) {
+  if (key.endsWith("_list_dataset_documents")) return false
+  if (key.endsWith("_get_document_paragraphs")) return false
+  return true
+}
+
+function isKbTool(key: string) {
+  return key.endsWith("_search_knowledge") || key.endsWith("_search_dataset")
+}
+
+function mcpDescription(key: string, description?: string) {
+  if (key.endsWith("_search_knowledge")) {
+    return ["Search across all authorized MaxKB knowledge bases for passages relevant to the user's question.", KB_NOTE].join(
+      " ",
+    )
+  }
+  if (key.endsWith("_search_dataset")) {
+    return ["Search within one specific MaxKB knowledge base dataset (requires dataset_id).", KB_NOTE].join(" ")
+  }
+  return description
+}
+
+function itemText(value: unknown) {
+  if (!value || typeof value !== "object") return []
+  if (!("type" in value) || value.type !== "text") return []
+  if (!("text" in value) || typeof value.text !== "string") return []
+  return [value.text]
+}
+
+function itemResourceText(value: unknown) {
+  if (!value || typeof value !== "object") return []
+  if (!("type" in value) || value.type !== "resource") return []
+  if (!("resource" in value) || !value.resource || typeof value.resource !== "object") return []
+  if (!("text" in value.resource) || typeof value.resource.text !== "string") return []
+  return [value.resource.text]
+}
+
+function kbError(result: unknown, key: string) {
+  const content =
+    result && typeof result === "object" && "content" in result && Array.isArray(result.content) ? result.content : []
+  const msg = content
+    .flatMap((item) => {
+      const text = itemText(item)
+      if (text.length) return text
+      return itemResourceText(item)
+    })
+    .join("\n\n")
+    .trim()
+  return msg || `MCP tool ${key} failed`
+}
 
 export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
@@ -445,81 +497,94 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         }
 
         for (const [key, item] of Object.entries(yield* mcp.tools())) {
+          if (!showMcpTool(key)) continue
           const execute = item.execute
           if (!execute) continue
 
           const schema = yield* Effect.promise(() => Promise.resolve(asSchema(item.inputSchema).jsonSchema))
           const transformed = ProviderTransform.schema(input.model, schema)
-          item.inputSchema = jsonSchema(transformed)
-          item.execute = (args, opts) =>
-            run.promise(
-              Effect.gen(function* () {
-                const ctx = context(args, opts)
-                yield* plugin.trigger(
-                  "tool.execute.before",
-                  { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
-                  { args },
-                )
-                yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
-                const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.promise(() =>
-                  execute(args, opts),
-                )
-                yield* plugin.trigger(
-                  "tool.execute.after",
-                  { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
-                  result,
-                )
+          tools[key] = {
+            ...item,
+            description: mcpDescription(key, item.description),
+            inputSchema: jsonSchema(transformed),
+            execute: (args, opts) =>
+              run.promise(
+                Effect.gen(function* () {
+                  const ctx = context(args, opts)
+                  yield* plugin.trigger(
+                    "tool.execute.before",
+                    { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
+                    { args },
+                  )
+                  yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
+                  const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.promise(() =>
+                    execute(args, opts),
+                  )
+                  if (
+                    isKbTool(key) &&
+                    result &&
+                    typeof result === "object" &&
+                    "isError" in result &&
+                    result.isError === true
+                  ) {
+                    throw new Error(kbError(result, key))
+                  }
+                  yield* plugin.trigger(
+                    "tool.execute.after",
+                    { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
+                    result,
+                  )
 
-                const textParts: string[] = []
-                const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
-                for (const contentItem of result.content) {
-                  if (contentItem.type === "text") textParts.push(contentItem.text)
-                  else if (contentItem.type === "image") {
-                    attachments.push({
-                      type: "file",
-                      mime: contentItem.mimeType,
-                      url: `data:${contentItem.mimeType};base64,${contentItem.data}`,
-                    })
-                  } else if (contentItem.type === "resource") {
-                    const { resource } = contentItem
-                    if (resource.text) textParts.push(resource.text)
-                    if (resource.blob) {
+                  const textParts: string[] = []
+                  const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
+                  for (const contentItem of result.content) {
+                    if (contentItem.type === "text") textParts.push(contentItem.text)
+                    else if (contentItem.type === "image") {
                       attachments.push({
                         type: "file",
-                        mime: resource.mimeType ?? "application/octet-stream",
-                        url: `data:${resource.mimeType ?? "application/octet-stream"};base64,${resource.blob}`,
-                        filename: resource.uri,
+                        mime: contentItem.mimeType,
+                        url: `data:${contentItem.mimeType};base64,${contentItem.data}`,
                       })
+                    } else if (contentItem.type === "resource") {
+                      const { resource } = contentItem
+                      if (resource.text) textParts.push(resource.text)
+                      if (resource.blob) {
+                        attachments.push({
+                          type: "file",
+                          mime: resource.mimeType ?? "application/octet-stream",
+                          url: `data:${resource.mimeType ?? "application/octet-stream"};base64,${resource.blob}`,
+                          filename: resource.uri,
+                        })
+                      }
                     }
                   }
-                }
 
-                const truncated = yield* truncate.output(textParts.join("\n\n"), {}, input.agent)
-                const metadata = {
-                  ...result.metadata,
-                  truncated: truncated.truncated,
-                  ...(truncated.truncated && { outputPath: truncated.outputPath }),
-                }
+                  const truncated = yield* truncate.output(textParts.join("\n\n"), {}, input.agent)
+                  const metadata = {
+                    ...result.metadata,
+                    truncated: truncated.truncated,
+                    ...(truncated.truncated && { outputPath: truncated.outputPath }),
+                  }
 
-                const output = {
-                  title: "",
-                  metadata,
-                  output: truncated.content,
-                  attachments: attachments.map((attachment) => ({
-                    ...attachment,
-                    id: PartID.ascending(),
-                    sessionID: ctx.sessionID,
-                    messageID: input.processor.message.id,
-                  })),
-                  content: result.content,
-                }
-                if (opts.abortSignal?.aborted) {
-                  yield* input.processor.completeToolCall(opts.toolCallId, output)
-                }
-                return output
-              }),
-            )
-          tools[key] = item
+                  const output = {
+                    title: "",
+                    metadata,
+                    output: truncated.content,
+                    attachments: attachments.map((attachment) => ({
+                      ...attachment,
+                      id: PartID.ascending(),
+                      sessionID: ctx.sessionID,
+                      messageID: input.processor.message.id,
+                    })),
+                    content: result.content,
+                  }
+                  if (opts.abortSignal?.aborted) {
+                    yield* input.processor.completeToolCall(opts.toolCallId, output)
+                  }
+                  return output
+                }),
+              ),
+          }
         }
 
         return tools

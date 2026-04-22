@@ -3,6 +3,7 @@ import { FetchHttpClient } from "effect/unstable/http"
 import { expect } from "bun:test"
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import path from "path"
+import { jsonSchema, type Tool as AITool } from "ai"
 import { Agent as AgentSvc } from "../../src/agent/agent"
 import { Bus } from "../../src/bus"
 import { Command } from "../../src/command"
@@ -105,29 +106,33 @@ function errorTool(parts: MessageV2.Part[]) {
   return part?.state.status === "error" ? (part as ErrorToolPart) : undefined
 }
 
-const mcp = Layer.succeed(
-  MCP.Service,
-  MCP.Service.of({
-    status: () => Effect.succeed({}),
-    clients: () => Effect.succeed({}),
-    tools: () => Effect.succeed({}),
-    prompts: () => Effect.succeed({}),
-    resources: () => Effect.succeed({}),
-    add: () => Effect.succeed({ status: { status: "disabled" as const } }),
-    connect: () => Effect.void,
-    disconnect: () => Effect.void,
-    getPrompt: () => Effect.succeed(undefined),
-    readResource: () => Effect.succeed(undefined),
-    callTool: () => Effect.succeed(undefined),
-    startAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
-    authenticate: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
-    finishAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
-    removeAuth: () => Effect.void,
-    supportsOAuth: () => Effect.succeed(false),
-    hasStoredTokens: () => Effect.succeed(false),
-    getAuthStatus: () => Effect.succeed("not_authenticated" as const),
-  }),
-)
+function mcpLayer(tools: Record<string, AITool> = {}) {
+  return Layer.succeed(
+    MCP.Service,
+    MCP.Service.of({
+      status: () => Effect.succeed({}),
+      clients: () => Effect.succeed({}),
+      tools: () => Effect.succeed(tools),
+      prompts: () => Effect.succeed({}),
+      resources: () => Effect.succeed({}),
+      add: () => Effect.succeed({ status: { status: "disabled" as const } }),
+      connect: () => Effect.void,
+      disconnect: () => Effect.void,
+      getPrompt: () => Effect.succeed(undefined),
+      readResource: () => Effect.succeed(undefined),
+      callTool: () => Effect.succeed(undefined),
+      startAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
+      authenticate: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
+      finishAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
+      removeAuth: () => Effect.void,
+      supportsOAuth: () => Effect.succeed(false),
+      hasStoredTokens: () => Effect.succeed(false),
+      getAuthStatus: () => Effect.succeed("not_authenticated" as const),
+    }),
+  )
+}
+
+const mcp = mcpLayer()
 
 const lsp = Layer.succeed(
   LSP.Service,
@@ -162,7 +167,7 @@ const filetime = Layer.succeed(
 const status = SessionStatus.layer.pipe(Layer.provideMerge(Bus.layer))
 const run = SessionRunState.layer.pipe(Layer.provide(status))
 const infra = Layer.mergeAll(NodeFileSystem.layer, CrossSpawnSpawner.defaultLayer)
-function makeHttp() {
+function makeHttp(ml = mcp) {
   const deps = Layer.mergeAll(
     Session.defaultLayer,
     Snapshot.defaultLayer,
@@ -176,7 +181,7 @@ function makeHttp() {
     ProviderSvc.defaultLayer,
     filetime,
     lsp,
-    mcp,
+    ml,
     AppFileSystem.defaultLayer,
     status,
   ).pipe(Layer.provideMerge(infra))
@@ -214,6 +219,91 @@ function makeHttp() {
 
 const it = testEffect(makeHttp())
 const unix = process.platform !== "win32" ? it.live : it.live.skip
+const maxkb = {
+  maxkb_search_knowledge: mockTool("Search across authorized MCP datasets."),
+  maxkb_search_dataset: mockTool("Search one authorized MCP dataset."),
+  maxkb_list_dataset_documents: mockTool("List one authorized dataset documents with filters and pagination."),
+  maxkb_get_document_paragraphs: mockTool("Read one authorized document paragraph window."),
+  other_echo: mockTool("Echo input"),
+}
+const kb = testEffect(makeHttp(mcpLayer(maxkb)))
+const runkb = testEffect(
+  makeHttp(
+    mcpLayer({
+      maxkb_search_knowledge: mockTool(
+        "Search across authorized MCP datasets.",
+        {
+          text: '{"results":[{"dataset_id":"0141","document_name":"仓库管理.docx","paragraph_title":"库存管理","paragraph_content":"仓库管理相关内容"}],"search_scope":{"query_text":"仓库管理"}}',
+        },
+      ),
+      maxkb_search_dataset: mockTool(
+        "Search one authorized MCP dataset.",
+        {
+          fail: "Error executing tool search_dataset: (403, 'The knowledge base is not authorized【bad】')",
+        },
+      ),
+    }),
+  ),
+)
+const sharedkb = (() => {
+  const tools = {
+    maxkb_search_dataset: mockTool(
+      "Search one authorized MCP dataset.",
+      {
+        fail: "Error executing tool search_dataset: (403, 'The knowledge base is not authorized【bad】')",
+      },
+    ),
+  }
+  return testEffect(makeHttp(mcpLayer(tools)))
+})()
+
+function mockTool(description: string, result?: { text?: string; fail?: string }) {
+  return {
+    description,
+    inputSchema: jsonSchema({
+      type: "object",
+      properties: {
+        query_text: { type: "string" },
+        dataset_id: { type: "string" },
+      },
+    }),
+    execute: async () => {
+      if (result?.fail) throw new Error(result.fail)
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: result?.text ?? '{"results":[],"search_scope":{"query_text":"x"}}',
+          },
+        ],
+      }
+    },
+  } satisfies AITool
+}
+
+function names(input: Record<string, unknown> | undefined) {
+  return Array.isArray(input?.tools)
+    ? input.tools
+        .flatMap((item) => {
+          if (!item || typeof item !== "object") return []
+          const fn = (item as { function?: { name?: unknown } }).function
+          return typeof fn?.name === "string" ? [fn.name] : []
+        })
+        .sort()
+    : []
+}
+
+function descriptions(input: Record<string, unknown> | undefined) {
+  return Array.isArray(input?.tools)
+    ? input.tools.flatMap((item) => {
+        if (!item || typeof item !== "object") return []
+        const fn = (item as { function?: { name?: unknown; description?: unknown } }).function
+        return typeof fn?.name === "string" && typeof fn?.description === "string"
+          ? [[fn.name, fn.description] as const]
+          : []
+      })
+    : []
+}
 
 // Config that registers a custom "test" provider with a "test-model" model
 // so provider model lookup succeeds inside the loop.
@@ -335,6 +425,150 @@ const boot = Effect.fn("test.boot")(function* (input?: { title?: string }) {
 })
 
 // Loop semantics
+
+kb.live("loop exposes only MaxKB retrieval MCP tools to the model", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "MaxKB Tools" })
+      yield* llm.text("done")
+      yield* user(chat.id, "工业知识库里有仓库管理吗")
+
+      yield* prompt.loop({ sessionID: chat.id })
+
+      const input = (yield* llm.inputs).at(0)
+      const tools = names(input)
+      expect(tools).toContain("maxkb_search_knowledge")
+      expect(tools).toContain("maxkb_search_dataset")
+      expect(tools).toContain("other_echo")
+      expect(tools).not.toContain("maxkb_list_dataset_documents")
+      expect(tools).not.toContain("maxkb_get_document_paragraphs")
+    }),
+    { git: true, config: providerCfg },
+  ),
+  10_000,
+)
+
+kb.live("loop augments MaxKB retrieval tool descriptions for knowledge questions", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "MaxKB Descriptions" })
+      yield* llm.text("done")
+      yield* user(chat.id, "工业知识库里有仓库管理吗")
+
+      yield* prompt.loop({ sessionID: chat.id })
+
+      const input = (yield* llm.inputs).at(0)
+      const tools = new Map(descriptions(input))
+      expect(tools.get("maxkb_search_knowledge")).toContain(
+        "Search across all authorized MaxKB knowledge bases for passages relevant to the user's question",
+      )
+      expect(tools.get("maxkb_search_dataset")).toContain(
+        "Search within one specific MaxKB knowledge base dataset (requires dataset_id)",
+      )
+      expect(tools.get("maxkb_search_knowledge")).toContain("use only for knowledge-base questions")
+      expect(tools.get("maxkb_search_dataset")).toContain("avoid for local repo/code editing questions")
+      expect(tools.get("other_echo")).toBe("Echo input")
+    }),
+    { git: true, config: providerCfg },
+  ),
+  10_000,
+)
+
+runkb.live("loop injects MaxKB retrieval results back into the next model turn", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({
+        title: "MaxKB Result",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* llm.tool("maxkb_search_knowledge", { query_text: "仓库管理" })
+      yield* llm.text("done")
+      yield* user(chat.id, "工业知识库里有仓库管理吗")
+
+      yield* prompt.loop({ sessionID: chat.id })
+
+      const inputs = yield* llm.inputs
+      expect(inputs).toHaveLength(2)
+      expect(JSON.stringify(inputs.at(-1)?.messages)).toContain("仓库管理.docx")
+      expect(JSON.stringify(inputs.at(-1)?.messages)).toContain("仓库管理相关内容")
+    }),
+    { git: true, config: providerCfg },
+  ),
+  10_000,
+)
+
+runkb.live("loop injects MaxKB isError retrieval output back into the next model turn", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({
+        title: "MaxKB Error",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* llm.tool("maxkb_search_dataset", {
+        dataset_id: "bad",
+        query_text: "仓库管理",
+      })
+      yield* llm.text("done")
+      yield* user(chat.id, "去工业知识库里查仓库管理")
+
+      yield* prompt.loop({ sessionID: chat.id })
+
+      const inputs = yield* llm.inputs
+      expect(inputs).toHaveLength(2)
+      expect(JSON.stringify(inputs.at(-1)?.messages)).toContain("The knowledge base is not authorized")
+      const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
+      const part = msgs
+        .flatMap((msg) => msg.parts)
+        .find(
+          (item): item is ErrorToolPart =>
+            item.type === "tool" && item.tool === "maxkb_search_dataset" && item.state.status === "error",
+        )
+      expect(part?.state.error).toContain("The knowledge base is not authorized")
+    }),
+    { git: true, config: providerCfg },
+  ),
+  10_000,
+)
+
+sharedkb.live("loop preserves MaxKB tool errors across repeated prompt runs with shared MCP definitions", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ llm }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+
+      const warm = yield* sessions.create({ title: "Warm" })
+      yield* llm.text("done")
+      yield* user(warm.id, "先打个招呼")
+      yield* prompt.loop({ sessionID: warm.id })
+
+      const chat = yield* sessions.create({
+        title: "Shared MaxKB Error",
+        permission: [{ permission: "*", pattern: "*", action: "allow" }],
+      })
+      yield* llm.tool("maxkb_search_dataset", {
+        dataset_id: "bad",
+        query_text: "仓库管理",
+      })
+      yield* llm.text("done")
+      yield* user(chat.id, "去工业知识库里查仓库管理")
+
+      yield* prompt.loop({ sessionID: chat.id })
+
+      const input = (yield* llm.inputs).at(-1)
+      expect(JSON.stringify(input?.messages)).toContain("The knowledge base is not authorized")
+    }),
+    { git: true, config: providerCfg },
+  ),
+  10_000,
+)
 
 it.live("loop exits immediately when last assistant has stop finish", () =>
   provideTmpdirServer(
