@@ -49,6 +49,8 @@ mock.module("../../src/mcp/maxkb", () => ({
 }))
 
 beforeEach(() => {
+  delete process.env.WISCODE_BUNDLED_NODE_PATH
+  delete process.env.WISCODE_BUNDLED_NODE_DISABLE
   transportCalls.length = 0
   maxkbWarn = undefined
 })
@@ -68,6 +70,9 @@ test("headers are passed to transports when oauth is enabled (default)", async (
         JSON.stringify({
           $schema: "https://opencode.ai/config.json",
           mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
             "test-server": {
               type: "remote",
               url: "https://example.com/mcp",
@@ -119,7 +124,21 @@ test("headers are passed to transports when oauth is enabled (default)", async (
 })
 
 test("headers are passed to transports when oauth is explicitly disabled", async () => {
-  await using tmp = await tmpdir()
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        `${dir}/opencode.json`,
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
+          },
+        }),
+      )
+    },
+  })
 
   await Instance.provide({
     directory: tmp.path,
@@ -157,7 +176,21 @@ test("headers are passed to transports when oauth is explicitly disabled", async
 })
 
 test("no requestInit when headers are not provided", async () => {
-  await using tmp = await tmpdir()
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        `${dir}/opencode.json`,
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
+          },
+        }),
+      )
+    },
+  })
 
   await Instance.provide({
     directory: tmp.path,
@@ -187,7 +220,21 @@ test("no requestInit when headers are not provided", async () => {
 })
 
 test("maxkb hmac remote uses signed fetch and disables oauth", async () => {
-  await using tmp = await tmpdir()
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        `${dir}/opencode.json`,
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+          mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
+          },
+        }),
+      )
+    },
+  })
 
   await Instance.provide({
     directory: tmp.path,

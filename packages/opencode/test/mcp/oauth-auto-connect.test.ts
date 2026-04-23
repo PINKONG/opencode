@@ -1,4 +1,4 @@
-import { test, expect, mock, beforeEach } from "bun:test"
+import { test, expect, mock, beforeEach, afterEach } from "bun:test"
 import { Effect } from "effect"
 
 // Mock UnauthorizedError to match the SDK's class
@@ -103,10 +103,40 @@ void mock.module("@modelcontextprotocol/sdk/client/auth.js", () => ({
   UnauthorizedError: MockUnauthorizedError,
 }))
 
+const pending = new Map<string, { reject: (error: Error) => void }>()
+void mock.module("../../src/mcp/oauth-callback", () => ({
+  McpOAuthCallback: {
+    ensureRunning: async () => {},
+    waitForCallback: (oauthState: string, mcpName?: string) =>
+      new Promise<string>((_resolve, reject) => {
+        pending.set(mcpName ?? oauthState, { reject })
+      }),
+    cancelPending: (mcpName: string) => {
+      const item = pending.get(mcpName)
+      if (!item) return
+      pending.delete(mcpName)
+      item.reject(new Error("Authorization cancelled"))
+    },
+    stop: async () => {
+      for (const [key, value] of pending) {
+        pending.delete(key)
+        value.reject(new Error("OAuth callback server stopped"))
+      }
+    },
+  },
+}))
+
 beforeEach(() => {
+  delete process.env.WISCODE_BUNDLED_NODE_PATH
+  delete process.env.WISCODE_BUNDLED_NODE_DISABLE
   transportCalls.length = 0
   simulateAuthFlow = true
   connectSucceedsImmediately = false
+})
+
+afterEach(async () => {
+  const { McpOAuthCallback } = await import("../../src/mcp/oauth-callback")
+  await McpOAuthCallback.stop()
 })
 
 // Import modules after mocking
@@ -122,6 +152,9 @@ test("first connect to OAuth server shows needs_auth instead of failed", async (
         JSON.stringify({
           $schema: "https://opencode.ai/config.json",
           mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
             "test-oauth": {
               type: "remote",
               url: "https://example.com/mcp",
@@ -242,6 +275,9 @@ test("authenticate() stores a connected client when auth completes without redir
         JSON.stringify({
           $schema: "https://opencode.ai/config.json",
           mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
             "test-oauth-connect": {
               type: "remote",
               url: "https://example.com/mcp",

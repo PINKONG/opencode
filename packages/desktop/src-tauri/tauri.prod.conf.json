@@ -4,6 +4,7 @@
   "identifier": "ai.wiscode.desktop",
   "bundle": {
     "createUpdaterArtifacts": true,
+    "externalBin": ["sidecars/wiscode-cli", "sidecars/wiscode-node"],
     "icon": [
       "icons/prod/32x32.png",
       "icons/prod/128x128.png",

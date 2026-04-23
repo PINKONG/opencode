@@ -118,6 +118,14 @@ pub fn get_sidecar_path(app: &tauri::AppHandle) -> std::path::PathBuf {
         .join("wiscode-cli")
 }
 
+pub fn get_bundled_node_path(app: &tauri::AppHandle) -> std::path::PathBuf {
+    tauri::process::current_binary(&app.env())
+        .expect("Failed to get current binary")
+        .parent()
+        .expect("Failed to get parent dir")
+        .join("wiscode-node")
+}
+
 fn is_cli_installed() -> bool {
     get_cli_install_path()
         .map(|path| path.exists())
@@ -388,6 +396,13 @@ pub fn spawn_command(
             state_dir.to_string_lossy().to_string(),
         ),
     ];
+    let bundled_node = get_bundled_node_path(app);
+    if bundled_node.exists() {
+        envs.push((
+            "WISCODE_BUNDLED_NODE_PATH".to_string(),
+            bundled_node.to_string_lossy().to_string(),
+        ));
+    }
     envs.extend(
         extra_env
             .iter()
@@ -421,6 +436,7 @@ pub fn spawn_command(
                     .filter(|(key, _)| key != "OPENCODE_EXPERIMENTAL_FILEWATCHER")
                     .filter(|(key, _)| key != "OPENCODE_CLIENT")
                     .filter(|(key, _)| key != "XDG_STATE_HOME")
+                    .filter(|(key, _)| key != "WISCODE_BUNDLED_NODE_PATH")
                     .map(|(key, value)| format!("{}={}", key, shell_escape(value))),
             );
 

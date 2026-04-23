@@ -1,4 +1,6 @@
 import { app } from "electron"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import { DEFAULT_SERVER_URL_KEY, WSL_ENABLED_KEY } from "./constants"
 import { getUserShell, loadShellEnv } from "./shell-env"
 import { store } from "./store"
@@ -57,9 +59,23 @@ export async function spawnLocalServer(hostname: string, port: number, password:
   return { listener, health: { wait } }
 }
 
+function resolveBundledNodePath() {
+  const executable = process.platform === "win32" ? "wiscode-node.exe" : "wiscode-node"
+  if (app.isPackaged) return join(process.resourcesPath, executable)
+
+  const candidates = [
+    join(app.getAppPath(), "resources", executable),
+    join(app.getAppPath(), "..", "resources", executable),
+    join(app.getAppPath(), "..", "..", "resources", executable),
+    join(process.cwd(), "resources", executable),
+  ]
+  return candidates.find((item) => existsSync(item)) ?? candidates[0]
+}
+
 function prepareServerEnv(password: string) {
   const shell = process.platform === "win32" ? null : getUserShell()
   const shellEnv = shell ? (loadShellEnv(shell) ?? {}) : {}
+  const bundledNode = resolveBundledNodePath()
   const env = {
     ...process.env,
     ...shellEnv,
@@ -69,6 +85,7 @@ function prepareServerEnv(password: string) {
     OPENCODE_SERVER_USERNAME: "opencode",
     OPENCODE_SERVER_PASSWORD: password,
     XDG_STATE_HOME: app.getPath("userData"),
+    ...(existsSync(bundledNode) ? { WISCODE_BUNDLED_NODE_PATH: bundledNode } : {}),
   }
   Object.assign(process.env, env)
 }

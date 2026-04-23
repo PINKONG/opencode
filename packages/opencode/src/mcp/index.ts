@@ -1,4 +1,5 @@
 import { dynamicTool, type Tool, jsonSchema, type JSONSchema7 } from "ai"
+import fs from "node:fs"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
@@ -23,6 +24,7 @@ import { McpOAuthProvider } from "./oauth-provider"
 import { McpOAuthCallback } from "./oauth-callback"
 import { McpAuth } from "./auth"
 import { createMaxkbSignedFetch } from "./maxkb"
+import { resolveLocalCommand } from "./local-command"
 import { BusEvent } from "../bus/bus-event"
 import { Bus } from "@/bus"
 import { TuiEvent } from "@/cli/cmd/tui/event"
@@ -412,7 +414,46 @@ export const layer = Layer.effect(
       key: string,
       mcp: ConfigMCP.Info & { type: "local" },
     ) {
-      const [cmd, ...args] = mcp.command
+      const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path")
+      const delimiter = process.platform === "win32" ? ";" : ":"
+      const bundledNodePath = process.env.WISCODE_BUNDLED_NODE_PATH
+      const bundledNodeDisabled = process.env.WISCODE_BUNDLED_NODE_DISABLE === "1"
+      const bundledNodeUsable =
+        !!bundledNodePath &&
+        (() => {
+          try {
+            fs.accessSync(bundledNodePath, fs.constants.X_OK)
+            return true
+          } catch {
+            return false
+          }
+        })()
+      const localEnv = Object.fromEntries(
+        Object.entries({
+          ...process.env,
+          ...mcp.environment,
+        }).flatMap(([key, value]) => (typeof value === "string" ? [[key, value] as const] : [])),
+      )
+      const resolved = resolveLocalCommand({
+        command: mcp.command,
+        env: localEnv,
+        bundledNodePath,
+        bundledNodeUsable,
+        bundledNodeDisabled,
+        pathDelimiter: delimiter,
+      })
+      if (resolved.resolution !== "none") {
+        log.info("local mcp node resolution", {
+          mcp_server_name: key,
+          node_resolution: resolved.resolution,
+          bundled_node_path: bundledNodePath ?? null,
+          path_key: pathKey ?? "PATH",
+        })
+      }
+      if (!bundledNodeDisabled && bundledNodePath && !bundledNodeUsable) {
+        log.warn("bundled node unavailable; falling back", { mcp_server_name: key, bundled_node_path: bundledNodePath })
+      }
+      const [cmd, ...args] = resolved.command
       const cwd = Instance.directory
       const transport = new StdioClientTransport({
         stderr: "pipe",
@@ -420,9 +461,8 @@ export const layer = Layer.effect(
         args,
         cwd,
         env: {
-          ...process.env,
           ...(cmd === "opencode" ? { BUN_BE_BUN: "1" } : {}),
-          ...mcp.environment,
+          ...resolved.env,
         },
       })
       transport.stderr?.on("data", (chunk: Buffer) => {

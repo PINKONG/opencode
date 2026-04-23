@@ -25,4 +25,6 @@ dist-ssr
 out/
 
 resources/opencode-cli*
+resources/wiscode-node*
+resources/node-cache/
 resources/icons

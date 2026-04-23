@@ -1,4 +1,6 @@
 import { $ } from "bun"
+import { existsSync } from "node:fs"
+import path from "node:path"
 
 export type Channel = "dev" | "beta" | "prod"
 
@@ -42,6 +44,7 @@ export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; ass
 ]
 
 export const RUST_TARGET = Bun.env.RUST_TARGET
+const NODE_VERSION = "24.14.0"
 
 function nativeTarget() {
   const { platform, arch } = process
@@ -71,6 +74,57 @@ export async function copyBinaryToSidecarFolder(source: string) {
     await $`codesign --force --sign - ${dest}`
   }
 
+  console.log(`Copied ${source} to ${dest}`)
+}
+
+function nodeArchive(target = RUST_TARGET ?? nativeTarget()) {
+  if (target === "aarch64-apple-darwin") return `node-v${NODE_VERSION}-darwin-arm64.tar.gz`
+  if (target === "x86_64-apple-darwin") return `node-v${NODE_VERSION}-darwin-x64.tar.gz`
+  if (target === "aarch64-pc-windows-msvc") return `node-v${NODE_VERSION}-win-arm64.zip`
+  if (target === "x86_64-pc-windows-msvc") return `node-v${NODE_VERSION}-win-x64.zip`
+  if (target === "x86_64-unknown-linux-gnu") return `node-v${NODE_VERSION}-linux-x64.tar.xz`
+  if (target === "aarch64-unknown-linux-gnu") return `node-v${NODE_VERSION}-linux-arm64.tar.xz`
+  throw new Error(`Unsupported target for node archive: ${target}`)
+}
+
+function nodeDistName(target = RUST_TARGET ?? nativeTarget()) {
+  return nodeArchive(target).replace(/(\.tar\.gz|\.tar\.xz|\.zip)$/, "")
+}
+
+export async function ensureBundledNodeBinary(target = RUST_TARGET ?? nativeTarget()) {
+  const archiveName = nodeArchive(target)
+  const distName = nodeDistName(target)
+  const dir = path.join("resources", "node-cache")
+  const vendor = path.join("..", "..", "third_party", "node", `v${NODE_VERSION}`)
+  const archivePath = path.join(dir, archiveName)
+  const vendoredArchive = path.join(vendor, archiveName)
+  const distPath = path.join(dir, distName)
+  await $`mkdir -p ${dir}`
+  if (!existsSync(archivePath) && existsSync(vendoredArchive)) await $`cp ${vendoredArchive} ${archivePath}`
+  if (!existsSync(archivePath)) {
+    const url = `https://nodejs.org/dist/v${NODE_VERSION}/${archiveName}`
+    await $`curl -fL ${url} -o ${archivePath}`
+  }
+  if (!existsSync(distPath)) {
+    if (archiveName.endsWith(".zip")) await $`unzip -q -o ${archivePath} -d ${dir}`
+    else if (archiveName.endsWith(".tar.xz")) await $`tar -xJf ${archivePath} -C ${dir}`
+    else await $`tar -xzf ${archivePath} -C ${dir}`
+  }
+  return target.includes("windows") ? path.join(distPath, "node.exe") : path.join(distPath, "bin", "node")
+}
+
+export async function copyBundledNodeToResources(source: string) {
+  const dir = `resources`
+  await $`mkdir -p ${dir}`
+  const dest = windowsify(`${dir}/wiscode-node`)
+  await $`cp ${source} ${dest}`
+  if (process.platform === "win32" && process.env.GITHUB_ACTIONS === "true") {
+    await $`pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ../../script/sign-windows.ps1 ${dest}`
+  }
+  if (process.platform === "darwin") {
+    await $`codesign --remove-signature ${dest}`.nothrow()
+    await $`codesign --force --sign - ${dest}`
+  }
   console.log(`Copied ${source} to ${dest}`)
 }
 

@@ -4,8 +4,10 @@ import { describe, expect, test } from "bun:test"
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const file = join(dir, "../src-tauri/tauri.prod.conf.json")
+const betaFile = join(dir, "../src-tauri/tauri.beta.conf.json")
 const cfg = JSON.parse(await Bun.file(file).text()) as {
   bundle?: {
+    externalBin?: string[]
     windows?: {
       nsis?: {
         headerImage?: string
@@ -17,6 +19,11 @@ const cfg = JSON.parse(await Bun.file(file).text()) as {
     updater?: {
       endpoints?: string[]
     }
+  }
+}
+const betaCfg = JSON.parse(await Bun.file(betaFile).text()) as {
+  bundle?: {
+    externalBin?: string[]
   }
 }
 
@@ -34,5 +41,17 @@ describe("tauri production config", () => {
     const nsis = cfg.bundle?.windows?.nsis
     expect(nsis?.headerImage).toBe("assets/nsis-header.bmp")
     expect(nsis?.sidebarImage).toBe("assets/nsis-sidebar.bmp")
+  })
+
+  test("ships both cli and node sidecars", () => {
+    expect(cfg.bundle?.externalBin).toBeDefined()
+    expect(cfg.bundle?.externalBin).toContain("sidecars/wiscode-cli")
+    expect(cfg.bundle?.externalBin).toContain("sidecars/wiscode-node")
+  })
+
+  test("ships both cli and node sidecars in beta config", () => {
+    expect(betaCfg.bundle?.externalBin).toBeDefined()
+    expect(betaCfg.bundle?.externalBin).toContain("sidecars/wiscode-cli")
+    expect(betaCfg.bundle?.externalBin).toContain("sidecars/wiscode-node")
   })
 })

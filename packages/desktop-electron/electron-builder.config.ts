@@ -39,6 +39,11 @@ const getBase = (): Configuration => ({
       to: "native/",
       filter: ["index.js", "index.d.ts", "build/Release/mac_window.node", "swift-build/**"],
     },
+    {
+      from: "resources/",
+      to: ".",
+      filter: ["wiscode-cli", "wiscode-cli.exe", "wiscode-node", "wiscode-node.exe"],
+    },
   ],
   mac: {
     category: "public.app-category.developer-tools",

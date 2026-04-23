@@ -33,7 +33,7 @@
     ],
     "active": true,
     "targets": ["deb", "rpm", "dmg", "nsis", "app"],
-    "externalBin": ["sidecars/wiscode-cli"],
+    "externalBin": ["sidecars/wiscode-cli", "sidecars/wiscode-node"],
     "linux": {
       "rpm": {
         "compression": {

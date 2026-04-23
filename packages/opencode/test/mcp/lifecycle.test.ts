@@ -192,6 +192,8 @@ void mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
 }))
 
 beforeEach(() => {
+  delete process.env.WISCODE_BUNDLED_NODE_PATH
+  delete process.env.WISCODE_BUNDLED_NODE_DISABLE
   clientStates.clear()
   lastCreatedClientName = undefined
   connectShouldFail = false
@@ -219,7 +221,12 @@ function withInstance(
           `${dir}/opencode.json`,
           JSON.stringify({
             $schema: "https://opencode.ai/config.json",
-            mcp: config,
+            mcp: {
+              "maxkb-prod": {
+                enabled: false,
+              },
+              ...config,
+            },
           }),
         )
       },

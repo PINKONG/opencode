@@ -1,4 +1,4 @@
-import { test, expect, mock, beforeEach } from "bun:test"
+import { test, expect, mock, beforeEach, afterEach } from "bun:test"
 import { EventEmitter } from "events"
 import { Effect } from "effect"
 import type { MCP as MCPNS } from "../../src/mcp/index"
@@ -94,10 +94,39 @@ void mock.module("@modelcontextprotocol/sdk/client/auth.js", () => ({
   UnauthorizedError: MockUnauthorizedError,
 }))
 
+const pending = new Map<string, { reject: (error: Error) => void }>()
+void mock.module("../../src/mcp/oauth-callback", () => ({
+  McpOAuthCallback: {
+    ensureRunning: async () => {},
+    waitForCallback: (oauthState: string, mcpName?: string) =>
+      new Promise<string>((_resolve, reject) => {
+        pending.set(mcpName ?? oauthState, { reject })
+      }),
+    cancelPending: (mcpName: string) => {
+      const item = pending.get(mcpName)
+      if (!item) return
+      pending.delete(mcpName)
+      item.reject(new Error("Authorization cancelled"))
+    },
+    stop: async () => {
+      for (const [key, value] of pending) {
+        pending.delete(key)
+        value.reject(new Error("OAuth callback server stopped"))
+      }
+    },
+  },
+}))
+
 beforeEach(() => {
+  delete process.env.WISCODE_BUNDLED_NODE_PATH
+  delete process.env.WISCODE_BUNDLED_NODE_DISABLE
   openShouldFail = false
   openCalledWith = undefined
   transportCalls.length = 0
+})
+
+afterEach(async () => {
+  await McpOAuthCallback.stop()
 })
 
 // Import modules after mocking
@@ -117,6 +146,9 @@ test("BrowserOpenFailed event is published when open() throws", async () => {
         JSON.stringify({
           $schema: "https://opencode.ai/config.json",
           mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
             "test-oauth-server": {
               type: "remote",
               url: "https://example.com/mcp",
@@ -173,6 +205,9 @@ test("BrowserOpenFailed event is NOT published when open() succeeds", async () =
         JSON.stringify({
           $schema: "https://opencode.ai/config.json",
           mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
             "test-oauth-server-2": {
               type: "remote",
               url: "https://example.com/mcp",
@@ -227,6 +262,9 @@ test("open() is called with the authorization URL", async () => {
         JSON.stringify({
           $schema: "https://opencode.ai/config.json",
           mcp: {
+            "maxkb-prod": {
+              enabled: false,
+            },
             "test-oauth-server-3": {
               type: "remote",
               url: "https://example.com/mcp",
