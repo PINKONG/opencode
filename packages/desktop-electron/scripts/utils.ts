@@ -91,6 +91,16 @@ function nodeDistName(target = RUST_TARGET ?? nativeTarget()) {
   return nodeArchive(target).replace(/(\.tar\.gz|\.tar\.xz|\.zip)$/, "")
 }
 
+function extractNode(archive: string, output: string) {
+  if (archive.endsWith(".zip") && process.platform === "win32") {
+    const command = `Expand-Archive -LiteralPath '${archive.replaceAll("'", "''")}' -DestinationPath '${output.replaceAll("'", "''")}' -Force`
+    return $`powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ${command}`
+  }
+  if (archive.endsWith(".zip")) return $`unzip -q -o ${archive} -d ${output}`
+  if (archive.endsWith(".tar.xz")) return $`tar -xJf ${archive} -C ${output}`
+  return $`tar -xzf ${archive} -C ${output}`
+}
+
 export async function ensureBundledNodeBinary(target = RUST_TARGET ?? nativeTarget()) {
   const archiveName = nodeArchive(target)
   const distName = nodeDistName(target)
@@ -105,11 +115,7 @@ export async function ensureBundledNodeBinary(target = RUST_TARGET ?? nativeTarg
     const url = `https://nodejs.org/dist/v${NODE_VERSION}/${archiveName}`
     await $`curl -fL ${url} -o ${archivePath}`
   }
-  if (!existsSync(distPath)) {
-    if (archiveName.endsWith(".zip")) await $`unzip -q -o ${archivePath} -d ${dir}`
-    else if (archiveName.endsWith(".tar.xz")) await $`tar -xJf ${archivePath} -C ${dir}`
-    else await $`tar -xzf ${archivePath} -C ${dir}`
-  }
+  if (!existsSync(distPath)) await extractNode(archivePath, dir)
   return target.includes("windows") ? path.join(distPath, "node.exe") : path.join(distPath, "bin", "node")
 }
 

@@ -90,6 +90,10 @@ export async function copyBinaryToSidecarFolder(source: string, target?: string,
 }
 
 function extractNode(archive: string, output: string) {
+  if (archive.endsWith(".zip") && process.platform === "win32") {
+    const command = `Expand-Archive -LiteralPath '${archive.replaceAll("'", "''")}' -DestinationPath '${output.replaceAll("'", "''")}' -Force`
+    return $`powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ${command}`
+  }
   if (archive.endsWith(".zip")) return $`unzip -q -o ${archive} -d ${output}`
   if (archive.endsWith(".tar.xz")) return $`tar -xJf ${archive} -C ${output}`
   return $`tar -xzf ${archive} -C ${output}`

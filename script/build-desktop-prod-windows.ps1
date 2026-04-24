@@ -83,10 +83,13 @@ Write-Host "==> build frontend"
 bun run build
 
 Write-Host "==> tauri prod build"
+$env:WISCODE_SKIP_OPENCODE_BUILD = "1"
 $args = @("run", "tauri", "build", "--config", "src-tauri/tauri.prod.conf.json")
 if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY_PATH) {
   Write-Host "==> updater signing key missing, disabling updater artifacts"
-  $args += @("--config", '{"bundle":{"createUpdaterArtifacts":false}}')
+  $tempConfig = [System.IO.Path]::GetTempFileName() + ".json"
+  '{"bundle":{"createUpdaterArtifacts":false}}' | Set-Content -Path $tempConfig -Encoding UTF8
+  $args += @("--config", $tempConfig)
 }
 & bun @args
 
