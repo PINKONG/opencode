@@ -119,11 +119,17 @@ pub fn get_sidecar_path(app: &tauri::AppHandle) -> std::path::PathBuf {
 }
 
 pub fn get_bundled_node_path(app: &tauri::AppHandle) -> std::path::PathBuf {
+    let executable = if cfg!(windows) {
+        "wiscode-node.exe"
+    } else {
+        "wiscode-node"
+    };
+
     tauri::process::current_binary(&app.env())
         .expect("Failed to get current binary")
         .parent()
         .expect("Failed to get parent dir")
-        .join("wiscode-node")
+        .join(executable)
 }
 
 fn is_cli_installed() -> bool {

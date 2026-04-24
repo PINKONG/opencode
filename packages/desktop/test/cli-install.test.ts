@@ -34,4 +34,10 @@ describe("tauri cli install path", () => {
     const sidecar = getCurrentSidecar()
     expect(SIDECAR_BINARIES.map((item) => item.rustTarget)).toContain(sidecar.rustTarget)
   })
+
+  test("resolves bundled node with .exe suffix on windows", () => {
+    expect(src).toContain('let executable = if cfg!(windows) {')
+    expect(src).toContain('"wiscode-node.exe"')
+    expect(src).toContain('"wiscode-node"')
+  })
 })
