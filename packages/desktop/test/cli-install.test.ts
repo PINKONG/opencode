@@ -40,4 +40,26 @@ describe("tauri cli install path", () => {
     expect(src).toContain('"wiscode-node.exe"')
     expect(src).toContain('"wiscode-node"')
   })
+
+  test("supports windows cli installation flow", () => {
+    expect(src).toContain('const INSTALL_SCRIPT_WINDOWS: &str = include_str!("../../../../install-windows.ps1");')
+    expect(src).toContain('let temp_script = std::env::temp_dir().join("wiscode-install.ps1");')
+    expect(src).not.toContain("CLI installation is only supported on macOS & Linux")
+  })
+
+  test("sync_cli auto-installs on windows when cli is missing", () => {
+    expect(src).toContain("No CLI installation found on Windows, auto-installing")
+    expect(src).toContain("Auto-installed CLI on Windows")
+  })
+
+  test("sync_cli repairs PATH on windows by reading registry not process env", () => {
+    expect(src).toContain("windows_user_path_contains")
+    expect(src).toContain("CLI binary exists but bin dir missing from user PATH registry, repairing")
+    expect(src).toContain("Repaired CLI PATH on Windows")
+  })
+
+  test("sync_cli reinstalls on windows when --version fails", () => {
+    expect(src).toContain("CLI --version failed, attempting reinstall")
+    expect(src).toContain("Reinstalled CLI after --version failure")
+  })
 })

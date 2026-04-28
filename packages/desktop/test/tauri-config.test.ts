@@ -5,6 +5,7 @@ import { describe, expect, test } from "bun:test"
 const dir = dirname(fileURLToPath(import.meta.url))
 const file = join(dir, "../src-tauri/tauri.prod.conf.json")
 const betaFile = join(dir, "../src-tauri/tauri.beta.conf.json")
+const hooksFile = join(dir, "../src-tauri/release/nsis-installer-hooks.nsh")
 const cfg = JSON.parse(await Bun.file(file).text()) as {
   bundle?: {
     externalBin?: string[]
@@ -12,6 +13,7 @@ const cfg = JSON.parse(await Bun.file(file).text()) as {
       nsis?: {
         headerImage?: string
         sidebarImage?: string
+        installerHooks?: string
       }
     }
   }
@@ -21,9 +23,15 @@ const cfg = JSON.parse(await Bun.file(file).text()) as {
     }
   }
 }
+const hooks = await Bun.file(hooksFile).text()
 const betaCfg = JSON.parse(await Bun.file(betaFile).text()) as {
   bundle?: {
     externalBin?: string[]
+    windows?: {
+      nsis?: {
+        installerHooks?: string
+      }
+    }
   }
 }
 
@@ -41,6 +49,17 @@ describe("tauri production config", () => {
     const nsis = cfg.bundle?.windows?.nsis
     expect(nsis?.headerImage).toBe("assets/nsis-header.bmp")
     expect(nsis?.sidebarImage).toBe("assets/nsis-sidebar.bmp")
+    expect(nsis?.installerHooks).toBe("release/nsis-installer-hooks.nsh")
+    expect(betaCfg.bundle?.windows?.nsis?.installerHooks).toBe("release/nsis-installer-hooks.nsh")
+  })
+
+  test("registers windows cli on post install and cleans on uninstall", () => {
+    expect(hooks).toContain("!macro NSIS_HOOK_POSTINSTALL")
+    expect(hooks).toContain("!macro NSIS_HOOK_POSTUNINSTALL")
+    expect(hooks).toContain("wiscode.exe")
+    expect(hooks).toContain("HKCU")
+    expect(hooks).toContain("$INSTDIR\\resources\\wiscode-cli.exe")
+    expect(hooks).toContain("Rebuild PATH by splitting on")
   })
 
   test("ships both cli and node sidecars", () => {

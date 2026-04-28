@@ -102,20 +102,37 @@ pub async fn get_config(app: &AppHandle) -> Option<Config> {
 }
 
 fn get_cli_install_path() -> Option<std::path::PathBuf> {
-    std::env::var("HOME").ok().map(|home| {
+    #[cfg(windows)]
+    let home = std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .ok()?;
+    #[cfg(not(windows))]
+    let home = std::env::var("HOME").ok()?;
+    let executable = if cfg!(windows) {
+        format!("{CLI_BINARY_NAME}.exe")
+    } else {
+        CLI_BINARY_NAME.to_string()
+    };
+
+    Some(
         std::path::PathBuf::from(home)
             .join(CLI_INSTALL_DIR)
-            .join(CLI_BINARY_NAME)
-    })
+            .join(executable),
+    )
 }
 
 pub fn get_sidecar_path(app: &tauri::AppHandle) -> std::path::PathBuf {
+    let executable = if cfg!(windows) {
+        "wiscode-cli.exe"
+    } else {
+        "wiscode-cli"
+    };
     // Get binary with symlinks support
     tauri::process::current_binary(&app.env())
         .expect("Failed to get current binary")
         .parent()
         .expect("Failed to get parent dir")
-        .join("wiscode-cli")
+        .join(executable)
 }
 
 pub fn get_bundled_node_path(app: &tauri::AppHandle) -> std::path::PathBuf {
@@ -138,22 +155,29 @@ fn is_cli_installed() -> bool {
         .unwrap_or(false)
 }
 
-const INSTALL_SCRIPT: &str = include_str!("../../../../install");
+#[cfg(unix)]
+const INSTALL_SCRIPT_UNIX: &str = include_str!("../../../../install");
+#[cfg(windows)]
+const INSTALL_SCRIPT_WINDOWS: &str = include_str!("../../../../install-windows.ps1");
 
 #[tauri::command]
 #[specta::specta]
 pub fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
-    if cfg!(not(unix)) {
-        return Err("CLI installation is only supported on macOS & Linux".to_string());
-    }
-
     let sidecar = get_sidecar_path(&app);
     if !sidecar.exists() {
         return Err("Sidecar binary not found".to_string());
     }
 
+    #[cfg(unix)]
     let temp_script = std::env::temp_dir().join("wiscode-install.sh");
-    std::fs::write(&temp_script, INSTALL_SCRIPT)
+    #[cfg(windows)]
+    let temp_script = std::env::temp_dir().join("wiscode-install.ps1");
+
+    #[cfg(unix)]
+    let install_script = INSTALL_SCRIPT_UNIX;
+    #[cfg(windows)]
+    let install_script = INSTALL_SCRIPT_WINDOWS;
+    std::fs::write(&temp_script, install_script)
         .map_err(|e| format!("Failed to write install script: {}", e))?;
 
     #[cfg(unix)]
@@ -163,11 +187,24 @@ pub fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
             .map_err(|e| format!("Failed to set script permissions: {}", e))?;
     }
 
-    let output = std::process::Command::new(&temp_script)
-        .arg("--binary")
-        .arg(&sidecar)
-        .output()
-        .map_err(|e| format!("Failed to run install script: {}", e))?;
+    let output = if cfg!(windows) {
+        std::process::Command::new("powershell")
+            .arg("-NoProfile")
+            .arg("-ExecutionPolicy")
+            .arg("Bypass")
+            .arg("-File")
+            .arg(&temp_script)
+            .arg("-BinaryPath")
+            .arg(&sidecar)
+            .output()
+            .map_err(|e| format!("Failed to run install script: {}", e))?
+    } else {
+        std::process::Command::new(&temp_script)
+            .arg("--binary")
+            .arg(&sidecar)
+            .output()
+            .map_err(|e| format!("Failed to run install script: {}", e))?
+    };
 
     let _ = std::fs::remove_file(&temp_script);
 
@@ -189,8 +226,33 @@ pub fn sync_cli(app: tauri::AppHandle) -> Result<(), String> {
     }
 
     if !is_cli_installed() {
-        tracing::info!("No CLI installation found, skipping sync");
-        return Ok(());
+        #[cfg(windows)]
+        {
+            tracing::info!("No CLI installation found on Windows, auto-installing");
+            install_cli(app)?;
+            tracing::info!("Auto-installed CLI on Windows");
+            return Ok(());
+        }
+        #[cfg(not(windows))]
+        {
+            tracing::info!("No CLI installation found, skipping sync");
+            return Ok(());
+        }
+    }
+
+    // On Windows also verify the bin dir is in the user PATH registry key.
+    // Reading the registry (not the process env) avoids false positives when the
+    // current process was launched before the PATH was written by the installer.
+    #[cfg(windows)]
+    {
+        let cli_dir = get_cli_install_path()
+            .and_then(|p| p.parent().map(|d| d.to_string_lossy().to_lowercase()));
+        let in_path = windows_user_path_contains(cli_dir.as_deref().unwrap_or(""));
+        if !in_path {
+            tracing::info!("CLI binary exists but bin dir missing from user PATH registry, repairing");
+            install_cli(app.clone())?;
+            tracing::info!("Repaired CLI PATH on Windows");
+        }
     }
 
     let cli_path =
@@ -202,6 +264,14 @@ pub fn sync_cli(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to get CLI version: {}", e))?;
 
     if !output.status.success() {
+        #[cfg(windows)]
+        {
+            tracing::warn!("CLI --version failed, attempting reinstall");
+            install_cli(app)?;
+            tracing::info!("Reinstalled CLI after --version failure");
+            return Ok(());
+        }
+        #[cfg(not(windows))]
         return Err("Failed to get CLI version".to_string());
     }
 
@@ -710,6 +780,70 @@ async fn read_line<F: Fn(String) -> CommandEvent + Send + Copy + 'static>(
             }
         }
     }
+}
+
+/// Read HKCU\Environment\Path from the registry and check if `dir` is present.
+/// Falls back to the process environment if the registry key is unavailable.
+#[cfg(windows)]
+fn windows_user_path_contains(dir: &str) -> bool {
+    use std::io;
+
+    fn read_registry_user_path() -> io::Result<String> {
+        use std::os::windows::ffi::OsStringExt;
+        use windows_sys::Win32::System::Registry::{
+            RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY_CURRENT_USER, KEY_READ,
+            REG_EXPAND_SZ, REG_SZ,
+        };
+
+        let subkey: Vec<u16> = "Environment\0".encode_utf16().collect();
+        let value_name: Vec<u16> = "Path\0".encode_utf16().collect();
+        let mut hkey = 0isize;
+
+        let rc = unsafe {
+            RegOpenKeyExW(HKEY_CURRENT_USER, subkey.as_ptr(), 0, KEY_READ, &mut hkey)
+        };
+        if rc != 0 {
+            return Err(io::Error::from_raw_os_error(rc));
+        }
+
+        let mut data_type: u32 = 0;
+        let mut size: u32 = 0;
+        let rc = unsafe {
+            RegQueryValueExW(hkey, value_name.as_ptr(), std::ptr::null_mut(), &mut data_type, std::ptr::null_mut(), &mut size)
+        };
+        if rc != 0 {
+            unsafe { RegCloseKey(hkey) };
+            return Err(io::Error::from_raw_os_error(rc));
+        }
+        if data_type != REG_SZ && data_type != REG_EXPAND_SZ {
+            unsafe { RegCloseKey(hkey) };
+            return Err(io::Error::other("unexpected registry value type"));
+        }
+
+        let mut buf: Vec<u16> = vec![0u16; (size / 2) as usize + 1];
+        let mut buf_size = (buf.len() * 2) as u32;
+        let rc = unsafe {
+            RegQueryValueExW(hkey, value_name.as_ptr(), std::ptr::null_mut(), &mut data_type, buf.as_mut_ptr() as *mut u8, &mut buf_size)
+        };
+        unsafe { RegCloseKey(hkey) };
+        if rc != 0 {
+            return Err(io::Error::from_raw_os_error(rc));
+        }
+
+        // Trim trailing NUL
+        while buf.last() == Some(&0) {
+            buf.pop();
+        }
+        Ok(std::ffi::OsString::from_wide(&buf).to_string_lossy().into_owned())
+    }
+
+    let path_str = read_registry_user_path()
+        .unwrap_or_else(|_| std::env::var("PATH").unwrap_or_default());
+
+    let needle = dir.trim_end_matches('\\').to_lowercase();
+    path_str
+        .split(';')
+        .any(|entry| entry.trim().trim_end_matches('\\').to_lowercase() == needle)
 }
 
 #[cfg(test)]
