@@ -4,6 +4,7 @@
 
 ${StrStr}
 ${StrTok}
+${UnStrTok}
 
 Var WisCodeCliDir
 Var WisCodePathCurrent
@@ -68,7 +69,7 @@ Var WisCodeToken
     StrCpy $WisCodePathNew ""
     StrCpy $0 1  ; token index
     loop:
-      ${StrTok} $WisCodeToken "$WisCodePathCurrent" ";" "$0" "1"
+      ${UnStrTok} $WisCodeToken "$WisCodePathCurrent" ";" "$0" "1"
       ${If} "$WisCodeToken" == ""
         Goto done
       ${EndIf}

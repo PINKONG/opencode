@@ -4,6 +4,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Assert-LastExitCode([string] $Label) {
+  if ($LASTEXITCODE -ne 0) {
+    throw "$Label failed with exit code $LASTEXITCODE"
+  }
+}
+
 if (-not $Root) {
   $Root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 }
@@ -60,10 +66,12 @@ if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and $env:TAURI_SIGNING_PRIVATE_KEY_PATH
 Set-Location $Root
 Write-Host "==> bun install"
 bun install
+Assert-LastExitCode "bun install"
 
 Set-Location (Join-Path $Root "packages\opencode")
 Write-Host "==> build sidecar"
 & bun @args
+Assert-LastExitCode "build sidecar"
 
 $bin = Join-Path $Root "packages\opencode\dist\$dir\bin\wiscode-cli.exe"
 if (-not (Test-Path $bin)) {
@@ -78,9 +86,11 @@ Copy-Item $bin (Join-Path $sidecar "wiscode-cli-$triple.exe") -Force
 
 Write-Host "==> typecheck"
 bun run typecheck
+Assert-LastExitCode "desktop typecheck"
 
 Write-Host "==> build frontend"
 bun run build
+Assert-LastExitCode "desktop build"
 
 Write-Host "==> tauri prod build"
 $env:WISCODE_SKIP_OPENCODE_BUILD = "1"
@@ -92,6 +102,7 @@ if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY
   $args += @("--config", $tempConfig)
 }
 & bun @args
+Assert-LastExitCode "tauri prod build"
 
 Write-Host "==> artifacts"
 Get-ChildItem (Join-Path $Root "packages\desktop\src-tauri\target\release\bundle") -Recurse |

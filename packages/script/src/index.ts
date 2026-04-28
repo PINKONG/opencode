@@ -1,4 +1,3 @@
-import { $ } from "bun"
 import semver from "semver"
 import path from "path"
 
@@ -23,11 +22,26 @@ const env = {
   OPENCODE_VERSION: process.env["OPENCODE_VERSION"],
   OPENCODE_RELEASE: process.env["OPENCODE_RELEASE"],
 }
+
+function currentBranch() {
+  try {
+    const proc = Bun.spawnSync({
+      cmd: ["git", "branch", "--show-current"],
+      cwd: path.dirname(rootPkgPath),
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    const branch = new TextDecoder().decode(proc.stdout).trim()
+    if (proc.exitCode === 0 && branch) return branch
+  } catch {}
+  return process.env["GITHUB_REF_NAME"] ?? "dev"
+}
+
 const CHANNEL = await (async () => {
   if (env.OPENCODE_CHANNEL) return env.OPENCODE_CHANNEL
   if (env.OPENCODE_BUMP) return "latest"
   if (env.OPENCODE_VERSION && !env.OPENCODE_VERSION.startsWith("0.0.0-")) return "latest"
-  return await $`git branch --show-current`.text().then((x) => x.trim())
+  return currentBranch()
 })()
 const IS_PREVIEW = CHANNEL !== "latest"
 

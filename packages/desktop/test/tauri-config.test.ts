@@ -60,6 +60,7 @@ describe("tauri production config", () => {
     expect(hooks).toContain("HKCU")
     expect(hooks).toContain("$INSTDIR\\resources\\wiscode-cli.exe")
     expect(hooks).toContain("Rebuild PATH by splitting on")
+    expect(hooks).toContain("${UnStrTok}")
   })
 
   test("ships both cli and node sidecars", () => {
