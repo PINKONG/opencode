@@ -263,6 +263,14 @@ pub fn sync_cli(app: tauri::AppHandle) -> Result<(), String> {
     let cli_path =
         get_cli_install_path().ok_or_else(|| "Could not determine CLI install path".to_string())?;
 
+    #[cfg(windows)]
+    let output = {
+        let mut cmd = std::process::Command::new(&cli_path);
+        cmd.arg("--version").creation_flags(0x08000000); // CREATE_NO_WINDOW
+        cmd.output()
+            .map_err(|e| format!("Failed to get CLI version: {}", e))?
+    };
+    #[cfg(not(windows))]
     let output = std::process::Command::new(&cli_path)
         .arg("--version")
         .output()

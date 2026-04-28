@@ -67,4 +67,10 @@ describe("tauri cli install path", () => {
     expect(src).toContain("CLI --version failed, attempting reinstall")
     expect(src).toContain("Reinstalled CLI after --version failure")
   })
+
+  test("runs windows cli --version health check without opening a console window", () => {
+    expect(src).toContain("let mut cmd = std::process::Command::new(&cli_path);")
+    expect(src).toContain('cmd.arg("--version").creation_flags(0x08000000)')
+    expect(src).toContain(".creation_flags(0x08000000)")
+  })
 })
