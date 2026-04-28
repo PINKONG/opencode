@@ -47,6 +47,11 @@ describe("tauri cli install path", () => {
     expect(src).not.toContain("CLI installation is only supported on macOS & Linux")
   })
 
+  test("runs windows installer powershell without opening a console window", () => {
+    expect(src).toContain("std::os::windows::process::CommandExt")
+    expect(src).toContain(".creation_flags(0x08000000)")
+  })
+
   test("sync_cli auto-installs on windows when cli is missing", () => {
     expect(src).toContain("No CLI installation found on Windows, auto-installing")
     expect(src).toContain("Auto-installed CLI on Windows")

@@ -7,6 +7,8 @@ use process_wrap::tokio::{CommandWrapper, JobObject, KillOnDrop};
 use std::collections::HashMap;
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -188,16 +190,19 @@ pub fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
     }
 
     let output = if cfg!(windows) {
-        std::process::Command::new("powershell")
-            .arg("-NoProfile")
-            .arg("-ExecutionPolicy")
-            .arg("Bypass")
-            .arg("-File")
-            .arg(&temp_script)
-            .arg("-BinaryPath")
-            .arg(&sidecar)
-            .output()
-            .map_err(|e| format!("Failed to run install script: {}", e))?
+        {
+            let mut cmd = std::process::Command::new("powershell");
+            cmd.arg("-NoProfile")
+                .arg("-ExecutionPolicy")
+                .arg("Bypass")
+                .arg("-File")
+                .arg(&temp_script)
+                .arg("-BinaryPath")
+                .arg(&sidecar)
+                .creation_flags(0x08000000); // CREATE_NO_WINDOW
+            cmd.output()
+                .map_err(|e| format!("Failed to run install script: {}", e))?
+        }
     } else {
         std::process::Command::new(&temp_script)
             .arg("--binary")
