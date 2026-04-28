@@ -177,7 +177,7 @@ describe("mcp config isolation", () => {
   })
 
   test("accepts remote maxkb hmac auth config", () => {
-    const out = ConfigMCP.Info.parse({
+    const out = ConfigMCP.Info.zod.parse({
       type: "remote",
       url: "http://127.0.0.1:8081/mcp/",
       oauth: false,
@@ -201,7 +201,7 @@ describe("mcp config isolation", () => {
   })
 
   test("rejects maxkb hmac auth when oauth object is also configured", () => {
-    const out = ConfigMCP.Info.safeParse({
+    const out = ConfigMCP.Info.zod.safeParse({
       type: "remote",
       url: "http://127.0.0.1:8081/mcp/",
       oauth: {
@@ -218,7 +218,7 @@ describe("mcp config isolation", () => {
   })
 
   test("rejects maxkb hmac auth when oauth is omitted", () => {
-    const out = ConfigMCP.Info.safeParse({
+    const out = ConfigMCP.Info.zod.safeParse({
       type: "remote",
       url: "http://127.0.0.1:8081/mcp/",
       auth: {

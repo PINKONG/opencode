@@ -257,7 +257,12 @@ test("does not reuse mutable built-in MaxKB config between loads", async () => {
     directory: tmp.path,
     fn: async () => {
       const config = await load()
-      if (config.mcp?.["maxkb-prod"]) config.mcp["maxkb-prod"].enabled = false
+      if (config.mcp?.["maxkb-prod"]) {
+        config.mcp["maxkb-prod"] = {
+          ...config.mcp["maxkb-prod"],
+          enabled: false,
+        }
+      }
     },
   })
   await clear(true)

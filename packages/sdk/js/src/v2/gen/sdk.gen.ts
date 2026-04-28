@@ -894,7 +894,7 @@ export class Session extends HeyApiClient {
   /**
    * List sessions
    *
-   * Get a list of all OpenCode sessions across projects, sorted by most recently updated. Archived sessions are excluded by default.
+   * Get a list of all WisCode sessions across projects, sorted by most recently updated. Archived sessions are excluded by default.
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -971,11 +971,11 @@ export class Resource extends HeyApiClient {
    * Read a specific MCP resource by client name and URI.
    */
   public read<ThrowOnError extends boolean = false>(
-    parameters: {
+    parameters?: {
       directory?: string
       workspace?: string
-      client: string
-      uri: string
+      client?: string
+      uri?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -986,13 +986,13 @@ export class Resource extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
-            { in: "query", key: "client" },
-            { in: "query", key: "uri" },
+            { in: "body", key: "client" },
+            { in: "body", key: "uri" },
           ],
         },
       ],
     )
-    return (options?.client ?? this.client).get<
+    return (options?.client ?? this.client).post<
       ExperimentalResourceReadResponses,
       ExperimentalResourceReadErrors,
       ThrowOnError
@@ -1000,6 +1000,11 @@ export class Resource extends HeyApiClient {
       url: "/experimental/resource/read",
       ...options,
       ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
