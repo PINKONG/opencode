@@ -67,6 +67,7 @@ export const LoggerMiddleware: MiddlewareHandler = async (c, next) => {
 
 export function CorsMiddleware(opts?: { cors?: string[] }): MiddlewareHandler {
   return cors({
+    credentials: true,
     maxAge: 86_400,
     origin(input) {
       if (!input) return
