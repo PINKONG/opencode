@@ -1,7 +1,7 @@
 id = "wiscode"
 name = "WisCode"
 description = "The open source coding agent."
-version = "1.0.8"
+version = "1.0.9"
 schema_version = 1
 authors = ["PINKONG"]
 repository = "https://github.com/PINKONG/opencode"
@@ -11,26 +11,26 @@ name = "WisCode"
 icon = "./icons/opencode.svg"
 
 [agent_servers.wiscode.targets.darwin-aarch64]
-archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.8/wiscode-cli-darwin-arm64.zip"
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.9/wiscode-cli-darwin-arm64.zip"
 cmd = "./wiscode-cli"
 args = ["acp"]
 
 [agent_servers.wiscode.targets.darwin-x86_64]
-archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.8/wiscode-cli-darwin-x64.zip"
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.9/wiscode-cli-darwin-x64.zip"
 cmd = "./wiscode-cli"
 args = ["acp"]
 
 [agent_servers.wiscode.targets.linux-aarch64]
-archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.8/wiscode-cli-linux-arm64.tar.gz"
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.9/wiscode-cli-linux-arm64.tar.gz"
 cmd = "./wiscode-cli"
 args = ["acp"]
 
 [agent_servers.wiscode.targets.linux-x86_64]
-archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.8/wiscode-cli-linux-x64.tar.gz"
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.9/wiscode-cli-linux-x64.tar.gz"
 cmd = "./wiscode-cli"
 args = ["acp"]
 
 [agent_servers.wiscode.targets.windows-x86_64]
-archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.8/wiscode-cli-windows-x64.zip"
+archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.9/wiscode-cli-windows-x64.zip"
 cmd = "./wiscode-cli.exe"
 args = ["acp"]
