@@ -791,19 +791,19 @@ fn windows_user_path_contains(dir: &str) -> bool {
     fn read_registry_user_path() -> io::Result<String> {
         use std::os::windows::ffi::OsStringExt;
         use windows_sys::Win32::System::Registry::{
-            RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY_CURRENT_USER, KEY_READ,
+            HKEY, HKEY_CURRENT_USER, KEY_READ, RegCloseKey, RegOpenKeyExW, RegQueryValueExW,
             REG_EXPAND_SZ, REG_SZ,
         };
 
         let subkey: Vec<u16> = "Environment\0".encode_utf16().collect();
         let value_name: Vec<u16> = "Path\0".encode_utf16().collect();
-        let mut hkey = 0isize;
+        let mut hkey: HKEY = std::ptr::null_mut();
 
         let rc = unsafe {
             RegOpenKeyExW(HKEY_CURRENT_USER, subkey.as_ptr(), 0, KEY_READ, &mut hkey)
         };
         if rc != 0 {
-            return Err(io::Error::from_raw_os_error(rc));
+            return Err(io::Error::from_raw_os_error(rc as i32));
         }
 
         let mut data_type: u32 = 0;
@@ -813,7 +813,7 @@ fn windows_user_path_contains(dir: &str) -> bool {
         };
         if rc != 0 {
             unsafe { RegCloseKey(hkey) };
-            return Err(io::Error::from_raw_os_error(rc));
+            return Err(io::Error::from_raw_os_error(rc as i32));
         }
         if data_type != REG_SZ && data_type != REG_EXPAND_SZ {
             unsafe { RegCloseKey(hkey) };
@@ -827,7 +827,7 @@ fn windows_user_path_contains(dir: &str) -> bool {
         };
         unsafe { RegCloseKey(hkey) };
         if rc != 0 {
-            return Err(io::Error::from_raw_os_error(rc));
+            return Err(io::Error::from_raw_os_error(rc as i32));
         }
 
         // Trim trailing NUL
