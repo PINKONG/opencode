@@ -189,27 +189,26 @@ pub fn install_cli(app: tauri::AppHandle) -> Result<String, String> {
             .map_err(|e| format!("Failed to set script permissions: {}", e))?;
     }
 
-    let output = if cfg!(windows) {
-        {
-            let mut cmd = std::process::Command::new("powershell");
-            cmd.arg("-NoProfile")
-                .arg("-ExecutionPolicy")
-                .arg("Bypass")
-                .arg("-File")
-                .arg(&temp_script)
-                .arg("-BinaryPath")
-                .arg(&sidecar)
-                .creation_flags(0x08000000); // CREATE_NO_WINDOW
-            cmd.output()
-                .map_err(|e| format!("Failed to run install script: {}", e))?
-        }
-    } else {
-        std::process::Command::new(&temp_script)
-            .arg("--binary")
+    #[cfg(windows)]
+    let output = {
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.arg("-NoProfile")
+            .arg("-ExecutionPolicy")
+            .arg("Bypass")
+            .arg("-File")
+            .arg(&temp_script)
+            .arg("-BinaryPath")
             .arg(&sidecar)
-            .output()
+            .creation_flags(0x08000000); // CREATE_NO_WINDOW
+        cmd.output()
             .map_err(|e| format!("Failed to run install script: {}", e))?
     };
+    #[cfg(not(windows))]
+    let output = std::process::Command::new(&temp_script)
+        .arg("--binary")
+        .arg(&sidecar)
+        .output()
+        .map_err(|e| format!("Failed to run install script: {}", e))?;
 
     let _ = std::fs::remove_file(&temp_script);
 
