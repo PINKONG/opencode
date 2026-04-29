@@ -20,6 +20,11 @@ export const Entry = Schema.Union([
   }),
 ]).pipe(withStatics((s) => ({ zod: zod(s) })))
 
+/**
+ * For custom (non-builtin) LSP server entries, `extensions` is required so the
+ * client knows which files the server should attach to. Builtin server IDs and
+ * explicitly disabled entries are exempt.
+ */
 export const requiresExtensionsForCustomServers = Schema.makeFilter<
   boolean | Record<string, Schema.Schema.Type<typeof Entry>>
 >((data) => {

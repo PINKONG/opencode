@@ -85,6 +85,8 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
           })
 
           if (Flag.OPENCODE_EXPERIMENTAL_WORKSPACES) {
+            // Start syncing workspaces, it's important to do this after
+            // we've started listening to events
             await sdk.sync.start().catch(() => {})
           }
 
@@ -97,6 +99,7 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
           if (queue.length > 0) flush()
           attempt += 1
           if (abort.signal.aborted || ctrl.signal.aborted) break
+          // Exponential backoff
           const backoff = Math.min(retryDelay * 2 ** (attempt - 1), maxRetryDelay)
           await new Promise((resolve) => setTimeout(resolve, backoff))
         }
@@ -109,6 +112,8 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
         onCleanup(unsub)
 
         if (Flag.OPENCODE_EXPERIMENTAL_WORKSPACES) {
+          // Start syncing workspaces, it's important to do this after
+          // we've started listening to events
           await sdk.sync.start().catch(() => {})
         }
       } else {

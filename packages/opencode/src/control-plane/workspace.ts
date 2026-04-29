@@ -117,6 +117,7 @@ export const create = fn(CreateInput, async (input) => {
     OPENCODE_EXPERIMENTAL_WORKSPACES: "true",
     OTEL_EXPORTER_OTLP_HEADERS: process.env.OTEL_EXPORTER_OTLP_HEADERS,
     OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    OTEL_RESOURCE_ATTRIBUTES: process.env.OTEL_RESOURCE_ATTRIBUTES,
   }
   await adaptor.create(config, env)
 
@@ -470,7 +471,7 @@ async function syncHistory(space: Info, url: URL | string, headers: HeadersInit 
 
   const events = await res.json()
 
-  WorkspaceContext.provide({
+  return WorkspaceContext.provide({
     workspaceID: space.id,
     fn: () => {
       for (const event of events) {
@@ -552,6 +553,8 @@ async function syncWorkspaceLoop(space: Info, signal: AbortSignal) {
       setStatus(space.id, "disconnected")
     }
 
+    // Back off reconnect attempts up to 2 minutes while the workspace
+    // stays unavailable.
     await sleep(Math.min(120_000, 1_000 * 2 ** attempt))
     attempt += 1
   }

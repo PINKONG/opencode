@@ -15,7 +15,6 @@ import { ConfigMCP } from "../config/mcp"
 import { Log } from "../util"
 import { NamedError } from "@opencode-ai/shared/util/error"
 import z from "zod/v4"
-import { Instance } from "../project/instance"
 import { Installation } from "../installation"
 import { InstallationVersion } from "../installation/version"
 import { withTimeout } from "@/util/timeout"
@@ -454,7 +453,7 @@ export const layer = Layer.effect(
         log.warn("bundled node unavailable; falling back", { mcp_server_name: key, bundled_node_path: bundledNodePath })
       }
       const [cmd, ...args] = resolved.command
-      const cwd = Instance.directory
+      const cwd = yield* InstanceState.directory
       const transport = new StdioClientTransport({
         stderr: "pipe",
         command: cmd,

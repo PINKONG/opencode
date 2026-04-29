@@ -2,6 +2,16 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { ConfigLSP } from "../../src/config/lsp"
 
+// The LSP config refinement enforces: any custom (non-builtin) LSP server
+// entry must declare an `extensions` array so the client knows which files
+// the server should attach to. Builtin server IDs and explicitly disabled
+// entries are exempt.
+//
+// Both validation paths must honor this rule:
+//   - `Schema.decodeUnknownSync(ConfigLSP.Info)` (Effect layer)
+//   - `ConfigLSP.Info.zod.parse(...)`            (derived Zod)
+//
+// `typescript` is a builtin server id (see src/lsp/server.ts).
 describe("ConfigLSP.Info refinement", () => {
   const decodeEffect = Schema.decodeUnknownSync(ConfigLSP.Info)
 
@@ -57,6 +67,9 @@ describe("ConfigLSP.Info refinement", () => {
     })
 
     test("custom server with empty extensions array fails (extensions must be non-empty-truthy)", () => {
+      // Boolean(['']) is true, so a non-empty array of strings is fine.
+      // Boolean([]) is also true in JS, so empty arrays are accepted by the
+      // refinement. This test documents current behavior.
       const input = { "my-lsp": { command: ["my-lsp-bin"], extensions: [] } }
       expect(decodeEffect(input)).toEqual(input)
       expect(ConfigLSP.Info.zod.parse(input)).toEqual(input)

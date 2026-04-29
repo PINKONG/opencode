@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 const read = async (path: string) => Bun.file(new URL(path, import.meta.url)).text()
+const stripJsxComments = (text: string) => text.replaceAll(/\{\/\*[\s\S]*?\*\/\}/g, "")
 
 describe("app branding surface", () => {
   test("does not expose old brand in visible app metadata and links", async () => {
@@ -33,13 +34,17 @@ describe("app branding surface", () => {
     expect(logo).not.toContain("OpenCode logo assets")
     expect(session).toContain('<Logo class="w-28" />')
     expect(session).not.toContain('<Mark class="w-10" />')
-    expect(app).toContain('<Logo class="w-32 opacity-50 animate-pulse" />')
-    expect(app).toContain('<Logo class="w-24 mb-4" />')
-    expect(app).not.toContain("<Splash")
-    expect(desktop).toContain('<Logo class="w-32 opacity-15" />')
-    expect(desktop).not.toContain("<Splash")
-    expect(electron).toContain('<Logo class="w-32 opacity-15" />')
-    expect(electron).not.toContain("<Splash")
+    const appVisible = stripJsxComments(app)
+    const desktopVisible = stripJsxComments(desktop)
+    const electronVisible = stripJsxComments(electron)
+
+    expect(appVisible).toContain('<Logo class="w-32 opacity-50 animate-pulse" />')
+    expect(appVisible).toContain('<Logo class="w-24 mb-4" />')
+    expect(appVisible).not.toContain("<Splash")
+    expect(desktopVisible).toContain('<Logo class="w-32 opacity-15" />')
+    expect(desktopVisible).not.toContain("<Splash")
+    expect(electronVisible).toContain('<Logo class="w-32 opacity-15" />')
+    expect(electronVisible).not.toContain("<Splash")
   })
 
   test("uses wiscode config file names in visible app copy", async () => {

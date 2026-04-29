@@ -20,6 +20,7 @@ export function createModelTpmLimiter(providers: { id: string; model: string; tp
           .where(and(inArray(ModelRateLimitTable.key, keys), eq(ModelRateLimitTable.interval, yyyyMMddHHmm))),
       )
 
+      // convert to map of model to count
       return data.reduce(
         (acc, curr) => {
           acc[curr.key] = curr.count
