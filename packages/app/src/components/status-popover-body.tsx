@@ -5,6 +5,7 @@ import { Switch } from "@opencode-ai/ui/switch"
 import { Tabs } from "@opencode-ai/ui/tabs"
 import { useMutation } from "@tanstack/solid-query"
 import { showToast } from "@opencode-ai/ui/toast"
+import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { useNavigate } from "@solidjs/router"
 import { type Accessor, createEffect, createMemo, For, type JSXElement, onCleanup, Show } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
@@ -15,6 +16,8 @@ import { useSDK } from "@/context/sdk"
 import { normalizeServerUrl, ServerConnection, useServer } from "@/context/server"
 import { useSync } from "@/context/sync"
 import { useCheckServerHealth, type ServerHealth } from "@/utils/server-health"
+import { writeClipboard } from "@/util/clipboard"
+import { buildServerAccessUrl } from "@/util/server-access-url"
 
 const pollMs = 10_000
 
@@ -179,6 +182,20 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
     })
   }
 
+  const copyServerAccessUrl = async (conn: ServerConnection.Any) => {
+    const copied = await writeClipboard(buildServerAccessUrl(conn.http))
+    if (!copied) {
+      showToast({
+        variant: "error",
+        title: language.t("toast.session.share.copyFailed.title"),
+      })
+      return
+    }
+    showToast({
+      title: language.t("session.share.copy.copied"),
+    })
+  }
+
   createEffect(() => {
     if (!props.shown()) return
 
@@ -312,6 +329,20 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
                           </Show>
                         }
                       >
+                        <Tooltip value={language.t("session.share.copy.copyLink")} placement="top">
+                          <Button
+                            variant="ghost"
+                            size="small"
+                            class="size-6 shrink-0 text-icon-weak hover:text-icon-base"
+                            onClick={(event: MouseEvent) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              void copyServerAccessUrl(s)
+                            }}
+                          >
+                            <Icon name="copy" size="small" />
+                          </Button>
+                        </Tooltip>
                         <div class="flex-1" />
                         <Show when={server.current && key === ServerConnection.key(server.current)}>
                           <Icon name="check" size="small" class="text-icon-weak shrink-0" />

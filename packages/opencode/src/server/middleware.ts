@@ -8,6 +8,7 @@ import { HTTPException } from "hono/http-exception"
 import { Log } from "../util"
 import { Flag } from "@/flag/flag"
 import { basicAuth } from "hono/basic-auth"
+import { getCookie, setCookie } from "hono/cookie"
 import { cors } from "hono/cors"
 import { compress } from "hono/compress"
 
@@ -43,10 +44,23 @@ export const AuthMiddleware: MiddlewareHandler = (c, next) => {
   const password = Flag.OPENCODE_SERVER_PASSWORD
   if (!password) return next()
   const username = Flag.OPENCODE_SERVER_USERNAME ?? "opencode"
+  const existingAuth = c.req.raw.headers.get("authorization")
+  const queryToken = c.req.query("auth_token")
+  const cookieToken = getCookie(c, "wiscode_auth_token")
+  const token = existingAuth ? undefined : (queryToken ?? cookieToken)
+  if (token) c.req.raw.headers.set("authorization", `Basic ${token}`)
 
-  if (c.req.query("auth_token")) c.req.raw.headers.set("authorization", `Basic ${c.req.query("auth_token")}`)
-
-  return basicAuth({ username, password })(c, next)
+  return basicAuth({ username, password })(c, async () => {
+    if (queryToken) {
+      setCookie(c, "wiscode_auth_token", queryToken, {
+        path: "/",
+        sameSite: "Lax",
+        httpOnly: true,
+        maxAge: 60 * 60 * 8,
+      })
+    }
+    await next()
+  })
 }
 
 export const LoggerMiddleware: MiddlewareHandler = async (c, next) => {
