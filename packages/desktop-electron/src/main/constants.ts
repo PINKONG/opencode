@@ -7,4 +7,7 @@ export const CHANNEL: Channel = raw === "dev" || raw === "beta" || raw === "prod
 export const SETTINGS_STORE = "opencode.settings"
 export const DEFAULT_SERVER_URL_KEY = "defaultServerUrl"
 export const WSL_ENABLED_KEY = "wslEnabled"
+export const SIDECAR_EXPOSE_LAN_KEY = "sidecarExposeLan"
+export const SIDECAR_PORT_KEY = "sidecarPort"
+export const SIDECAR_PERSISTENT_PASSWORD_KEY = "sidecarPersistentPassword"
 export const UPDATER_ENABLED = app.isPackaged && CHANNEL !== "dev"

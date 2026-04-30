@@ -40,6 +40,7 @@ export namespace ServerConnection {
     url: string
     username?: string
     password?: string
+    embedSession?: string
   }
 
   // Regular web connections
@@ -125,12 +126,28 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
         ),
       ]
 
-      const deduped = new Map(
-        servers.map((value) => {
-          const conn: ServerConnection.Any = "type" in value ? value : { type: "http", http: value }
-          return [ServerConnection.key(conn), conn]
-        }),
-      )
+      const deduped = new Map<ServerConnection.Key, ServerConnection.Any>()
+      for (const value of servers) {
+        const conn: ServerConnection.Any = "type" in value ? value : { type: "http", http: value }
+        const key = ServerConnection.key(conn)
+        const prev = deduped.get(key)
+        if (!prev) {
+          deduped.set(key, conn)
+          continue
+        }
+        if (!prev.http.embedSession && conn.http.embedSession) {
+          deduped.set(key, {
+            ...prev,
+            ...conn,
+            http: {
+              ...prev.http,
+              ...conn.http,
+            },
+          })
+          continue
+        }
+        deduped.set(key, conn)
+      }
 
       return [...deduped.values()]
     })

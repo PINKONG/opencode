@@ -9,6 +9,13 @@ export type ServerReadyData = {
 export type SqliteMigrationProgress = { type: "InProgress"; value: number } | { type: "Done" }
 
 export type WslConfig = { enabled: boolean }
+export type SidecarLanConfig = {
+  enabled: boolean
+  addressMode: "lan" | "custom"
+  customAddress: string
+  fixedPort?: number
+  fixedToken?: boolean
+}
 
 export type LinuxDisplayBackend = "wayland" | "auto"
 export type TitlebarTheme = {
@@ -23,6 +30,8 @@ export type ElectronAPI = {
   setDefaultServerUrl: (url: string | null) => Promise<void>
   getWslConfig: () => Promise<WslConfig>
   setWslConfig: (config: WslConfig) => Promise<void>
+  getSidecarLanConfig: () => Promise<SidecarLanConfig>
+  setSidecarLanConfig: (config: SidecarLanConfig) => Promise<void>
   getDisplayBackend: () => Promise<LinuxDisplayBackend | null>
   setDisplayBackend: (backend: LinuxDisplayBackend | null) => Promise<void>
   parseMarkdownCommand: (markdown: string) => Promise<string>

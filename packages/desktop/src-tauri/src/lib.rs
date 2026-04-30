@@ -8,6 +8,7 @@ mod logging;
 mod markdown;
 mod os;
 mod server;
+mod sidecar_config;
 mod window_customizer;
 mod windows;
 
@@ -381,6 +382,8 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             server::set_default_server_url,
             server::get_wsl_config,
             server::set_wsl_config,
+            sidecar_config::get_sidecar_lan_config,
+            sidecar_config::set_sidecar_lan_config,
             get_display_backend,
             set_display_backend,
             markdown::parse_markdown_command,
@@ -424,14 +427,41 @@ async fn initialize(app: AppHandle) {
     spawn_cli_sync_task(app.clone());
 
     // Spawn sidecar immediately - credentials are known before health check
-    let port = get_sidecar_port();
-    let hostname = "127.0.0.1";
-    let url = format!("http://{hostname}:{port}");
-    let password = uuid::Uuid::new_v4().to_string();
+    let sidecar_lan = sidecar_config::get_sidecar_lan_config(app.clone())
+        .unwrap_or(sidecar_config::SidecarLanConfig {
+            enabled: false,
+            address_mode: sidecar_config::SidecarLanAddressMode::Lan,
+            custom_address: String::new(),
+            fixed_port: None,
+            fixed_token: false,
+        });
+    let hosts = sidecar_config::resolve_sidecar_hosts(&sidecar_lan);
+    let port = get_sidecar_port(sidecar_config::resolve_configured_port(&sidecar_lan));
+    let hostname = hosts.bind_host;
+    let url = format!("http://{}:{port}", hosts.advertise_host);
+    let password = if sidecar_lan.fixed_token {
+        env::var("OPENCODE_SERVER_PASSWORD").unwrap_or_else(|_| {
+            sidecar_config::get_or_create_persistent_password(app.clone()).unwrap_or_else(|error| {
+                tracing::warn!(
+                    error = %error,
+                    "fixed token mode fallback: persistent password unavailable, using ephemeral password"
+                );
+                uuid::Uuid::new_v4().to_string()
+            })
+        })
+    } else {
+        uuid::Uuid::new_v4().to_string()
+    };
 
     tracing::info!("Spawning sidecar on {url}");
     let (child, health_check) =
-        server::spawn_local_server(app.clone(), hostname.to_string(), port, password.clone());
+        server::spawn_local_server(
+            app.clone(),
+            hostname.to_string(),
+            port,
+            password.clone(),
+            hosts.health_host,
+        );
 
     // Make sidecar credentials available immediately (before health check completes)
     let (ready_tx, ready_rx) = oneshot::channel();
@@ -548,18 +578,22 @@ fn spawn_cli_sync_task(app: AppHandle) {
 }
 
 
-fn get_sidecar_port() -> u32 {
-    option_env!("OPENCODE_PORT")
-        .map(|s| s.to_string())
-        .or_else(|| std::env::var("OPENCODE_PORT").ok())
-        .and_then(|port_str| port_str.parse().ok())
+fn get_sidecar_port(configured: Option<u32>) -> u32 {
+    configured
+        .or_else(|| {
+            option_env!("OPENCODE_PORT")
+                .map(|s| s.to_string())
+                .or_else(|| std::env::var("OPENCODE_PORT").ok())
+                .and_then(|port_str| port_str.parse().ok())
+        })
         .unwrap_or_else(|| {
             TcpListener::bind("127.0.0.1:0")
                 .expect("Failed to bind to find free port")
                 .local_addr()
                 .expect("Failed to get local address")
                 .port()
-        }) as u32
+                .into()
+        })
 }
 
 fn sqlite_file_exists() -> bool {

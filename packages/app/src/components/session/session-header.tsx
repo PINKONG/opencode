@@ -278,9 +278,9 @@ export function SessionHeader() {
 
   return (
     <>
-      <Show when={search() && centerMount()}>
+      <Show when={search() && centerMount()} keyed>
         {(mount) => (
-          <Portal mount={mount()}>
+          <Portal mount={mount}>
             <Button
               type="button"
               variant="ghost"
@@ -308,9 +308,9 @@ export function SessionHeader() {
           </Portal>
         )}
       </Show>
-      <Show when={rightMount()}>
+      <Show when={rightMount()} keyed>
         {(mount) => (
-          <Portal mount={mount()}>
+          <Portal mount={mount}>
             <div class="flex items-center gap-2">
               <Show when={projectDirectory()}>
                 <div class="hidden xl:flex items-center">

@@ -8,6 +8,13 @@ type OpenDirectoryPickerOptions = { title?: string; multiple?: boolean }
 type OpenFilePickerOptions = { title?: string; multiple?: boolean; accept?: string[]; extensions?: string[] }
 type SaveFilePickerOptions = { title?: string; defaultPath?: string }
 type UpdateInfo = { updateAvailable: boolean; version?: string }
+type SidecarLanConfig = {
+  enabled: boolean
+  addressMode: "lan" | "custom"
+  customAddress: string
+  fixedPort?: number
+  fixedToken?: boolean
+}
 
 export type Platform = {
   /** Platform discriminator */
@@ -69,6 +76,12 @@ export type Platform = {
 
   /** Set the configured WSL integration (desktop only) */
   setWslEnabled?(config: boolean): Promise<void> | void
+
+  /** Get whether sidecar LAN exposure is enabled (desktop only) */
+  getSidecarLanConfig?(): Promise<SidecarLanConfig>
+
+  /** Set whether sidecar LAN exposure is enabled (desktop only) */
+  setSidecarLanConfig?(config: SidecarLanConfig): Promise<void> | void
 
   /** Get the preferred display backend (desktop only) */
   getDisplayBackend?(): Promise<DisplayBackend | null> | DisplayBackend | null

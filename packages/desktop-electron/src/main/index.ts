@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { EventEmitter } from "node:events"
 import { existsSync } from "node:fs"
 import { createServer } from "node:net"
+import { networkInterfaces } from "node:os"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type { Event } from "electron"
@@ -32,14 +33,25 @@ app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : "WisCode Dev")
 app.setPath("userData", join(app.getPath("appData"), app.isPackaged ? APP_IDS[CHANNEL] : "ai.wiscode.desktop.dev"))
 const { autoUpdater } = pkg
 
-import type { InitStep, ServerReadyData, SqliteMigrationProgress, WslConfig } from "../preload/types"
+import type { InitStep, ServerReadyData, SidecarLanConfig, SqliteMigrationProgress, WslConfig } from "../preload/types"
 import { checkAppExists, resolveAppPath, wslPath } from "./apps"
 import { CHANNEL, UPDATER_ENABLED } from "./constants"
 import { registerIpcHandlers, sendDeepLinks, sendMenuCommand, sendSqliteMigrationProgress } from "./ipc"
+import { resolveSidecarHosts } from "./lan"
 import { initLogging } from "./logging"
 import { parseMarkdown } from "./markdown"
 import { createMenu } from "./menu"
-import { getDefaultServerUrl, getWslConfig, setDefaultServerUrl, setWslConfig, spawnLocalServer } from "./server"
+import { resolveConfiguredPort } from "./sidecar-config"
+import {
+  getOrCreatePersistentPassword,
+  getDefaultServerUrl,
+  getSidecarLanConfig,
+  getWslConfig,
+  setDefaultServerUrl,
+  setSidecarLanConfig,
+  setWslConfig,
+  spawnLocalServer,
+} from "./server"
 import { createLoadingWindow, createMainWindow, setBackgroundColor, setDockIcon } from "./windows"
 import type { Server } from "virtual:opencode-server"
 
@@ -132,13 +144,17 @@ async function initialize() {
   const sqliteDone = needsMigration ? defer<void>() : undefined
   let overlay: BrowserWindow | null = null
 
-  const port = await getSidecarPort()
-  const hostname = "127.0.0.1"
-  const url = `http://${hostname}:${port}`
-  const password = randomUUID()
+  const config = getSidecarLanConfig()
+  const port = await getSidecarPort(config)
+  const hosts = resolveSidecarHosts(config, networkInterfaces())
+  const url = `http://${hosts.advertiseHost}:${port}`
+  const password =
+    config.fixedToken === true
+      ? process.env.OPENCODE_SERVER_PASSWORD || getOrCreatePersistentPassword()
+      : randomUUID()
 
-  logger.log("spawning sidecar", { url })
-  const { listener, health } = await spawnLocalServer(hostname, port, password)
+  logger.log("spawning sidecar", { url, bindHost: hosts.bindHost })
+  const { listener, health } = await spawnLocalServer(hosts.bindHost, port, password, hosts.healthHost)
   server = listener
   serverReady.resolve({
     url,
@@ -147,7 +163,7 @@ async function initialize() {
   })
 
   const loadingTask = (async () => {
-    logger.log("sidecar connection started", { url })
+    logger.log("sidecar connection started", { url, healthHost: hosts.healthHost })
 
     initEmitter.on("sqlite", (progress: SqliteMigrationProgress) => {
       setInitStep({ phase: "sqlite_waiting" })
@@ -233,6 +249,8 @@ registerIpcHandlers({
   setDefaultServerUrl: (url) => setDefaultServerUrl(url),
   getWslConfig: () => Promise.resolve(getWslConfig()),
   setWslConfig: (config: WslConfig) => setWslConfig(config),
+  getSidecarLanConfig: () => Promise.resolve(getSidecarLanConfig()),
+  setSidecarLanConfig: (config: SidecarLanConfig) => setSidecarLanConfig(config),
   getDisplayBackend: async () => null,
   setDisplayBackend: async () => undefined,
   parseMarkdown: async (markdown) => parseMarkdown(markdown),
@@ -272,12 +290,9 @@ function ensureLoopbackNoProxy() {
   upsert("no_proxy")
 }
 
-async function getSidecarPort() {
-  const fromEnv = process.env.OPENCODE_PORT
-  if (fromEnv) {
-    const parsed = Number.parseInt(fromEnv, 10)
-    if (!Number.isNaN(parsed)) return parsed
-  }
+async function getSidecarPort(config: SidecarLanConfig) {
+  const configured = resolveConfiguredPort(config, process.env.OPENCODE_PORT)
+  if (configured) return configured
 
   return await new Promise<number>((resolve, reject) => {
     const server = createServer()

@@ -2,7 +2,14 @@ import { execFile } from "node:child_process"
 import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, shell } from "electron"
 import type { IpcMainEvent, IpcMainInvokeEvent } from "electron"
 
-import type { InitStep, ServerReadyData, SqliteMigrationProgress, TitlebarTheme, WslConfig } from "../preload/types"
+import type {
+  InitStep,
+  ServerReadyData,
+  SidecarLanConfig,
+  SqliteMigrationProgress,
+  TitlebarTheme,
+  WslConfig,
+} from "../preload/types"
 import { getStore } from "./store"
 import { setTitlebar } from "./windows"
 
@@ -18,6 +25,8 @@ type Deps = {
   setDefaultServerUrl: (url: string | null) => Promise<void> | void
   getWslConfig: () => Promise<WslConfig>
   setWslConfig: (config: WslConfig) => Promise<void> | void
+  getSidecarLanConfig: () => Promise<SidecarLanConfig>
+  setSidecarLanConfig: (config: SidecarLanConfig) => Promise<void> | void
   getDisplayBackend: () => Promise<string | null>
   setDisplayBackend: (backend: string | null) => Promise<void> | void
   parseMarkdown: (markdown: string) => Promise<string> | string
@@ -43,6 +52,10 @@ export function registerIpcHandlers(deps: Deps) {
   )
   ipcMain.handle("get-wsl-config", () => deps.getWslConfig())
   ipcMain.handle("set-wsl-config", (_event: IpcMainInvokeEvent, config: WslConfig) => deps.setWslConfig(config))
+  ipcMain.handle("get-sidecar-lan-config", () => deps.getSidecarLanConfig())
+  ipcMain.handle("set-sidecar-lan-config", (_event: IpcMainInvokeEvent, config: SidecarLanConfig) =>
+    deps.setSidecarLanConfig(config),
+  )
   ipcMain.handle("get-display-backend", () => deps.getDisplayBackend())
   ipcMain.handle("set-display-backend", (_event: IpcMainInvokeEvent, backend: string | null) =>
     deps.setDisplayBackend(backend),

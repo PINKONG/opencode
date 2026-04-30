@@ -353,6 +353,36 @@ const createPlatform = (): Platform => {
       await commands.setWslConfig({ enabled })
     },
 
+    getSidecarLanConfig: async () => {
+      const config = await commands.getSidecarLanConfig().catch(() => null)
+      if (!config) {
+        return {
+          enabled: false,
+          addressMode: "lan",
+          customAddress: "",
+          fixedToken: false,
+          fixedPort: undefined,
+        }
+      }
+      return {
+        enabled: config.enabled,
+        addressMode: config.addressMode,
+        customAddress: config.customAddress,
+        fixedToken: config.fixedToken,
+        fixedPort: config.fixedPort ?? undefined,
+      }
+    },
+
+    setSidecarLanConfig: async (config) => {
+      await commands.setSidecarLanConfig({
+        enabled: config.enabled,
+        addressMode: config.addressMode,
+        customAddress: config.customAddress,
+        fixedToken: config.fixedToken === true,
+        fixedPort: config.fixedPort ?? null,
+      })
+    },
+
     getDefaultServer: async () => {
       const url = await commands.getDefaultServerUrl().catch(() => null)
       if (!url) return null

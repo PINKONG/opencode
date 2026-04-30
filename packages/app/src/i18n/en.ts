@@ -755,6 +755,31 @@ export const dict = {
   "settings.desktop.section.wsl": "WSL",
   "settings.desktop.wsl.title": "WSL integration",
   "settings.desktop.wsl.description": "Run the WisCode server inside WSL on Windows.",
+  "settings.desktop.section.network": "Network",
+  "settings.desktop.sidecarLan.title": "Expose local server to LAN",
+  "settings.desktop.sidecarLan.description":
+    "Advanced mode. Bind sidecar to all interfaces so other LAN devices can reach it. Requires restart.",
+  "settings.desktop.sidecarLan.confirm.title": "Enable LAN exposure for local server?",
+  "settings.desktop.sidecarLan.confirm.risk1": "The local server will become reachable from your LAN.",
+  "settings.desktop.sidecarLan.confirm.risk2": "Leaked access links or credentials can be used by others on the network.",
+  "settings.desktop.sidecarLan.confirm.risk3": "Only enable on trusted networks and disable when not needed.",
+  "settings.desktop.sidecarLan.addressMode.title": "LAN address mode",
+  "settings.desktop.sidecarLan.addressMode.description": "Choose auto LAN IP or a specific LAN IP to advertise.",
+  "settings.desktop.sidecarLan.addressMode.option.lan": "Auto LAN IP",
+  "settings.desktop.sidecarLan.addressMode.option.custom": "Specific LAN IP",
+  "settings.desktop.sidecarLan.customAddress.title": "Specific LAN IP",
+  "settings.desktop.sidecarLan.customAddress.description":
+    "Preferred LAN address shown in copied links. Falls back to auto LAN IP when unavailable.",
+  "settings.desktop.sidecarLan.fixedPort.title": "Fixed server port",
+  "settings.desktop.sidecarLan.fixedPort.description":
+    "Set a fixed sidecar port (1-65535). Leave empty to auto-assign each start.",
+  "settings.desktop.sidecarLan.fixedPort.placeholder": "Auto (random)",
+  "settings.desktop.sidecarLan.fixedToken.title": "Fixed token mode",
+  "settings.desktop.sidecarLan.fixedToken.description":
+    "Keep access token stable across app restarts. Password source priority: OPENCODE_SERVER_PASSWORD, then a persisted local secret.",
+  "settings.desktop.sidecarLan.fixedToken.risk.title": "Security notice",
+  "settings.desktop.sidecarLan.fixedToken.risk.description":
+    "Fixed token can stay valid for a long time. If LAN exposure is enabled, risk increases. Use only on trusted networks.",
 
   "settings.general.section.appearance": "Appearance",
   "settings.general.section.advanced": "Advanced",

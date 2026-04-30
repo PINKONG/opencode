@@ -8,6 +8,7 @@ import { dict as zh } from "@/i18n/zh"
 import { handleNotificationClick } from "@/utils/notification-click"
 import pkg from "../package.json"
 import { ServerConnection } from "./context/server"
+import { readEmbedSessionBootstrap } from "./util/embed-session"
 
 const DEFAULT_SERVER_URL_KEY = "opencode.settings.dat:defaultServerUrl"
 
@@ -126,7 +127,13 @@ const platform: Platform = {
 }
 
 if (root instanceof HTMLElement) {
-  const server: ServerConnection.Http = { type: "http", http: { url: getCurrentUrl() } }
+  const server: ServerConnection.Http = {
+    type: "http",
+    http: {
+      url: getCurrentUrl(),
+      embedSession: readEmbedSessionBootstrap(location.search),
+    },
+  }
   render(
     () => (
       <PlatformProvider value={platform}>

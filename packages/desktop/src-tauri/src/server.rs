@@ -89,11 +89,12 @@ pub fn spawn_local_server(
     hostname: String,
     port: u32,
     password: String,
+    health_host: String,
 ) -> (CommandChild, HealthCheck) {
     let (child, exit) = cli::serve(&app, &hostname, port, &password);
 
     let health_check = HealthCheck(tokio::spawn(async move {
-        let url = format!("http://{hostname}:{port}");
+        let url = format!("http://{health_host}:{port}");
         let timestamp = Instant::now();
 
         let ready = async {

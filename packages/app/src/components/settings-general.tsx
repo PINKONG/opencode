@@ -590,7 +590,206 @@ export const SettingsGeneral: Component = () => {
     </div>
   )
 
-  console.log(import.meta.env)
+  const SidecarLanSection = () => (
+    <Show when={desktop() && platform.getSidecarLanConfig && platform.setSidecarLanConfig}>
+      {(_) => {
+        const [configResource, actions] = createResource(() => platform.getSidecarLanConfig?.())
+        const config = createMemo(() => configResource.latest)
+        const enabled = createMemo(() => config()?.enabled ?? false)
+        const addressMode = createMemo(() => config()?.addressMode ?? "lan")
+        const customAddress = createMemo(() => config()?.customAddress ?? "")
+        const fixedToken = createMemo(() => config()?.fixedToken ?? false)
+        const fixedPort = createMemo(() => {
+          const value = config()?.fixedPort
+          if (typeof value !== "number" || !Number.isInteger(value)) return ""
+          return String(value)
+        })
+
+        const updateLanConfig = async (next: {
+          enabled?: boolean
+          addressMode?: "lan" | "custom"
+          customAddress?: string
+          fixedToken?: boolean
+          fixedPort?: number
+        }) => {
+          const current = config()
+          const customAddress = (next.customAddress ?? current?.customAddress ?? "").trim()
+          const fixedPort = next.fixedPort ?? current?.fixedPort
+          const normalizedPort =
+            typeof fixedPort === "number" && Number.isInteger(fixedPort) && fixedPort >= 1 && fixedPort <= 65535
+              ? fixedPort
+              : undefined
+          await Promise.resolve(
+            platform.setSidecarLanConfig?.({
+              enabled: next.enabled ?? current?.enabled ?? false,
+              addressMode: next.addressMode ?? current?.addressMode ?? "lan",
+              customAddress,
+              fixedToken: next.fixedToken ?? current?.fixedToken ?? false,
+              fixedPort: normalizedPort,
+            }),
+          )
+          await actions.refetch()
+        }
+
+        const onChange = (checked: boolean) => {
+          if (!checked) {
+            void updateLanConfig({ enabled: false })
+            return
+          }
+
+          const confirmed = window.confirm(
+            [
+              language.t("settings.desktop.sidecarLan.confirm.title"),
+              "",
+              language.t("settings.desktop.sidecarLan.confirm.risk1"),
+              language.t("settings.desktop.sidecarLan.confirm.risk2"),
+              language.t("settings.desktop.sidecarLan.confirm.risk3"),
+            ].join("\n"),
+          )
+
+          if (!confirmed) {
+            void actions.refetch()
+            return
+          }
+
+          void updateLanConfig({ enabled: true })
+        }
+
+        return (
+          <div class="flex flex-col gap-1">
+            <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.desktop.section.network")}</h3>
+
+            <SettingsList>
+              <SettingsRow
+                title={language.t("settings.desktop.sidecarLan.title")}
+                description={language.t("settings.desktop.sidecarLan.description")}
+              >
+                <div data-action="settings-sidecar-lan">
+                  <Switch checked={enabled()} disabled={configResource.state === "pending"} onChange={onChange} />
+                </div>
+              </SettingsRow>
+
+              <Show when={enabled()}>
+                <SettingsRow
+                  title={language.t("settings.desktop.sidecarLan.addressMode.title")}
+                  description={language.t("settings.desktop.sidecarLan.addressMode.description")}
+                >
+                  <Select
+                    data-action="settings-sidecar-lan-address-mode"
+                    options={[
+                      { value: "lan", label: language.t("settings.desktop.sidecarLan.addressMode.option.lan") },
+                      { value: "custom", label: language.t("settings.desktop.sidecarLan.addressMode.option.custom") },
+                    ]}
+                    current={{
+                      value: addressMode(),
+                      label:
+                        addressMode() === "custom"
+                          ? language.t("settings.desktop.sidecarLan.addressMode.option.custom")
+                          : language.t("settings.desktop.sidecarLan.addressMode.option.lan"),
+                    }}
+                    value={(o) => o.value}
+                    label={(o) => o.label}
+                    onSelect={(option) => {
+                      if (!option) return
+                      if (option.value === "custom" && !customAddress()) {
+                        void updateLanConfig({
+                          addressMode: "custom",
+                          customAddress: "192.168.1.100",
+                        })
+                        return
+                      }
+                      void updateLanConfig({ addressMode: option.value as "lan" | "custom" })
+                    }}
+                    variant="secondary"
+                    size="small"
+                    triggerVariant="settings"
+                  />
+                </SettingsRow>
+
+                <Show when={addressMode() === "custom"}>
+                  <SettingsRow
+                    title={language.t("settings.desktop.sidecarLan.customAddress.title")}
+                    description={language.t("settings.desktop.sidecarLan.customAddress.description")}
+                  >
+                    <div class="w-full sm:w-[220px]">
+                      <TextField
+                        data-action="settings-sidecar-lan-custom-address"
+                        label={language.t("settings.desktop.sidecarLan.customAddress.title")}
+                        hideLabel
+                        type="text"
+                        value={customAddress()}
+                        onChange={(value) => void updateLanConfig({ customAddress: value })}
+                        placeholder="192.168.1.100"
+                        spellcheck={false}
+                        autocorrect="off"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        class="text-12-regular"
+                      />
+                    </div>
+                  </SettingsRow>
+                </Show>
+
+                <SettingsRow
+                  title={language.t("settings.desktop.sidecarLan.fixedToken.title")}
+                  description={language.t("settings.desktop.sidecarLan.fixedToken.description")}
+                >
+                  <div data-action="settings-sidecar-lan-fixed-token">
+                    <Switch
+                      checked={fixedToken()}
+                      disabled={configResource.state === "pending"}
+                      onChange={(checked) => void updateLanConfig({ fixedToken: checked })}
+                    />
+                  </div>
+                </SettingsRow>
+
+                <Show when={fixedToken()}>
+                  <SettingsRow
+                    title={language.t("settings.desktop.sidecarLan.fixedToken.risk.title")}
+                    description={language.t("settings.desktop.sidecarLan.fixedToken.risk.description")}
+                  >
+                    <div />
+                  </SettingsRow>
+                </Show>
+
+                <SettingsRow
+                  title={language.t("settings.desktop.sidecarLan.fixedPort.title")}
+                  description={language.t("settings.desktop.sidecarLan.fixedPort.description")}
+                >
+                  <div class="w-full sm:w-[220px]">
+                    <TextField
+                      data-action="settings-sidecar-lan-fixed-port"
+                      label={language.t("settings.desktop.sidecarLan.fixedPort.title")}
+                      hideLabel
+                      type="text"
+                      value={fixedPort()}
+                      onChange={(value) => {
+                        const trimmed = value.trim()
+                        if (!trimmed) {
+                          void updateLanConfig({ fixedPort: undefined })
+                          return
+                        }
+                        const parsed = Number.parseInt(trimmed, 10)
+                        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) return
+                        void updateLanConfig({ fixedPort: parsed })
+                      }}
+                      placeholder={language.t("settings.desktop.sidecarLan.fixedPort.placeholder")}
+                      spellcheck={false}
+                      autocorrect="off"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      class="text-12-regular"
+                    />
+                  </div>
+                </SettingsRow>
+              </Show>
+            </SettingsList>
+          </div>
+        )
+      }}
+    </Show>
+  )
+
   return (
     <div class="flex flex-col h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10">
       <div class="sticky top-0 z-10 bg-[linear-gradient(to_bottom,var(--surface-stronger-non-alpha)_calc(100%_-_24px),transparent)]">
@@ -637,6 +836,8 @@ export const SettingsGeneral: Component = () => {
         </Show>*/}
 
         <UpdatesSection />
+
+        <SidecarLanSection />
 
         <Show when={linux()}>
           {(_) => {

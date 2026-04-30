@@ -1,12 +1,20 @@
 import { app } from "electron"
+import { randomUUID } from "node:crypto"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { DEFAULT_SERVER_URL_KEY, WSL_ENABLED_KEY } from "./constants"
+import type { SidecarLanConfig } from "../preload/types"
+import {
+  DEFAULT_SERVER_URL_KEY,
+  SIDECAR_EXPOSE_LAN_KEY,
+  SIDECAR_PERSISTENT_PASSWORD_KEY,
+  SIDECAR_PORT_KEY,
+  WSL_ENABLED_KEY,
+} from "./constants"
+import { normalizeSidecarLanConfig } from "./sidecar-config"
 import { getUserShell, loadShellEnv } from "./shell-env"
 import { store } from "./store"
 
 export type WslConfig = { enabled: boolean }
-
 export type HealthCheck = { wait: Promise<void> }
 
 export function getDefaultServerUrl(): string | null {
@@ -32,7 +40,38 @@ export function setWslConfig(config: WslConfig) {
   store.set(WSL_ENABLED_KEY, config.enabled)
 }
 
-export async function spawnLocalServer(hostname: string, port: number, password: string) {
+export function getSidecarLanConfig(): SidecarLanConfig {
+  const raw = store.get(SIDECAR_EXPOSE_LAN_KEY)
+  const fixedPort = store.get(SIDECAR_PORT_KEY)
+  return normalizeSidecarLanConfig({
+    ...(typeof raw === "object" && raw ? (raw as object) : { enabled: raw === true }),
+    fixedPort,
+  })
+}
+
+export function setSidecarLanConfig(config: SidecarLanConfig) {
+  store.set(SIDECAR_EXPOSE_LAN_KEY, {
+    enabled: config.enabled,
+    addressMode: config.addressMode,
+    customAddress: config.customAddress,
+    fixedToken: config.fixedToken === true,
+  })
+  if (typeof config.fixedPort === "number") {
+    store.set(SIDECAR_PORT_KEY, config.fixedPort)
+    return
+  }
+  store.delete(SIDECAR_PORT_KEY)
+}
+
+export function getOrCreatePersistentPassword() {
+  const current = store.get(SIDECAR_PERSISTENT_PASSWORD_KEY)
+  if (typeof current === "string" && current.trim()) return current
+  const next = randomUUID()
+  store.set(SIDECAR_PERSISTENT_PASSWORD_KEY, next)
+  return next
+}
+
+export async function spawnLocalServer(hostname: string, port: number, password: string, healthHost = hostname) {
   prepareServerEnv(password)
   const { Log, Server } = await import("virtual:opencode-server")
   await Log.init({ level: "WARN" })
@@ -44,7 +83,7 @@ export async function spawnLocalServer(hostname: string, port: number, password:
   })
 
   const wait = (async () => {
-    const url = `http://${hostname}:${port}`
+    const url = `http://${healthHost}:${port}`
 
     const ready = async () => {
       while (true) {

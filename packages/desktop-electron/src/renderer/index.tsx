@@ -204,6 +204,14 @@ const createPlatform = (): Platform => {
       await window.api.setWslConfig({ enabled })
     },
 
+    getSidecarLanConfig: async () => {
+      return window.api.getSidecarLanConfig()
+    },
+
+    setSidecarLanConfig: async (config) => {
+      await window.api.setSidecarLanConfig(config)
+    },
+
     getDefaultServer: async () => {
       const url = await window.api.getDefaultServerUrl().catch(() => null)
       if (!url) return null

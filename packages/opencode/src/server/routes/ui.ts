@@ -12,14 +12,32 @@ const embeddedUIPromise = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
 
 const DEFAULT_CSP =
   "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:"
+const EMBED_META_NAME = "oc-embed-session"
+const THEME_SCRIPT_PATTERN =
+  /<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i
 
 const csp = (hash = "") =>
   `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:`
+
+function injectEmbedSessionMeta(input: string, embedSession: string | undefined) {
+  if (!embedSession) return input
+  const meta = `<meta name="${EMBED_META_NAME}" content="${embedSession}">`
+  if (input.includes(meta)) return input
+  if (/<head[^>]*>/i.test(input)) return input.replace(/<head[^>]*>/i, (head) => `${head}\n    ${meta}`)
+  return meta + input
+}
+
+function scriptHash(input: string) {
+  const match = input.match(THEME_SCRIPT_PATTERN)
+  if (!match) return ""
+  return createHash("sha256").update(match[2]).digest("base64")
+}
 
 export const UIRoutes = (): Hono =>
   new Hono().all("/*", async (c) => {
     const embeddedWebUI = await embeddedUIPromise
     const path = c.req.path
+    const embedSession = c.req.raw.headers.get("x-opencode-embed-session") ?? c.req.query("embed_session") ?? undefined
 
     if (embeddedWebUI) {
       const match = embeddedWebUI[path.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
@@ -29,7 +47,9 @@ export const UIRoutes = (): Hono =>
         const mime = getMimeType(match) ?? "text/plain"
         c.header("Content-Type", mime)
         if (mime.startsWith("text/html")) {
-          c.header("Content-Security-Policy", DEFAULT_CSP)
+          const html = injectEmbedSessionMeta(await fs.readFile(match, "utf8"), embedSession)
+          c.header("Content-Security-Policy", csp(scriptHash(html)) || DEFAULT_CSP)
+          return c.body(new TextEncoder().encode(html))
         }
         return c.body(new Uint8Array(await fs.readFile(match)))
       } else {
@@ -43,13 +63,14 @@ export const UIRoutes = (): Hono =>
           host: "app.opencode.ai",
         },
       })
-      const match = response.headers.get("content-type")?.includes("text/html")
-        ? (await response.clone().text()).match(
-            /<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i,
-          )
-        : undefined
-      const hash = match ? createHash("sha256").update(match[2]).digest("base64") : ""
-      response.headers.set("Content-Security-Policy", csp(hash))
+      response.headers.delete("alt-svc")
+      if (response.headers.get("content-type")?.includes("text/html")) {
+        const html = injectEmbedSessionMeta(await response.text(), embedSession)
+        response.headers.set("Content-Security-Policy", csp(scriptHash(html)) || DEFAULT_CSP)
+        response.headers.set("content-length", String(Buffer.byteLength(html)))
+        return new Response(html, response)
+      }
+      response.headers.set("Content-Security-Policy", DEFAULT_CSP)
       return response
     }
   })

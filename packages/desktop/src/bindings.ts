@@ -12,6 +12,8 @@ export const commands = {
 	setDefaultServerUrl: (url: string | null) => __TAURI_INVOKE<null>("set_default_server_url", { url }),
 	getWslConfig: () => __TAURI_INVOKE<WslConfig>("get_wsl_config"),
 	setWslConfig: (config: WslConfig) => __TAURI_INVOKE<null>("set_wsl_config", { config }),
+	getSidecarLanConfig: () => __TAURI_INVOKE<SidecarLanConfig>("get_sidecar_lan_config"),
+	setSidecarLanConfig: (config: SidecarLanConfig) => __TAURI_INVOKE<null>("set_sidecar_lan_config", { config }),
 	getDisplayBackend: () => __TAURI_INVOKE<"wayland" | "auto" | null>("get_display_backend"),
 	setDisplayBackend: (backend: LinuxDisplayBackend) => __TAURI_INVOKE<null>("set_display_backend", { backend }),
 	parseMarkdownCommand: (markdown: string) => __TAURI_INVOKE<string>("parse_markdown_command", { markdown }),
@@ -38,6 +40,16 @@ export type ServerReadyData = {
 		url: string,
 		username: string | null,
 		password: string | null,
+	};
+
+export type SidecarLanAddressMode = "lan" | "custom";
+
+export type SidecarLanConfig = {
+		enabled: boolean,
+		addressMode: SidecarLanAddressMode,
+		customAddress: string,
+		fixedPort: number | null,
+		fixedToken: boolean,
 	};
 
 export type SqliteMigrationProgress = { type: "InProgress"; value: number } | { type: "Done" };

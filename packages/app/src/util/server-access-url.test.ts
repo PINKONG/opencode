@@ -17,4 +17,11 @@ describe("buildServerAccessUrl", () => {
     })
     expect(result).toBe("http://127.0.0.1:4096/?auth_token=b3BlbmNvZGU6c2VjcmV0")
   })
+
+  test("preserves embed_session on base url", () => {
+    const result = buildServerAccessUrl({
+      url: "http://127.0.0.1:4096/?embed_session=session123",
+    })
+    expect(result).toBe("http://127.0.0.1:4096/?embed_session=session123")
+  })
 })

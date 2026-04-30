@@ -7,18 +7,19 @@ export function createSdkForServer({
 }: Omit<NonNullable<Parameters<typeof createOpencodeClient>[0]>, "baseUrl"> & {
   server: ServerConnection.HttpBase
 }) {
+  const embed = server.embedSession
   const auth = (() => {
     if (!server.password) return
     return {
       Authorization: `Basic ${btoa(`${server.username ?? "opencode"}:${server.password}`)}`,
     }
   })()
-
   return createOpencodeClient({
     ...config,
     headers: {
       ...(config.headers instanceof Headers ? Object.fromEntries(config.headers.entries()) : config.headers),
       ...auth,
+      ...(embed ? { "x-opencode-embed-session": embed } : undefined),
     },
     baseUrl: server.url,
   })
