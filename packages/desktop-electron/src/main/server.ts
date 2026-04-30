@@ -12,37 +12,37 @@ import {
 } from "./constants"
 import { normalizeSidecarLanConfig } from "./sidecar-config"
 import { getUserShell, loadShellEnv } from "./shell-env"
-import { store } from "./store"
+import { getStore } from "./store"
 
 export type WslConfig = { enabled: boolean }
 export type HealthCheck = { wait: Promise<void> }
 
 export function getDefaultServerUrl(): string | null {
-  const value = store.get(DEFAULT_SERVER_URL_KEY)
+  const value = getStore().get(DEFAULT_SERVER_URL_KEY)
   return typeof value === "string" ? value : null
 }
 
 export function setDefaultServerUrl(url: string | null) {
   if (url) {
-    store.set(DEFAULT_SERVER_URL_KEY, url)
+    getStore().set(DEFAULT_SERVER_URL_KEY, url)
     return
   }
 
-  store.delete(DEFAULT_SERVER_URL_KEY)
+  getStore().delete(DEFAULT_SERVER_URL_KEY)
 }
 
 export function getWslConfig(): WslConfig {
-  const value = store.get(WSL_ENABLED_KEY)
+  const value = getStore().get(WSL_ENABLED_KEY)
   return { enabled: typeof value === "boolean" ? value : false }
 }
 
 export function setWslConfig(config: WslConfig) {
-  store.set(WSL_ENABLED_KEY, config.enabled)
+  getStore().set(WSL_ENABLED_KEY, config.enabled)
 }
 
 export function getSidecarLanConfig(): SidecarLanConfig {
-  const raw = store.get(SIDECAR_EXPOSE_LAN_KEY)
-  const fixedPort = store.get(SIDECAR_PORT_KEY)
+  const raw = getStore().get(SIDECAR_EXPOSE_LAN_KEY)
+  const fixedPort = getStore().get(SIDECAR_PORT_KEY)
   return normalizeSidecarLanConfig({
     ...(typeof raw === "object" && raw ? (raw as object) : { enabled: raw === true }),
     fixedPort,
@@ -50,24 +50,24 @@ export function getSidecarLanConfig(): SidecarLanConfig {
 }
 
 export function setSidecarLanConfig(config: SidecarLanConfig) {
-  store.set(SIDECAR_EXPOSE_LAN_KEY, {
+  getStore().set(SIDECAR_EXPOSE_LAN_KEY, {
     enabled: config.enabled,
     addressMode: config.addressMode,
     customAddress: config.customAddress,
     fixedToken: config.fixedToken === true,
   })
   if (typeof config.fixedPort === "number") {
-    store.set(SIDECAR_PORT_KEY, config.fixedPort)
+    getStore().set(SIDECAR_PORT_KEY, config.fixedPort)
     return
   }
-  store.delete(SIDECAR_PORT_KEY)
+  getStore().delete(SIDECAR_PORT_KEY)
 }
 
 export function getOrCreatePersistentPassword() {
-  const current = store.get(SIDECAR_PERSISTENT_PASSWORD_KEY)
+  const current = getStore().get(SIDECAR_PERSISTENT_PASSWORD_KEY)
   if (typeof current === "string" && current.trim()) return current
   const next = randomUUID()
-  store.set(SIDECAR_PERSISTENT_PASSWORD_KEY, next)
+  getStore().set(SIDECAR_PERSISTENT_PASSWORD_KEY, next)
   return next
 }
 

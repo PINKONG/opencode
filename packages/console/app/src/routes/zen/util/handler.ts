@@ -763,7 +763,8 @@ export async function handler(
     const billing = authInfo.billing
     const billingUrl = workspaceUrl(authInfo.workspaceID, "billing")
     const membersUrl = workspaceUrl(authInfo.workspaceID, "members")
-    if (!billing.paymentMethodID) throw new CreditsError(t("zen.api.error.noPaymentMethod", { billingUrl }))
+    if (!billing.paymentMethodID && billing.balance <= 0)
+      throw new CreditsError(t("zen.api.error.noPaymentMethod", { billingUrl }))
     if (billing.balance <= 0) throw new CreditsError(t("zen.api.error.insufficientBalance", { billingUrl }))
 
     const now = new Date()
