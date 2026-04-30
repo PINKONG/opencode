@@ -6,6 +6,9 @@
 - 吃到上游更新
 - 不破坏 WisCode 现有品牌、配置隔离和发布链路
 
+开始任何一次 upstream merge 前，先通读：
+- [docs/wiscode-fork-delta.md](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-fork-delta.md)
+
 ## 适用范围
 
 以下场景都使用本清单：
@@ -48,6 +51,7 @@
 - 路由和入口文件
 - Solid 组件重构
 - 配置路径
+- sidecar / server 鉴权与嵌入链路
 - 安装、升级、发布、签名链路
 - OpenAPI / SDK 生成物
 
@@ -83,8 +87,16 @@
 - [packages/app/src/pages/session.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/session.tsx)
 - [packages/app/src/pages/session/session-side-panel.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/session/session-side-panel.tsx)
 - [packages/app/src/components/session/session-header.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/session/session-header.tsx)
+- [packages/app/src/context/server.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/context/server.tsx)
+- [packages/app/src/utils/server.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/utils/server.ts)
 - [packages/desktop/src/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src/index.tsx)
 - [packages/desktop-electron/src/renderer/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop-electron/src/renderer/index.tsx)
+- [packages/opencode/src/server/middleware.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/middleware.ts)
+- [packages/opencode/src/server/routes/ui.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/routes/ui.ts)
+- [packages/desktop-electron/src/main/server.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop-electron/src/main/server.ts)
+- [packages/desktop-electron/src/main/sidecar-config.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop-electron/src/main/sidecar-config.ts)
+- [packages/desktop/src-tauri/src/server.rs](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src-tauri/src/server.rs)
+- [packages/desktop/src-tauri/src/sidecar_config.rs](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src-tauri/src/sidecar_config.rs)
 
 ### 4. Solid 响应式代码要额外谨慎
 
@@ -115,6 +127,9 @@
 - `wiscode.json`
 - `PINKONG/opencode`
 - `anomalyco/opencode`
+- `embed_session`
+- `wiscode_auth_token`
+- `x-opencode-embed-session`
 
 ### 2. OpenAPI / SDK 改动必须成套处理
 
@@ -159,6 +174,14 @@ cd packages/app && bun test --preload ./happydom.ts ./src/pages/layout/helpers.t
 
 如果改了知识库、设置、会话页、桌面入口，补跑对应测试。
 
+如果改了 sidecar / iframe / 浏览器访问链路，至少补跑：
+
+```bash
+cd packages/opencode && bun test ./src/server/middleware.test.ts ./src/server/routes/ui.test.ts
+cd packages/app && bun test --preload ./happydom.ts ./src/util/server-access-url.test.ts ./src/util/embed-session.test.ts
+cd packages/desktop-electron && bun test ./src/main/lan.test.ts ./src/main/sidecar-config.test.ts
+```
+
 ### 3. 桌面端冒烟验证
 
 这一步不能省。
@@ -176,6 +199,8 @@ cd packages/app && bun test --preload ./happydom.ts ./src/pages/layout/helpers.t
 - 模型选择
 - 知识库入口
 - 标题栏 / 右上角按钮
+- 浏览器访问 sidecar 链接
+- iframe / 嵌入 URL 场景（如果本次改到了相关链路）
 
 ### 4. 构建物最小验证
 
