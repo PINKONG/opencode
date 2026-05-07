@@ -135,6 +135,18 @@
 - 后续增强项（非当前阶段）：
   - 支持仅绑定指定网卡/IP（进一步缩小暴露面）。
 
+#### 5.2.1 macOS + VPN 选址注记（已处理）
+
+- 现象：
+  - 部分 macOS 设备在开启 VPN 后，会出现“应用停在启动 Logo、无法进入主界面”的问题。
+- 根因：
+  - 自动 LAN 选址可能命中 `utun` 等 point-to-point 虚拟网卡地址；
+  - 前端健康检查若使用该不可达地址，会在 `ConnectionGate` 长时间 pending。
+- 当前策略：
+  - Tauri 端在 LAN 自动选址时，优先排除 VPN/虚拟网卡地址（如 `utun`）与链路本地地址（`169.254.x.x`）；
+  - 在可用候选中优先选择活动网卡的常规 IPv4 地址；
+  - 若无更优地址，才回退到 route 探测结果。
+
 ### 5.3 启用前风险提示（必需）
 
 - 明示“服务将对局域网可见”；
@@ -213,6 +225,7 @@
 - `packages/app/src/util/server-access-url.test.ts`
 - `packages/desktop-electron/src/main/lan.ts`
 - `packages/desktop-electron/src/main/sidecar-config.ts`
+- `packages/desktop/src-tauri/src/sidecar_config.rs`（LAN 自动选址与 VPN 虚拟网卡规避）
 - `packages/opencode/src/server/embed-session.ts`
 - `packages/opencode/src/server/middleware.ts`
 - `packages/opencode/src/server/middleware.test.ts`
