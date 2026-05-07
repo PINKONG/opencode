@@ -130,10 +130,26 @@ const showRequestError = (language: ReturnType<typeof useLanguage>, err: unknown
 }
 
 function titlebarMounts() {
+  const latest = (id: string) => Array.from(document.querySelectorAll<HTMLDivElement>(`#${id}`)).at(-1)
+
   return {
-    center: document.getElementById("opencode-titlebar-center") as HTMLDivElement | undefined,
-    right: document.getElementById("opencode-titlebar-right") as HTMLDivElement | undefined,
+    center: latest("opencode-titlebar-center"),
+    right: latest("opencode-titlebar-right"),
   }
+}
+
+function titlebarHost(name: "center" | "right") {
+  const host = document.createElement("div")
+  host.dataset.sessionHeaderHost = name
+  host.style.display = "contents"
+  return host
+}
+
+function resetTitlebarMounts(id: "opencode-titlebar-center" | "opencode-titlebar-right", current?: HTMLDivElement) {
+  document.querySelectorAll<HTMLDivElement>(`#${id}`).forEach((mount) => {
+    if (mount === current) return
+    mount.replaceChildren()
+  })
 }
 
 export function SessionHeader() {
@@ -227,6 +243,10 @@ export function SessionHeader() {
     app: undefined as OpenApp | undefined,
   })
   const [mounts, setMounts] = createStore(titlebarMounts())
+  const hosts = {
+    center: titlebarHost("center"),
+    right: titlebarHost("right"),
+  }
 
   const canOpen = createMemo(() => platform.platform === "desktop" && !!platform.openPath && server.isLocal())
   const current = createMemo(
@@ -242,6 +262,30 @@ export function SessionHeader() {
 
   const syncMounts = () => {
     const next = titlebarMounts()
+    if (next.center) {
+      resetTitlebarMounts("opencode-titlebar-center", next.center)
+      next.center.querySelectorAll(":scope > *").forEach((node) => {
+        if (node !== hosts.center) node.remove()
+      })
+      next.center.querySelectorAll<HTMLElement>("[data-session-header-host='center']").forEach((node) => {
+        if (node !== hosts.center) node.remove()
+      })
+      if (hosts.center.parentElement !== next.center) next.center.appendChild(hosts.center)
+    } else {
+      hosts.center.remove()
+    }
+    if (next.right) {
+      resetTitlebarMounts("opencode-titlebar-right", next.right)
+      next.right.querySelectorAll(":scope > *").forEach((node) => {
+        if (node !== hosts.right) node.remove()
+      })
+      next.right.querySelectorAll<HTMLElement>("[data-session-header-host='right']").forEach((node) => {
+        if (node !== hosts.right) node.remove()
+      })
+      if (hosts.right.parentElement !== next.right) next.right.appendChild(hosts.right)
+    } else {
+      hosts.right.remove()
+    }
     if (mounts.center === next.center && mounts.right === next.right) return
     setMounts(next)
   }
@@ -250,7 +294,11 @@ export function SessionHeader() {
     syncMounts()
     const observer = new MutationObserver(() => syncMounts())
     observer.observe(document.body, { childList: true, subtree: true })
-    onCleanup(() => observer.disconnect())
+    onCleanup(() => {
+      observer.disconnect()
+      hosts.center.remove()
+      hosts.right.remove()
+    })
   })
 
   const selectApp = (app: OpenApp) => {
@@ -290,14 +338,10 @@ export function SessionHeader() {
       .catch((err: unknown) => showRequestError(language, err))
   }
 
-  const centerMount = createMemo(() => mounts.center)
-  const rightMount = createMemo(() => mounts.right)
-
   return (
     <>
-      <Show when={search() && centerMount()} keyed>
-        {(mount) => (
-          <Portal mount={mount}>
+      <Show when={search() && mounts.center}>
+        <Portal mount={hosts.center}>
             <Button
               type="button"
               variant="ghost"
@@ -322,12 +366,10 @@ export function SessionHeader() {
                 )}
               </Show>
             </Button>
-          </Portal>
-        )}
+        </Portal>
       </Show>
-      <Show when={rightMount()} keyed>
-        {(mount) => (
-          <Portal mount={mount}>
+      <Show when={mounts.right}>
+        <Portal mount={hosts.right}>
             <div class="flex items-center gap-2">
               <Show when={projectDirectory()}>
                 <div class="hidden xl:flex items-center">
@@ -512,8 +554,7 @@ export function SessionHeader() {
                 </div>
               </div>
             </div>
-          </Portal>
-        )}
+        </Portal>
       </Show>
     </>
   )
