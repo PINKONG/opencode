@@ -351,11 +351,16 @@ function setupAutoUpdater() {
   })
 }
 
-let updateReady = false
+let downloadedUpdateVersion: string | undefined
 
 async function checkUpdate() {
   if (!UPDATER_ENABLED) return { updateAvailable: false }
-  updateReady = false
+  if (downloadedUpdateVersion) {
+    logger.log("returning cached downloaded update", {
+      version: downloadedUpdateVersion,
+    })
+    return { updateAvailable: true, version: downloadedUpdateVersion }
+  }
   logger.log("checking for updates", {
     currentVersion: app.getVersion(),
     channel: autoUpdater.channel,
@@ -381,7 +386,7 @@ async function checkUpdate() {
     logger.log("update available", { version })
     await autoUpdater.downloadUpdate()
     logger.log("update download completed", { version })
-    updateReady = true
+    downloadedUpdateVersion = version
     return { updateAvailable: true, version }
   } catch (error) {
     logger.error("update check failed", error)
@@ -390,7 +395,15 @@ async function checkUpdate() {
 }
 
 async function installUpdate() {
-  if (!updateReady) return
+  if (!downloadedUpdateVersion) {
+    logger.log("install update skipped", {
+      reason: "no downloaded update ready",
+    })
+    return
+  }
+  logger.log("installing downloaded update", {
+    version: downloadedUpdateVersion,
+  })
   killSidecar()
   autoUpdater.quitAndInstall()
 }
