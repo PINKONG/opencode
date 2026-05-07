@@ -3,7 +3,7 @@ use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
 use crate::constants::{
-    SETTINGS_STORE, SIDECAR_EXPOSE_LAN_KEY, SIDECAR_PERSISTENT_PASSWORD_KEY, SIDECAR_PORT_KEY,
+    SETTINGS_STORE, SIDECAR_EXPOSE_LAN_KEY, SIDECAR_PORT_KEY,
 };
 
 #[derive(Clone, serde::Serialize, serde::Deserialize, specta::Type, Debug)]
@@ -151,28 +151,6 @@ pub fn set_sidecar_lan_config(app: AppHandle, config: SidecarLanConfig) -> Resul
 
 pub fn resolve_configured_port(config: &SidecarLanConfig) -> Option<u32> {
     config.fixed_port.filter(|port| (1..=65535).contains(port))
-}
-
-pub fn get_or_create_persistent_password(app: AppHandle) -> Result<String, String> {
-    let store = app
-        .store(SETTINGS_STORE)
-        .map_err(|e| format!("Failed to open settings store: {}", e))?;
-    if let Some(existing) = store
-        .get(SIDECAR_PERSISTENT_PASSWORD_KEY)
-        .and_then(|v| v.as_str().map(|v| v.trim().to_string()))
-        .filter(|v| !v.is_empty())
-    {
-        return Ok(existing);
-    }
-    let next = uuid::Uuid::new_v4().to_string();
-    store.set(
-        SIDECAR_PERSISTENT_PASSWORD_KEY,
-        serde_json::json!(next.clone()),
-    );
-    store
-        .save()
-        .map_err(|e| format!("Failed to save settings: {}", e))?;
-    Ok(next)
 }
 
 pub fn resolve_sidecar_hosts(config: &SidecarLanConfig) -> SidecarHosts {

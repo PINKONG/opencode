@@ -440,15 +440,8 @@ async fn initialize(app: AppHandle) {
     let hostname = hosts.bind_host;
     let url = format!("http://{}:{port}", hosts.advertise_host);
     let password = if sidecar_lan.fixed_token {
-        env::var("OPENCODE_SERVER_PASSWORD").unwrap_or_else(|_| {
-            sidecar_config::get_or_create_persistent_password(app.clone()).unwrap_or_else(|error| {
-                tracing::warn!(
-                    error = %error,
-                    "fixed token mode fallback: persistent password unavailable, using ephemeral password"
-                );
-                uuid::Uuid::new_v4().to_string()
-            })
-        })
+        env::var("OPENCODE_SERVER_PASSWORD")
+            .unwrap_or_else(|_| SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD.to_string())
     } else {
         uuid::Uuid::new_v4().to_string()
     };
