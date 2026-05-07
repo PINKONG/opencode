@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
 import { Hono } from "hono"
 import { UIRoutes } from "./ui"
-import { Flag } from "@/flag/flag"
+import { Flag } from "@opencode-ai/core/flag/flag"
 
 const originalDisableEmbedded = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
 const originalFetch = globalThis.fetch
