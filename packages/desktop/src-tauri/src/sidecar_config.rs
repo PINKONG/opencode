@@ -1,4 +1,4 @@
-use std::net::UdpSocket;
+use std::{net::UdpSocket, sync::OnceLock};
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
@@ -185,6 +185,21 @@ pub fn resolve_sidecar_hosts(config: &SidecarLanConfig) -> SidecarHosts {
 }
 
 fn detect_lan_ipv4() -> Option<String> {
+    let auto = route_selected_ipv4();
+    if !cfg!(target_os = "macos") {
+        return auto;
+    }
+    if let Some(current) = auto.as_deref() {
+        if !is_point_to_point_ipv4(current) {
+            return auto;
+        }
+    }
+
+    let candidates = all_active_ipv4_candidates();
+    pick_preferred_lan_ipv4(&candidates.iter().map(String::as_str).collect::<Vec<_>>()).or(auto)
+}
+
+fn route_selected_ipv4() -> Option<String> {
     let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("8.8.8.8:80").ok()?;
     let addr = socket.local_addr().ok()?;
@@ -192,6 +207,96 @@ fn detect_lan_ipv4() -> Option<String> {
         std::net::IpAddr::V4(v4) if !v4.is_loopback() && !v4.is_unspecified() => Some(v4.to_string()),
         _ => None,
     }
+}
+
+fn is_point_to_point_ipv4(addr: &str) -> bool {
+    static P2P_CACHE: OnceLock<Vec<String>> = OnceLock::new();
+    let p2p = P2P_CACHE.get_or_init(list_point_to_point_ipv4);
+    p2p.iter().any(|value| value == addr)
+}
+
+fn list_point_to_point_ipv4() -> Vec<String> {
+    let output = std::process::Command::new("ifconfig").output();
+    let text = match output {
+        Ok(value) if value.status.success() => String::from_utf8_lossy(&value.stdout).to_string(),
+        _ => return Vec::new(),
+    };
+    let mut current = String::new();
+    let mut is_p2p = false;
+    let mut list = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if !line.starts_with('\t') {
+            current = trimmed.split(':').next().unwrap_or_default().to_string();
+            is_p2p = trimmed.contains("POINTOPOINT");
+            continue;
+        }
+        if !is_p2p {
+            continue;
+        }
+        if !trimmed.starts_with("inet ") {
+            continue;
+        }
+        let parts = trimmed.split_whitespace().collect::<Vec<_>>();
+        if parts.len() < 2 {
+            continue;
+        }
+        if parts[1] != "127.0.0.1" && !current.is_empty() {
+            list.push(parts[1].to_string());
+        }
+    }
+    list
+}
+
+fn all_active_ipv4_candidates() -> Vec<String> {
+    let output = std::process::Command::new("ifconfig").output();
+    let text = match output {
+        Ok(value) if value.status.success() => String::from_utf8_lossy(&value.stdout).to_string(),
+        _ => return Vec::new(),
+    };
+    let mut current = String::new();
+    let mut active = false;
+    let mut entries = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if !line.starts_with('\t') {
+            current = trimmed.split(':').next().unwrap_or_default().to_string();
+            active = false;
+            continue;
+        }
+        if trimmed.starts_with("status: ") {
+            active = trimmed.ends_with("active");
+            continue;
+        }
+        if !active || !trimmed.starts_with("inet ") {
+            continue;
+        }
+        let parts = trimmed.split_whitespace().collect::<Vec<_>>();
+        if parts.len() < 2 {
+            continue;
+        }
+        let ip = parts[1];
+        if ip == "127.0.0.1" || current.starts_with("utun") || current.starts_with("awdl") {
+            continue;
+        }
+        entries.push(ip.to_string());
+    }
+    entries
+}
+
+fn pick_preferred_lan_ipv4(candidates: &[&str]) -> Option<String> {
+    let mut fallback: Option<String> = None;
+    for item in candidates {
+        let parsed = item.trim().parse::<std::net::Ipv4Addr>().ok()?;
+        if parsed.is_loopback() || parsed.is_unspecified() {
+            continue;
+        }
+        if parsed.is_private() {
+            return Some(parsed.to_string());
+        }
+        fallback = Some(parsed.to_string());
+    }
+    fallback
 }
 
 #[cfg(test)]
@@ -243,5 +348,11 @@ mod tests {
         let hosts = resolve_sidecar_hosts(&config);
         assert_eq!(hosts.bind_host, "127.0.0.1");
         assert_eq!(hosts.advertise_host, "127.0.0.1");
+    }
+
+    #[test]
+    fn prefer_private_lan_address_over_point_to_point() {
+        let preferred = pick_preferred_lan_ipv4(&["190.160.30.68", "190.160.7.95"]);
+        assert_eq!(preferred, Some("190.160.7.95".to_string()));
     }
 }
