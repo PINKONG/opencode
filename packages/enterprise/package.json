@@ -1,6 +1,6 @@
 {
   "name": "@opencode-ai/enterprise",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -15,7 +15,7 @@
   "dependencies": {
     "@opencode-ai/shared": "workspace:*",
     "@opencode-ai/ui": "workspace:*",
-    "aws4fetch": "^1.0.20",
+    "aws4fetch": "^1.0.21",
     "@pierre/diffs": "catalog:",
     "@solidjs/router": "catalog:",
     "@solidjs/start": "catalog:",
