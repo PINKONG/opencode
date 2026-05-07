@@ -254,21 +254,50 @@ fn all_active_ipv4_candidates() -> Vec<String> {
         Ok(value) if value.status.success() => String::from_utf8_lossy(&value.stdout).to_string(),
         _ => return Vec::new(),
     };
+    parse_active_ipv4_from_ifconfig(&text)
+}
+
+fn parse_active_ipv4_from_ifconfig(text: &str) -> Vec<String> {
     let mut current = String::new();
+    let mut has_status = false;
     let mut active = false;
-    let mut entries = Vec::new();
+    let mut ips = Vec::<String>::new();
+    let mut entries = Vec::<String>::new();
+    let flush = |entries: &mut Vec<String>,
+                 current: &str,
+                 has_status: bool,
+                 active: bool,
+                 ips: &mut Vec<String>| {
+        if current.is_empty() {
+            ips.clear();
+            return;
+        }
+        if current.starts_with("utun") || current.starts_with("awdl") || current == "lo0" {
+            ips.clear();
+            return;
+        }
+        if has_status && !active {
+            ips.clear();
+            return;
+        }
+        entries.extend(ips.drain(..));
+    };
+
     for line in text.lines() {
         let trimmed = line.trim_start();
         if !line.starts_with('\t') {
+            flush(&mut entries, &current, has_status, active, &mut ips);
             current = trimmed.split(':').next().unwrap_or_default().to_string();
+            has_status = false;
             active = false;
             continue;
         }
         if trimmed.starts_with("status: ") {
+            has_status = true;
             active = trimmed.ends_with("active");
             continue;
         }
-        if !active || !trimmed.starts_with("inet ") {
+        if !trimmed.starts_with("inet ") {
             continue;
         }
         let parts = trimmed.split_whitespace().collect::<Vec<_>>();
@@ -276,11 +305,13 @@ fn all_active_ipv4_candidates() -> Vec<String> {
             continue;
         }
         let ip = parts[1];
-        if ip == "127.0.0.1" || current.starts_with("utun") || current.starts_with("awdl") {
+        if ip == "127.0.0.1" || ip.starts_with("169.254.") {
             continue;
         }
-        entries.push(ip.to_string());
+        ips.push(ip.to_string());
     }
+
+    flush(&mut entries, &current, has_status, active, &mut ips);
     entries
 }
 
@@ -354,5 +385,23 @@ mod tests {
     fn prefer_private_lan_address_over_point_to_point() {
         let preferred = pick_preferred_lan_ipv4(&["190.160.30.68", "190.160.7.95"]);
         assert_eq!(preferred, Some("190.160.7.95".to_string()));
+    }
+
+    #[test]
+    fn parse_active_candidates_when_status_comes_after_inet() {
+        let text = r#"en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	inet 190.160.7.95 netmask 0xffffff00 broadcast 190.160.7.255
+	status: active
+utun7: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1344
+	inet 190.160.30.68 --> 190.160.30.68 netmask 0xffffff00
+en8: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 16000
+	inet 192.168.2.10 netmask 0xffffff00 broadcast 192.168.2.255
+	status: active
+ap1: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	inet 169.254.1.2 netmask 0xffff0000 broadcast 169.254.255.255
+	status: inactive
+"#;
+        let result = parse_active_ipv4_from_ifconfig(text);
+        assert_eq!(result, vec!["190.160.7.95".to_string(), "192.168.2.10".to_string()]);
     }
 }
