@@ -1,4 +1,4 @@
-import { Flag } from "@/flag/flag"
+import { Flag } from "@opencode-ai/core/flag/flag"
 import { Hono } from "hono"
 import { proxy } from "hono/proxy"
 import { getMimeType } from "hono/utils/mime"
@@ -33,9 +33,9 @@ function scriptHash(input: string) {
   return createHash("sha256").update(match[2]).digest("base64")
 }
 
-export const UIRoutes = (): Hono =>
+export const UIRoutes = (opts?: { embeddedWebUI?: Record<string, string> | null }): Hono =>
   new Hono().all("/*", async (c) => {
-    const embeddedWebUI = await embeddedUIPromise
+    const embeddedWebUI = opts?.embeddedWebUI ?? (await embeddedUIPromise)
     const path = c.req.path
     const embedSession = c.req.raw.headers.get("x-opencode-embed-session") ?? c.req.query("embed_session") ?? undefined
 
@@ -49,7 +49,7 @@ export const UIRoutes = (): Hono =>
         if (mime.startsWith("text/html")) {
           const html = injectEmbedSessionMeta(await fs.readFile(match, "utf8"), embedSession)
           c.header("Content-Security-Policy", csp(scriptHash(html)) || DEFAULT_CSP)
-          return c.body(new TextEncoder().encode(html))
+          return c.body(html)
         }
         return c.body(new Uint8Array(await fs.readFile(match)))
       } else {

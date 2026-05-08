@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { Hono } from "hono"
 import { AuthMiddleware } from "./middleware"
-import { Flag } from "@/flag/flag"
+import { Flag } from "@opencode-ai/core/flag/flag"
 
 const originalPassword = Flag.OPENCODE_SERVER_PASSWORD
 const originalUsername = Flag.OPENCODE_SERVER_USERNAME

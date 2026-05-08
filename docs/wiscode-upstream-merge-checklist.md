@@ -114,6 +114,19 @@
 - 如果只是条件显示，不要把 `<Show>` 提供的 accessor 泄露到组件外部
 - 不要为了“过 typecheck”用 `!` 硬顶运行时空值
 
+### 5. 全局配置目录与内置知识库 MCP 不能回退
+
+这是近期合并事故新增的硬规则：
+
+- `Global.Path.config` 必须落在 `~/.config/wiscode`，不能回退到 `~/.config/opencode`
+- [packages/core/src/global.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/core/src/global.ts) 里的 app 目录名必须是 `wiscode`
+- [packages/opencode/src/config/config.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/config/config.ts) 的 `loadInstanceState` 必须保留内置 `maxkb-prod` 默认注入
+
+这两项任一被冲掉，会出现直接回归：
+
+- `~/.config/wiscode/wiscode.json` 的全局 MCP 配置不生效
+- 桌面端左下角知识库入口消失，MCP 列表缺少 `maxkb-prod`
+
 ## 合并过程中必须做的事
 
 ### 1. 冲突清完后，先找残留品牌/路径风险
@@ -180,6 +193,15 @@ cd packages/app && bun test --preload ./happydom.ts ./src/pages/layout/helpers.t
 cd packages/opencode && bun test ./src/server/middleware.test.ts ./src/server/routes/ui.test.ts
 cd packages/app && bun test --preload ./happydom.ts ./src/util/server-access-url.test.ts ./src/util/embed-session.test.ts
 cd packages/desktop-electron && bun test ./src/main/lan.test.ts ./src/main/sidecar-config.test.ts
+```
+
+如果改了以下任一文件，必须额外补跑：
+- `packages/core/src/global.ts`
+- `packages/opencode/src/config/config.ts`
+- `packages/opencode/src/mcp/*`
+
+```bash
+cd packages/opencode && bun test test/config/config.test.ts test/server/httpapi-mcp.test.ts
 ```
 
 ### 3. 桌面端冒烟验证

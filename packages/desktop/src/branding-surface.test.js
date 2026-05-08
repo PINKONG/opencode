@@ -14,6 +14,7 @@ describe("desktop branding surface", () => {
     const latest = read("../scripts/finalize-latest-json.ts")
     const bundles = read("../scripts/copy-bundles.ts")
     const workflow = read("../../../.github/workflows/publish.yml")
+    const tauriLib = read("../src-tauri/src/lib.rs")
 
     expect(menu).not.toContain("https://opencode.ai/docs")
     expect(menu).not.toContain("https://discord.com/invite/opencode")
@@ -31,5 +32,7 @@ describe("desktop branding surface", () => {
     expect(bundles).not.toContain("OpenCode*")
     expect(workflow).toContain("releaseAssetNamePattern: wiscode-desktop-[platform]-[arch][ext]")
     expect(workflow).not.toContain("releaseAssetNamePattern: opencode-desktop-[platform]-[arch][ext]")
+    expect(tauriLib).toContain('join("wiscode").join("wiscode.db")')
+    expect(tauriLib).not.toContain('join("opencode").join("opencode.db")')
   })
 })
