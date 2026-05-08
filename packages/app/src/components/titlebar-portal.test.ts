@@ -6,7 +6,7 @@ describe("session header titlebar portal safety", () => {
   test("uses keyed Show mounts for titlebar portal targets", async () => {
     const text = await read()
 
-    expect(text).toContain('<Show when={search() && centerMount()} keyed>')
-    expect(text).toContain("<Show when={rightMount()} keyed>")
+    expect(text).toContain("<Show when={ownsTitlebar() && search() && centerMount()} keyed>")
+    expect(text).toContain("<Show when={ownsTitlebar() && rightMount()} keyed>")
   })
 })

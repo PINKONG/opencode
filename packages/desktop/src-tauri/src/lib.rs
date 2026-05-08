@@ -439,6 +439,7 @@ async fn initialize(app: AppHandle) {
     let port = get_sidecar_port(sidecar_config::resolve_configured_port(&sidecar_lan));
     let hostname = hosts.bind_host;
     let url = format!("http://{}:{port}", hosts.advertise_host);
+    let connect_url = format!("http://{}:{port}", hosts.health_host);
     let password = if sidecar_lan.fixed_token {
         env::var("OPENCODE_SERVER_PASSWORD")
             .unwrap_or_else(|_| SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD.to_string())
@@ -459,7 +460,7 @@ async fn initialize(app: AppHandle) {
     // Make sidecar credentials available immediately (before health check completes)
     let (ready_tx, ready_rx) = oneshot::channel();
     let _ = ready_tx.send(ServerReadyData {
-        url: url.clone(),
+        url: connect_url,
         username: Some("opencode".to_string()),
         password: Some(password),
     });

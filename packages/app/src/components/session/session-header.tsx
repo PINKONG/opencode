@@ -8,7 +8,7 @@ import { Spinner } from "@opencode-ai/ui/spinner"
 import { showToast } from "@opencode-ai/ui/toast"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { getFilename } from "@opencode-ai/shared/util/path"
-import { createEffect, createMemo, For, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, createUniqueId, For, onCleanup, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
 import { useCommand } from "@/context/command"
@@ -129,30 +129,17 @@ const showRequestError = (language: ReturnType<typeof useLanguage>, err: unknown
   })
 }
 
-function titlebarMounts() {
-  const latest = (id: string) => Array.from(document.querySelectorAll<HTMLDivElement>(`#${id}`)).at(-1)
+const [titlebarOwner, setTitlebarOwner] = createSignal<string>()
 
+function titlebarMounts() {
   return {
-    center: latest("opencode-titlebar-center"),
-    right: latest("opencode-titlebar-right"),
+    center: document.getElementById("opencode-titlebar-center") as HTMLDivElement | undefined,
+    right: document.getElementById("opencode-titlebar-right") as HTMLDivElement | undefined,
   }
 }
 
-function titlebarHost(name: "center" | "right") {
-  const host = document.createElement("div")
-  host.dataset.sessionHeaderHost = name
-  host.style.display = "contents"
-  return host
-}
-
-function resetTitlebarMounts(id: "opencode-titlebar-center" | "opencode-titlebar-right", current?: HTMLDivElement) {
-  document.querySelectorAll<HTMLDivElement>(`#${id}`).forEach((mount) => {
-    if (mount === current) return
-    mount.replaceChildren()
-  })
-}
-
 export function SessionHeader() {
+  const owner = createUniqueId()
   const layout = useLayout()
   const command = useCommand()
   const server = useServer()
@@ -181,6 +168,7 @@ export function SessionHeader() {
   const tree = createMemo(() => !isDesktopBeta || settings.general.showFileTree())
   const term = createMemo(() => !isDesktopBeta || settings.general.showTerminal())
   const status = createMemo(() => !isDesktopBeta || settings.general.showStatus())
+  const ownsTitlebar = createMemo(() => titlebarOwner() === owner)
 
   const [exists, setExists] = createStore<Partial<Record<OpenApp, boolean>>>({
     finder: true,
@@ -243,10 +231,6 @@ export function SessionHeader() {
     app: undefined as OpenApp | undefined,
   })
   const [mounts, setMounts] = createStore(titlebarMounts())
-  const hosts = {
-    center: titlebarHost("center"),
-    right: titlebarHost("right"),
-  }
 
   const canOpen = createMemo(() => platform.platform === "desktop" && !!platform.openPath && server.isLocal())
   const current = createMemo(
@@ -262,42 +246,17 @@ export function SessionHeader() {
 
   const syncMounts = () => {
     const next = titlebarMounts()
-    if (next.center) {
-      resetTitlebarMounts("opencode-titlebar-center", next.center)
-      next.center.querySelectorAll(":scope > *").forEach((node) => {
-        if (node !== hosts.center) node.remove()
-      })
-      next.center.querySelectorAll<HTMLElement>("[data-session-header-host='center']").forEach((node) => {
-        if (node !== hosts.center) node.remove()
-      })
-      if (hosts.center.parentElement !== next.center) next.center.appendChild(hosts.center)
-    } else {
-      hosts.center.remove()
-    }
-    if (next.right) {
-      resetTitlebarMounts("opencode-titlebar-right", next.right)
-      next.right.querySelectorAll(":scope > *").forEach((node) => {
-        if (node !== hosts.right) node.remove()
-      })
-      next.right.querySelectorAll<HTMLElement>("[data-session-header-host='right']").forEach((node) => {
-        if (node !== hosts.right) node.remove()
-      })
-      if (hosts.right.parentElement !== next.right) next.right.appendChild(hosts.right)
-    } else {
-      hosts.right.remove()
-    }
     if (mounts.center === next.center && mounts.right === next.right) return
     setMounts(next)
   }
 
   onMount(() => {
+    setTitlebarOwner(owner)
     syncMounts()
-    const observer = new MutationObserver(() => syncMounts())
-    observer.observe(document.body, { childList: true, subtree: true })
+    const frame = requestAnimationFrame(syncMounts)
     onCleanup(() => {
-      observer.disconnect()
-      hosts.center.remove()
-      hosts.right.remove()
+      cancelAnimationFrame(frame)
+      setTitlebarOwner((current) => (current === owner ? undefined : current))
     })
   })
 
@@ -338,10 +297,14 @@ export function SessionHeader() {
       .catch((err: unknown) => showRequestError(language, err))
   }
 
+  const centerMount = createMemo(() => mounts.center)
+  const rightMount = createMemo(() => mounts.right)
+
   return (
     <>
-      <Show when={search() && mounts.center}>
-        <Portal mount={hosts.center}>
+      <Show when={ownsTitlebar() && search() && centerMount()} keyed>
+        {(mount) => (
+          <Portal mount={mount}>
             <Button
               type="button"
               variant="ghost"
@@ -366,10 +329,12 @@ export function SessionHeader() {
                 )}
               </Show>
             </Button>
-        </Portal>
+          </Portal>
+        )}
       </Show>
-      <Show when={mounts.right}>
-        <Portal mount={hosts.right}>
+      <Show when={ownsTitlebar() && rightMount()} keyed>
+        {(mount) => (
+          <Portal mount={mount}>
             <div class="flex items-center gap-2">
               <Show when={projectDirectory()}>
                 <div class="hidden xl:flex items-center">
@@ -554,7 +519,8 @@ export function SessionHeader() {
                 </div>
               </div>
             </div>
-        </Portal>
+          </Portal>
+        )}
       </Show>
     </>
   )

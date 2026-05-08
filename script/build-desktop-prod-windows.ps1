@@ -38,6 +38,11 @@ if (Test-Path $envf) {
   }
 }
 
+$cargoBin = Join-Path $HOME ".cargo\bin"
+if ((Test-Path (Join-Path $cargoBin "cargo.exe")) -and (($env:PATH -split ';') -notcontains $cargoBin)) {
+  $env:PATH = "$cargoBin;$env:PATH"
+}
+
 if ($arch -eq "X64") {
   $triple = "x86_64-pc-windows-msvc"
   $dir = "wiscode-cli-windows-x64-baseline"
@@ -93,6 +98,9 @@ bun run build
 Assert-LastExitCode "desktop build"
 
 Write-Host "==> tauri prod build"
+if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+  throw "Missing cargo. Install Rust with rustup or add $cargoBin to PATH."
+}
 $env:WISCODE_SKIP_OPENCODE_BUILD = "1"
 $args = @("run", "tauri", "build", "--config", "src-tauri/tauri.prod.conf.json")
 if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY_PATH) {
