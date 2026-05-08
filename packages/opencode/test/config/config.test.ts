@@ -122,6 +122,10 @@ test("loads config with defaults when no files exist", async () => {
   })
 })
 
+test("uses wiscode global config directory", () => {
+  expect(path.basename(Global.Path.config)).toBe("wiscode")
+})
+
 test("includes built-in MaxKB production MCP by default", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({

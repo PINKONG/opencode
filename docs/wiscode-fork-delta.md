@@ -202,6 +202,27 @@
 - 上游如果重构 MCP 或实验路由，这些点非常容易丢
 - 合并后至少要验证知识库浏览和 resource read 相关链路
 
+## 9.1 全局配置目录与内置知识库 MCP 默认项
+
+### 必须保留
+
+- 全局配置目录必须是 `~/.config/wiscode`（而不是 `~/.config/opencode`）
+- `Global.Path.config` 指向的命名空间必须与 WisCode 品牌一致
+- `loadInstanceState` 必须保留内置 `maxkb-prod` 默认配置注入
+
+### 典型落点
+
+- [packages/core/src/global.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/core/src/global.ts)
+- [packages/opencode/src/config/config.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/config/config.ts)
+- [packages/opencode/test/config/config.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/test/config/config.test.ts)
+- [packages/opencode/test/server/httpapi-mcp.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/test/server/httpapi-mcp.test.ts)
+
+### 合并时注意
+
+- 上游若重构全局路径模块（`Global`/`core`）时，最容易把目录名回退到 `opencode`
+- 上游若重构配置加载（`loadInstanceState`）时，最容易丢失内置 `maxkb-prod`
+- 这两类回归会让 `~/.config/wiscode/wiscode.json` 里的用户 MCP 配置失效，且桌面知识库入口消失
+
 ## 10. 桌面内置 Node 与本地 MCP 兼容
 
 ### 必须保留
@@ -312,6 +333,7 @@
 6. sidecar 浏览器访问 / iframe 嵌入链路是否仍可用
 7. MaxKB / MCP / 资源读取定制是否仍在
 8. 桌面标题栏、知识库、设置页、模型选择是否做过冒烟验证
+9. 全局配置目录是否仍为 `~/.config/wiscode`，且 `~/.config/wiscode/wiscode.json` 的 MCP 配置可生效
 
 ## 16. 维护规则
 

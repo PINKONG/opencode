@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { base64Encode } from "@opencode-ai/core/util/encode"
 import {
   knowledgeActive,
   knowledgeExitHref,

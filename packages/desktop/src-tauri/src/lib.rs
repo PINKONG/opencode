@@ -476,7 +476,7 @@ async fn initialize(app: AppHandle) {
     let needs_migration = !sqlite_file_exists();
     let sqlite_done = needs_migration.then(|| {
         tracing::info!(
-            path = %opencode_db_path().expect("failed to get db path").display(),
+            path = %wiscode_db_path().expect("failed to get db path").display(),
             "Sqlite file not found, waiting for it to be generated"
         );
 
@@ -590,14 +590,14 @@ fn get_sidecar_port(configured: Option<u32>) -> u32 {
 }
 
 fn sqlite_file_exists() -> bool {
-    let Ok(path) = opencode_db_path() else {
+    let Ok(path) = wiscode_db_path() else {
         return true;
     };
 
     path.exists()
 }
 
-fn opencode_db_path() -> Result<PathBuf, &'static str> {
+fn wiscode_db_path() -> Result<PathBuf, &'static str> {
     let xdg_data_home = env::var_os("XDG_DATA_HOME").filter(|v| !v.is_empty());
 
     let data_home = match xdg_data_home {
@@ -608,7 +608,7 @@ fn opencode_db_path() -> Result<PathBuf, &'static str> {
         }
     };
 
-    Ok(data_home.join("opencode").join("opencode.db"))
+    Ok(data_home.join("wiscode").join("wiscode.db"))
 }
 
 // Creates a `once` listener for the specified event and returns a future that resolves

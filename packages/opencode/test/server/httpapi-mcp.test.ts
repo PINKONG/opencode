@@ -44,7 +44,7 @@ describe("mcp HttpApi", () => {
 
     const response = await request(McpPaths.status, tmp.path)
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ demo: { status: "disabled" } })
+    expect(await response.json()).toMatchObject({ demo: { status: "disabled" } })
   })
 
   test("serves add, connect, and disconnect endpoints", async () => {

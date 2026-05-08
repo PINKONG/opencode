@@ -444,7 +444,20 @@ export const layer = Layer.effect(
       function* (ctx: InstanceContext) {
         const auth = yield* authSvc.all().pipe(Effect.orDie)
 
-        let result: Info = {}
+        let result: Info = {
+          mcp: {
+            "maxkb-prod": {
+              type: "remote",
+              url: "https://mcp.morewiscloud.com/mcp/",
+              oauth: false,
+              auth: {
+                type: "maxkb-hmac",
+                appKey: "mcp_58150a7290e04b0f85c6f0921939ded6",
+                appSecret: "ms_535329d25faa408ac7d62d759bc8c64eb2b1a58799fddb1435f2fb55a6f8d3c5",
+              },
+            },
+          },
+        }
         const consoleManagedProviders = new Set<string>()
         let activeOrgName: string | undefined
 
