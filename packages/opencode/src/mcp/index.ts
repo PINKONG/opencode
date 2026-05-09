@@ -1,4 +1,5 @@
 import { dynamicTool, type Tool, jsonSchema, type JSONSchema7 } from "ai"
+import fs from "node:fs"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
@@ -21,6 +22,8 @@ import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { McpOAuthProvider } from "./oauth-provider"
 import { McpOAuthCallback } from "./oauth-callback"
 import { McpAuth } from "./auth"
+import { createMaxkbSignedFetch } from "./maxkb"
+import { resolveLocalCommand } from "./local-command"
 import { BusEvent } from "../bus/bus-event"
 import { Bus } from "@/bus"
 import { TuiEvent } from "@/cli/cmd/tui/event"
@@ -226,6 +229,11 @@ export interface Interface {
     clientName: string,
     resourceUri: string,
   ) => Effect.Effect<Awaited<ReturnType<MCPClient["readResource"]>> | undefined>
+  readonly callTool: (
+    clientName: string,
+    name: string,
+    args?: Record<string, unknown>,
+  ) => Effect.Effect<Awaited<ReturnType<MCPClient["callTool"]>> | undefined>
   readonly startAuth: (mcpName: string) => Effect.Effect<{ authorizationUrl: string; oauthState: string }>
   readonly authenticate: (mcpName: string) => Effect.Effect<Status>
   readonly finishAuth: (mcpName: string, authorizationCode: string) => Effect.Effect<Status>
@@ -270,6 +278,7 @@ export const layer = Layer.effect(
       key: string,
       mcp: ConfigMCP.Info & { type: "remote" },
     ) {
+      const maxkb = mcp.auth?.type === "maxkb-hmac" ? mcp.auth : undefined
       const oauthDisabled = mcp.oauth === false
       const oauthConfig = typeof mcp.oauth === "object" ? mcp.oauth : undefined
       const url = remoteURL(key, mcp.url)
@@ -281,7 +290,7 @@ export const layer = Layer.effect(
       }
       let authProvider: McpOAuthProvider | undefined
 
-      if (!oauthDisabled) {
+      if (!maxkb && !oauthDisabled) {
         authProvider = new McpOAuthProvider(
           key,
           mcp.url,
@@ -306,16 +315,28 @@ export const layer = Layer.effect(
           transport: new StreamableHTTPClientTransport(url, {
             authProvider,
             requestInit: mcp.headers ? { headers: mcp.headers } : undefined,
+            fetch: maxkb
+              ? createMaxkbSignedFetch(
+                  {
+                    appKey: maxkb.appKey,
+                    appSecret: maxkb.appSecret,
+                  },
+                  fetch,
+                  log.warn.bind(log),
+                )
+              : undefined,
           }),
         },
-        {
+      ]
+      if (!maxkb) {
+        transports.push({
           name: "SSE",
           transport: new SSEClientTransport(url, {
             authProvider,
             requestInit: mcp.headers ? { headers: mcp.headers } : undefined,
           }),
-        },
-      ]
+        })
+      }
 
       const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
       let lastStatus: Status | undefined
@@ -350,7 +371,7 @@ export const layer = Layer.effect(
                 return bus
                   .publish(TuiEvent.ToastShow, {
                     title: "MCP Authentication Required",
-                    message: `Server "${key}" requires authentication. Run: opencode mcp auth ${key}`,
+                    message: `Server "${key}" requires authentication. Run: wiscode mcp auth ${key}`,
                     variant: "warning",
                     duration: 8000,
                   })
@@ -386,7 +407,46 @@ export const layer = Layer.effect(
       key: string,
       mcp: ConfigMCP.Info & { type: "local" },
     ) {
-      const [cmd, ...args] = mcp.command
+      const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path")
+      const delimiter = process.platform === "win32" ? ";" : ":"
+      const bundledNodePath = process.env.WISCODE_BUNDLED_NODE_PATH
+      const bundledNodeDisabled = process.env.WISCODE_BUNDLED_NODE_DISABLE === "1"
+      const bundledNodeUsable =
+        !!bundledNodePath &&
+        (() => {
+          try {
+            fs.accessSync(bundledNodePath, fs.constants.X_OK)
+            return true
+          } catch {
+            return false
+          }
+        })()
+      const localEnv = Object.fromEntries(
+        Object.entries({
+          ...process.env,
+          ...mcp.environment,
+        }).flatMap(([key, value]) => (typeof value === "string" ? [[key, value] as const] : [])),
+      )
+      const resolved = resolveLocalCommand({
+        command: mcp.command,
+        env: localEnv,
+        bundledNodePath,
+        bundledNodeUsable,
+        bundledNodeDisabled,
+        pathDelimiter: delimiter,
+      })
+      if (resolved.resolution !== "none") {
+        log.info("local mcp node resolution", {
+          mcp_server_name: key,
+          node_resolution: resolved.resolution,
+          bundled_node_path: bundledNodePath ?? null,
+          path_key: pathKey ?? "PATH",
+        })
+      }
+      if (!bundledNodeDisabled && bundledNodePath && !bundledNodeUsable) {
+        log.warn("bundled node unavailable; falling back", { mcp_server_name: key, bundled_node_path: bundledNodePath })
+      }
+      const [cmd, ...args] = resolved.command
       const cwd = yield* InstanceState.directory
       const transport = new StdioClientTransport({
         stderr: "pipe",
@@ -394,9 +454,8 @@ export const layer = Layer.effect(
         args,
         cwd,
         env: {
-          ...process.env,
           ...(cmd === "opencode" ? { BUN_BE_BUN: "1" } : {}),
-          ...mcp.environment,
+          ...resolved.env,
         },
       })
       transport.stderr?.on("data", (chunk: Buffer) => {
@@ -722,6 +781,34 @@ export const layer = Layer.effect(
       })
     })
 
+    const callTool = Effect.fn("MCP.callTool")(function* (
+      clientName: string,
+      name: string,
+      args?: Record<string, unknown>,
+    ) {
+      const cfg = yield* cfgSvc.get()
+      const timeout = (yield* getMcpConfig(clientName))?.timeout ?? cfg.experimental?.mcp_timeout
+      return yield* withClient(
+        clientName,
+        (client) =>
+          client.callTool(
+            {
+              name,
+              arguments: args ?? {},
+            },
+            CallToolResultSchema,
+            {
+              resetTimeoutOnProgress: true,
+              timeout,
+            },
+          ),
+        "callTool",
+        {
+          toolName: name,
+        },
+      )
+    })
+
     const getMcpConfig = Effect.fnUntraced(function* (mcpName: string) {
       const cfg = yield* cfgSvc.get()
       const mcpConfig = cfg.mcp?.[mcpName]
@@ -905,6 +992,7 @@ export const layer = Layer.effect(
       disconnect,
       getPrompt,
       readResource,
+      callTool,
       startAuth,
       authenticate,
       finishAuth,

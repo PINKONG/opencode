@@ -194,9 +194,6 @@ export function createChildStoreManager(input: {
             },
             get provider() {
               const EMPTY = { all: [], connected: [], default: {} }
-              if (providerQuery.isLoading) return EMPTY
-              if (providerQuery.data?.all.length === 0 && input.global.provider.all.length > 0)
-                return input.global.provider
               return providerQuery.data ?? EMPTY
             },
             config: {},
@@ -219,13 +216,13 @@ export function createChildStoreManager(input: {
               return !mcpQuery.isLoading
             },
             get mcp() {
-              return mcpQuery.isLoading ? {} : (mcpQuery.data ?? {})
+              return mcpQuery.data ?? {}
             },
             get lsp_ready() {
               return !lspQuery.isLoading
             },
             get lsp() {
-              return lspQuery.isLoading ? [] : (lspQuery.data ?? [])
+              return lspQuery.data ?? []
             },
             vcs: vcsStore.value,
             limit: 5,

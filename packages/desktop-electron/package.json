@@ -1,13 +1,12 @@
 {
   "name": "@opencode-ai/desktop-electron",
   "private": true,
-  "version": "1.14.31",
+  "version": "1.0.31",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
+  "homepage": "https://github.com/PINKONG/opencode",
   "author": {
-    "name": "OpenCode",
-    "email": "hello@opencode.ai"
+    "name": "WisCode"
   },
   "scripts": {
     "typecheck": "tsgo -b",

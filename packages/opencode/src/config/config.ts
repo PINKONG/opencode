@@ -4,6 +4,7 @@ import { pathToFileURL } from "url"
 import os from "os"
 import z from "zod"
 import { mergeDeep } from "remeda"
+import { pipe } from "effect/Function"
 import { Global } from "@opencode-ai/core/global"
 import fsNode from "fs/promises"
 import { NamedError } from "@opencode-ai/core/util/error"
@@ -298,7 +299,7 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@opencode/Config") {}
 
 function globalConfigFile() {
-  const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+  const candidates = ["wiscode.jsonc", "wiscode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
   for (const file of candidates) {
@@ -392,10 +393,14 @@ export const layer = Layer.effect(
     })
 
     const loadGlobal = Effect.fnUntraced(function* () {
-      let result: Info = {}
-      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json")))
-      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.json")))
-      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.jsonc")))
+      let result: Info = pipe(
+        {},
+        mergeDeep(yield* loadFile(path.join(Global.Path.config, "config.json"))),
+        mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.json"))),
+        mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"))),
+        mergeDeep(yield* loadFile(path.join(Global.Path.config, "wiscode.json"))),
+        mergeDeep(yield* loadFile(path.join(Global.Path.config, "wiscode.jsonc"))),
+      )
 
       const legacy = path.join(Global.Path.config, "config")
       if (existsSync(legacy)) {
@@ -405,8 +410,8 @@ export const layer = Layer.effect(
               const { provider, model, ...rest } = mod.default
               if (provider && model) result.model = `${provider}/${model}`
               result["$schema"] = "https://opencode.ai/config.json"
-              result = mergeConfig(result, rest)
-              await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
+              result = mergeDeep(result, rest)
+              await fsNode.writeFile(path.join(Global.Path.config, "wiscode.json"), JSON.stringify(result, null, 2))
               await fsNode.unlink(legacy)
             })
             .catch(() => {}),
@@ -452,7 +457,20 @@ export const layer = Layer.effect(
       function* (ctx: InstanceContext) {
         const auth = yield* authSvc.all().pipe(Effect.orDie)
 
-        let result: Info = {}
+        let result: Info = {
+          mcp: {
+            "maxkb-prod": {
+              type: "remote",
+              url: "https://mcp.morewiscloud.com/mcp/",
+              oauth: false,
+              auth: {
+                type: "maxkb-hmac",
+                appKey: "mcp_58150a7290e04b0f85c6f0921939ded6",
+                appSecret: "ms_535329d25faa408ac7d62d759bc8c64eb2b1a58799fddb1435f2fb55a6f8d3c5",
+              },
+            },
+          },
+        }
         const consoleManagedProviders = new Set<string>()
         let activeOrgName: string | undefined
 
@@ -634,8 +652,7 @@ export const layer = Layer.effect(
 
         const managedDir = ConfigManaged.managedConfigDir()
         if (existsSync(managedDir)) {
-          for (const file of ["opencode.json", "opencode.jsonc"]) {
-            const source = path.join(managedDir, file)
+          for (const source of ConfigPaths.fileInDirectory(managedDir, "opencode")) {
             yield* merge(source, yield* loadFile(source), "global")
           }
         }
@@ -731,7 +748,7 @@ export const layer = Layer.effect(
 
     const update = Effect.fn("Config.update")(function* (config: Info, options?: { dispose?: boolean }) {
       const dir = yield* InstanceState.directory
-      const file = path.join(dir, "config.json")
+      const file = path.join(dir, "wiscode.json")
       const existing = yield* loadFile(file)
       yield* fs
         .writeFileString(file, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))
