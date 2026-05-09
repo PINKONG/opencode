@@ -4,7 +4,7 @@ import { Server } from "../../src/server/server"
 import { tmpdir } from "../fixture/fixture"
 
 afterEach(async () => {
-  await Instance.disposeAll()
+  await Instance.dispose().catch(() => undefined)
 })
 
 describe("server SSE CORS", () => {

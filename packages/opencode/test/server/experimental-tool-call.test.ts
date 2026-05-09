@@ -18,7 +18,7 @@ const { Server } = await import("../../src/server/server")
 
 afterEach(async () => {
   out = undefined
-  await Instance.disposeAll()
+  await Instance.dispose().catch(() => undefined)
 })
 
 describe("experimental tool call route", () => {

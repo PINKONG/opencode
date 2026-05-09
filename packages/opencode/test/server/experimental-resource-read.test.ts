@@ -7,7 +7,7 @@ import { tmpdir } from "../fixture/fixture"
 Log.init({ print: false })
 
 afterEach(async () => {
-  await Instance.disposeAll()
+  await Instance.dispose().catch(() => undefined)
 })
 
 describe("experimental resource read", () => {
