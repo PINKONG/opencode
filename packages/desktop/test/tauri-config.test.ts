@@ -33,11 +33,25 @@ const betaCfg = JSON.parse(await Bun.file(betaFile).text()) as {
       }
     }
   }
+  plugins?: {
+    updater?: {
+      endpoints?: string[]
+    }
+  }
 }
 
 describe("tauri production config", () => {
   test("does not point updater at upstream opencode releases", () => {
     const list = cfg.plugins?.updater?.endpoints ?? []
+    expect(list.length).toBeGreaterThan(0)
+    for (const item of list) {
+      expect(item).not.toContain("anomalyco/opencode")
+      expect(item).toContain("latest.json")
+    }
+  })
+
+  test("does not point beta updater at upstream opencode releases", () => {
+    const list = betaCfg.plugins?.updater?.endpoints ?? []
     expect(list.length).toBeGreaterThan(0)
     for (const item of list) {
       expect(item).not.toContain("anomalyco/opencode")
