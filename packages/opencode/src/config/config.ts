@@ -3,7 +3,7 @@ import path from "path"
 import { pathToFileURL } from "url"
 import os from "os"
 import z from "zod"
-import { mergeDeep, pipe } from "remeda"
+import { mergeDeep } from "remeda"
 import { Global } from "@opencode-ai/core/global"
 import fsNode from "fs/promises"
 import { NamedError } from "@opencode-ai/core/util/error"
@@ -47,8 +47,13 @@ import { Npm } from "@opencode-ai/core/npm"
 const log = Log.create({ service: "config" })
 
 // Custom merge function that concatenates array fields instead of replacing them
+// Keep remeda's deep conditional merge type out of hot config-loading paths; TS profiling showed it dominates here.
+function mergeConfig(target: Info, source: Info): Info {
+  return mergeDeep(target, source) as Info
+}
+
 function mergeConfigConcatArrays(target: Info, source: Info): Info {
-  const merged = mergeDeep(target, source)
+  const merged = mergeConfig(target, source)
   if (target.instructions && source.instructions) {
     merged.instructions = Array.from(new Set([...target.instructions, ...source.instructions]))
   }
@@ -293,7 +298,7 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@opencode/Config") {}
 
 function globalConfigFile() {
-  const candidates = ["wiscode.jsonc", "wiscode.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+  const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
   for (const file of candidates) {
@@ -387,14 +392,10 @@ export const layer = Layer.effect(
     })
 
     const loadGlobal = Effect.fnUntraced(function* () {
-      let result: Info = pipe(
-        {},
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "config.json"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.json"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "wiscode.json"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "wiscode.jsonc"))),
-      )
+      let result: Info = {}
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json")))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.json")))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.jsonc")))
 
       const legacy = path.join(Global.Path.config, "config")
       if (existsSync(legacy)) {
@@ -404,8 +405,8 @@ export const layer = Layer.effect(
               const { provider, model, ...rest } = mod.default
               if (provider && model) result.model = `${provider}/${model}`
               result["$schema"] = "https://opencode.ai/config.json"
-              result = mergeDeep(result, rest)
-              await fsNode.writeFile(path.join(Global.Path.config, "wiscode.json"), JSON.stringify(result, null, 2))
+              result = mergeConfig(result, rest)
+              await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
               await fsNode.unlink(legacy)
             })
             .catch(() => {}),
@@ -451,20 +452,7 @@ export const layer = Layer.effect(
       function* (ctx: InstanceContext) {
         const auth = yield* authSvc.all().pipe(Effect.orDie)
 
-        let result: Info = {
-          mcp: {
-            "maxkb-prod": {
-              type: "remote",
-              url: "https://mcp.morewiscloud.com/mcp/",
-              oauth: false,
-              auth: {
-                type: "maxkb-hmac",
-                appKey: "mcp_58150a7290e04b0f85c6f0921939ded6",
-                appSecret: "ms_535329d25faa408ac7d62d759bc8c64eb2b1a58799fddb1435f2fb55a6f8d3c5",
-              },
-            },
-          },
-        }
+        let result: Info = {}
         const consoleManagedProviders = new Set<string>()
         let activeOrgName: string | undefined
 
@@ -605,14 +593,13 @@ export const layer = Layer.effect(
           log.debug("loaded custom config from OPENCODE_CONFIG_CONTENT")
         }
 
-        const activeOrg = Option.getOrUndefined(
-          yield* accountSvc.activeOrg().pipe(Effect.catch(() => Effect.succeed(Option.none()))),
+        const activeAccount = Option.getOrUndefined(
+          yield* accountSvc.active().pipe(Effect.catch(() => Effect.succeed(Option.none()))),
         )
-        if (activeOrg) {
-          const accountID = activeOrg.account.id
-          const orgID = activeOrg.org.id
-          const url = activeOrg.account.url
-          activeOrgName = activeOrg.org.name
+        if (activeAccount?.active_org_id) {
+          const accountID = activeAccount.id
+          const orgID = activeAccount.active_org_id
+          const url = activeAccount.url
           yield* Effect.gen(function* () {
             const [configOpt, tokenOpt] = yield* Effect.all(
               [accountSvc.config(accountID, orgID), accountSvc.token(accountID)],
@@ -647,7 +634,8 @@ export const layer = Layer.effect(
 
         const managedDir = ConfigManaged.managedConfigDir()
         if (existsSync(managedDir)) {
-          for (const source of ConfigPaths.fileInDirectory(managedDir, "opencode")) {
+          for (const file of ["opencode.json", "opencode.jsonc"]) {
+            const source = path.join(managedDir, file)
             yield* merge(source, yield* loadFile(source), "global")
           }
         }
@@ -743,7 +731,7 @@ export const layer = Layer.effect(
 
     const update = Effect.fn("Config.update")(function* (config: Info, options?: { dispose?: boolean }) {
       const dir = yield* InstanceState.directory
-      const file = path.join(dir, "wiscode.json")
+      const file = path.join(dir, "config.json")
       const existing = yield* loadFile(file)
       yield* fs
         .writeFileString(file, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))
@@ -774,18 +762,23 @@ export const layer = Layer.effect(
       const patch = writableGlobal(config)
 
       let next: Info
+      let changed: boolean
       if (!file.endsWith(".jsonc")) {
         const existing = ConfigParse.effectSchema(Info, ConfigParse.jsonc(before, file), file)
         const merged = mergeDeep(writable(existing), patch)
-        yield* fs.writeFileString(file, JSON.stringify(merged, null, 2)).pipe(Effect.orDie)
+        const serialized = JSON.stringify(merged, null, 2)
+        changed = serialized !== before
+        if (changed) yield* fs.writeFileString(file, serialized).pipe(Effect.orDie)
         next = merged
       } else {
         const updated = patchJsonc(before, patch)
         next = ConfigParse.effectSchema(Info, ConfigParse.jsonc(updated, file), file)
-        yield* fs.writeFileString(file, updated).pipe(Effect.orDie)
+        changed = updated !== before
+        if (changed) yield* fs.writeFileString(file, updated).pipe(Effect.orDie)
       }
 
-      yield* invalidate()
+      // Only tear down running instances if the config actually changed.
+      if (changed) yield* invalidate()
       return next
     })
 

@@ -1,9 +1,13 @@
 import { Flag } from "@opencode-ai/core/flag/flag"
+import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { Effect, Stream } from "effect"
+import { HttpBody, HttpClient, HttpClientRequest, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { Hono } from "hono"
 import { proxy } from "hono/proxy"
 import { getMimeType } from "hono/utils/mime"
 import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
+import { ProxyUtil } from "../proxy-util"
 
 const embeddedUIPromise = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
   ? Promise.resolve(null)
@@ -12,65 +16,112 @@ const embeddedUIPromise = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
 
 const DEFAULT_CSP =
   "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:"
-const EMBED_META_NAME = "oc-embed-session"
-const THEME_SCRIPT_PATTERN =
-  /<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i
+const UI_UPSTREAM = new URL("https://app.opencode.ai")
 
 const csp = (hash = "") =>
   `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:`
 
-function injectEmbedSessionMeta(input: string, embedSession: string | undefined) {
-  if (!embedSession) return input
-  const meta = `<meta name="${EMBED_META_NAME}" content="${embedSession}">`
-  if (input.includes(meta)) return input
-  if (/<head[^>]*>/i.test(input)) return input.replace(/<head[^>]*>/i, (head) => `${head}\n    ${meta}`)
-  return meta + input
+function themePreloadHash(body: string) {
+  return body.match(/<script\b(?![^>]*\bsrc\s*=)[^>]*\bid=(['"])oc-theme-preload-script\1[^>]*>([\s\S]*?)<\/script>/i)
 }
 
-function scriptHash(input: string) {
-  const match = input.match(THEME_SCRIPT_PATTERN)
-  if (!match) return ""
-  return createHash("sha256").update(match[2]).digest("base64")
+function requestBody(request: HttpServerRequest.HttpServerRequest) {
+  if (request.method === "GET" || request.method === "HEAD") return HttpBody.empty
+  const len = request.headers["content-length"]
+  return HttpBody.stream(request.stream, request.headers["content-type"], len === undefined ? undefined : Number(len))
 }
 
-export const UIRoutes = (opts?: { embeddedWebUI?: Record<string, string> | null }): Hono =>
-  new Hono().all("/*", async (c) => {
-    const embeddedWebUI = opts?.embeddedWebUI ?? (await embeddedUIPromise)
-    const path = c.req.path
-    const embedSession = c.req.raw.headers.get("x-opencode-embed-session") ?? c.req.query("embed_session") ?? undefined
+function proxyResponseHeaders(headers: Record<string, string>) {
+  const result = new Headers(headers)
+  // FetchHttpClient exposes decoded response bodies, so forwarding upstream
+  // transfer metadata makes browsers decode already-decoded assets again.
+  result.delete("content-encoding")
+  result.delete("content-length")
+  return result
+}
+
+function upstreamURL(path: string) {
+  return new URL(path, UI_UPSTREAM).toString()
+}
+
+function embeddedUI() {
+  if (Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI) return Promise.resolve(null)
+  return embeddedUIPromise
+}
+
+export async function serveUI(request: Request) {
+  const embeddedWebUI = await embeddedUI()
+  const path = new URL(request.url).pathname
+
+  if (embeddedWebUI) {
+    const match = embeddedWebUI[path.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
+    if (!match) return Response.json({ error: "Not Found" }, { status: 404 })
+
+    if (await fs.exists(match)) {
+      const mime = getMimeType(match) ?? "text/plain"
+      const headers = new Headers({ "content-type": mime })
+      if (mime.startsWith("text/html")) headers.set("content-security-policy", DEFAULT_CSP)
+      return new Response(new Uint8Array(await fs.readFile(match)), { headers })
+    }
+
+    return Response.json({ error: "Not Found" }, { status: 404 })
+  }
+
+  const response = await proxy(upstreamURL(path), {
+    raw: request,
+    headers: ProxyUtil.headers(request, { host: UI_UPSTREAM.host }),
+  })
+  const match = response.headers.get("content-type")?.includes("text/html")
+    ? themePreloadHash(await response.clone().text())
+    : undefined
+  const hash = match ? createHash("sha256").update(match[2]).digest("base64") : ""
+  response.headers.set("Content-Security-Policy", csp(hash))
+  return response
+}
+
+export function serveUIEffect(
+  request: HttpServerRequest.HttpServerRequest,
+  services: { fs: AppFileSystem.Interface; client: HttpClient.HttpClient },
+) {
+  return Effect.gen(function* () {
+    const embeddedWebUI = yield* Effect.promise(() => embeddedUI())
+    const path = new URL(request.url, "http://localhost").pathname
 
     if (embeddedWebUI) {
       const match = embeddedWebUI[path.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
-      if (!match) return c.json({ error: "Not Found" }, 404)
+      if (!match) return HttpServerResponse.jsonUnsafe({ error: "Not Found" }, { status: 404 })
 
-      if (await fs.exists(match)) {
+      if (yield* services.fs.existsSafe(match)) {
         const mime = getMimeType(match) ?? "text/plain"
-        c.header("Content-Type", mime)
-        if (mime.startsWith("text/html")) {
-          const html = injectEmbedSessionMeta(await fs.readFile(match, "utf8"), embedSession)
-          c.header("Content-Security-Policy", csp(scriptHash(html)) || DEFAULT_CSP)
-          return c.body(html)
-        }
-        return c.body(new Uint8Array(await fs.readFile(match)))
-      } else {
-        return c.json({ error: "Not Found" }, 404)
+        const headers = new Headers({ "content-type": mime })
+        if (mime.startsWith("text/html")) headers.set("content-security-policy", DEFAULT_CSP)
+        return HttpServerResponse.raw(yield* services.fs.readFile(match), { headers })
       }
-    } else {
-      const response = await proxy(`https://app.opencode.ai${path}`, {
-        raw: c.req.raw,
-        headers: {
-          ...Object.fromEntries(c.req.raw.headers.entries()),
-          host: "app.opencode.ai",
-        },
-      })
-      response.headers.delete("alt-svc")
-      if (response.headers.get("content-type")?.includes("text/html")) {
-        const html = injectEmbedSessionMeta(await response.text(), embedSession)
-        response.headers.set("Content-Security-Policy", csp(scriptHash(html)) || DEFAULT_CSP)
-        response.headers.set("content-length", String(Buffer.byteLength(html)))
-        return new Response(html, response)
-      }
-      response.headers.set("Content-Security-Policy", DEFAULT_CSP)
-      return response
+
+      return HttpServerResponse.jsonUnsafe({ error: "Not Found" }, { status: 404 })
     }
+
+    const response = yield* services.client.execute(
+      HttpClientRequest.make(request.method)(upstreamURL(path), {
+        headers: ProxyUtil.headers(request.headers, { host: UI_UPSTREAM.host }),
+        body: requestBody(request),
+      }),
+    )
+    const headers = proxyResponseHeaders(response.headers)
+
+    if (response.headers["content-type"]?.includes("text/html")) {
+      const body = yield* response.text
+      const match = themePreloadHash(body)
+      headers.set("Content-Security-Policy", csp(match ? createHash("sha256").update(match[2]).digest("base64") : ""))
+      return HttpServerResponse.text(body, { status: response.status, headers })
+    }
+
+    headers.set("Content-Security-Policy", csp())
+    return HttpServerResponse.stream(response.stream.pipe(Stream.catchCause(() => Stream.empty)), {
+      status: response.status,
+      headers,
+    })
   })
+}
+
+export const UIRoutes = (): Hono => new Hono().all("/*", (c) => serveUI(c.req.raw))
