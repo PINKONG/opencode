@@ -10,7 +10,7 @@ import { GlobalBus } from "@/bus/global"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { writeHeapSnapshot } from "node:v8"
 import { Heap } from "@/cli/heap"
-import { AppRuntime } from "@/effect/app-runtime"
+import { AppRuntime, getBootstrapRunEffect } from "@/effect/app-runtime"
 import { ensureProcessMetadata } from "@opencode-ai/core/util/opencode-process"
 
 ensureProcessMetadata("worker")
@@ -77,6 +77,7 @@ export const rpc = {
   async checkUpgrade(input: { directory: string }) {
     await Instance.provide({
       directory: input.directory,
+      init: await getBootstrapRunEffect(),
       fn: async () => {
         await upgrade().catch(() => {})
       },
@@ -88,7 +89,7 @@ export const rpc = {
   async shutdown() {
     Log.Default.info("worker shutting down")
 
-    await InstanceStore.runtime.runPromise((s) => s.disposeAll())
+    await InstanceStore.disposeAllInstances()
     if (server) await server.stop(true)
   },
 }

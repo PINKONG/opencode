@@ -42,10 +42,4 @@ export const Instance = {
   restore<R>(ctx: InstanceContext, fn: () => R): R {
     return context.provide(ctx, fn)
   },
-  async reload(input: InstanceStore.LoadInput) {
-    return InstanceStore.runtime.runPromise((store) => store.reload(input))
-  },
-  async dispose() {
-    return InstanceStore.runtime.runPromise((store) => store.dispose(Instance.current))
-  },
 }

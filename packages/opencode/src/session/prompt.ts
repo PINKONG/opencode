@@ -507,37 +507,44 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
         const schema = yield* Effect.promise(() => Promise.resolve(asSchema(item.inputSchema).jsonSchema))
         const transformed = ProviderTransform.schema(input.model, schema)
-        tools[key] = {
-          ...item,
-          description: mcpDescription(key, item.description),
-          inputSchema: jsonSchema(transformed),
-          execute: (args, opts) =>
-            run.promise(
-              Effect.gen(function* () {
-                const ctx = context(args, opts)
-                yield* plugin.trigger(
-                  "tool.execute.before",
-                  { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
-                  { args },
-                )
+        item.description = mcpDescription(key, item.description)
+        item.inputSchema = jsonSchema(transformed)
+        item.execute = (args, opts) =>
+          run.promise(
+            Effect.gen(function* () {
+              const ctx = context(args, opts)
+              yield* plugin.trigger(
+                "tool.execute.before",
+                { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
+                { args },
+              )
+              const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.gen(function* () {
                 yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
-                const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.promise(() =>
-                  execute(args, opts),
-                )
-                if (
-                  isKbTool(key) &&
-                  result &&
-                  typeof result === "object" &&
-                  "isError" in result &&
-                  result.isError === true
-                ) {
-                  throw new Error(kbError(result, key))
-                }
-                yield* plugin.trigger(
-                  "tool.execute.after",
-                  { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
-                  result,
-                )
+                return yield* Effect.promise(() => execute(args, opts))
+              }).pipe(
+                Effect.withSpan("Tool.execute", {
+                  attributes: {
+                    "tool.name": key,
+                    "tool.call_id": opts.toolCallId,
+                    "session.id": ctx.sessionID,
+                    "message.id": input.processor.message.id,
+                  },
+                }),
+              )
+              if (
+                isKbTool(key) &&
+                result &&
+                typeof result === "object" &&
+                "isError" in result &&
+                result.isError === true
+              ) {
+                throw new Error(kbError(result, key))
+              }
+              yield* plugin.trigger(
+                "tool.execute.after",
+                { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
+                result,
+              )
 
                 const textParts: string[] = []
                 const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
@@ -586,9 +593,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   yield* input.processor.completeToolCall(opts.toolCallId, output)
                 }
                 return output
-              }),
-            ),
-        }
+            }),
+          )
+        tools[key] = item
       }
 
       return tools

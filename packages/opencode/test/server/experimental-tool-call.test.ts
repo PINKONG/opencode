@@ -13,12 +13,12 @@ mock.module("../../src/effect/app-runtime", () => ({
   },
 }))
 
-const { Instance } = await import("../../src/project/instance")
+const { InstanceStore } = await import("../../src/project/instance-store")
 const { Server } = await import("../../src/server/server")
 
 afterEach(async () => {
   out = undefined
-  await Instance.dispose().catch(() => undefined)
+  await InstanceStore.disposeAllInstances().catch(() => undefined)
 })
 
 describe("experimental tool call route", () => {
