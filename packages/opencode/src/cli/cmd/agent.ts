@@ -29,7 +29,6 @@ const AVAILABLE_PERMISSIONS = [
   "task",
   "todowrite",
   "websearch",
-  "codesearch",
   "lsp",
   "skill",
 ]
