@@ -177,7 +177,7 @@ export function createChildStoreManager(input: {
             projectMeta: initialMeta,
             icon: initialIcon,
             get provider_ready() {
-              return providerQuery.isLoading
+              return !providerQuery.isLoading
             },
             provider: { all: [], connected: [], default: {} },
             config: {},
@@ -197,16 +197,16 @@ export function createChildStoreManager(input: {
             permission: {},
             question: {},
             get mcp_ready() {
-              return mcpQuery.isLoading
+              return !mcpQuery.isLoading
             },
             get mcp() {
-              return mcpQuery.isLoading ? {} : (mcpQuery.data ?? {})
+              return mcpQuery.data ?? {}
             },
             get lsp_ready() {
-              return lspQuery.isLoading
+              return !lspQuery.isLoading
             },
             get lsp() {
-              return lspQuery.isLoading ? [] : (lspQuery.data ?? [])
+              return lspQuery.data ?? []
             },
             vcs: vcsStore.value,
             limit: 5,
