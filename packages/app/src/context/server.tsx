@@ -53,7 +53,23 @@ export function resolveServerList(input: {
   for (const value of servers) {
     const conn: ServerConnection.Any = "type" in value ? value : { type: "http", http: value }
     const key = ServerConnection.key(conn)
-    if (deduped.has(key) && conn.type === "http" && !conn.authToken) continue
+    const prev = deduped.get(key)
+    if (!prev) {
+      deduped.set(key, conn)
+      continue
+    }
+    if (!prev.http.embedSession && conn.http.embedSession) {
+      deduped.set(key, {
+        ...prev,
+        ...conn,
+        http: {
+          ...prev.http,
+          ...conn.http,
+        },
+      })
+      continue
+    }
+    if (conn.type === "http" && !conn.authToken) continue
     deduped.set(key, conn)
   }
 
