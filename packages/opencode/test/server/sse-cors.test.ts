@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { InstanceStore } from "../../src/project/instance-store"
+import { InstanceRuntime } from "../../src/project/instance-runtime"
 import { Server } from "../../src/server/server"
 import { tmpdir } from "../fixture/fixture"
 
 afterEach(async () => {
-  await InstanceStore.disposeAllInstances().catch(() => undefined)
+  await InstanceRuntime.disposeAllInstances().catch(() => undefined)
 })
 
 describe("server SSE CORS", () => {

@@ -135,6 +135,7 @@ const { AppRuntime } = await import("../../src/effect/app-runtime")
 const { Bus } = await import("../../src/bus")
 const { McpOAuthCallback } = await import("../../src/mcp/oauth-callback")
 const { Instance } = await import("../../src/project/instance")
+const { WithInstance } = await import("../../src/project/with-instance")
 const { tmpdir } = await import("../fixture/fixture")
 const service = MCP.Service as unknown as Effect.Effect<MCPNS.Interface, never, never>
 
@@ -159,7 +160,7 @@ test("BrowserOpenFailed event is published when open() throws", async () => {
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       openShouldFail = true
@@ -218,7 +219,7 @@ test("BrowserOpenFailed event is NOT published when open() succeeds", async () =
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       openShouldFail = false
@@ -275,7 +276,7 @@ test("open() is called with the authorization URL", async () => {
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       openShouldFail = false

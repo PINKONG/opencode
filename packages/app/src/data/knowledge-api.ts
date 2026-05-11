@@ -24,8 +24,8 @@ type Sdk = {
       call(input: {
         directory?: string
         workspace?: string
-        client?: string
-        name?: "list_dataset_documents" | "get_document_paragraphs"
+        client: string
+        name: "list_dataset_documents" | "get_document_paragraphs"
         arguments?: Record<string, unknown>
       }): Promise<{ data?: unknown }>
     }

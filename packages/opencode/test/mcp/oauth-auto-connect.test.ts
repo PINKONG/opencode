@@ -142,6 +142,7 @@ afterEach(async () => {
 // Import modules after mocking
 const { MCP } = await import("../../src/mcp/index")
 const { Instance } = await import("../../src/project/instance")
+const { WithInstance } = await import("../../src/project/with-instance")
 const { tmpdir } = await import("../fixture/fixture")
 
 test("first connect to OAuth server shows needs_auth instead of failed", async () => {
@@ -165,7 +166,7 @@ test("first connect to OAuth server shows needs_auth instead of failed", async (
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const result = await Effect.runPromise(
@@ -195,7 +196,7 @@ test("state() generates a new state when none is saved", async () => {
 
   await using tmp = await tmpdir()
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const auth = await Effect.runPromise(
@@ -236,7 +237,7 @@ test("state() returns existing state when one is saved", async () => {
 
   await using tmp = await tmpdir()
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const auth = await Effect.runPromise(
@@ -288,7 +289,7 @@ test("authenticate() stores a connected client when auth completes without redir
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       await Effect.runPromise(
