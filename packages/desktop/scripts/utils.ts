@@ -2,15 +2,15 @@ import { $ } from "bun"
 import { existsSync } from "node:fs"
 import path from "node:path"
 
-const NODE_VERSION = "24.14.0"
+export type Channel = "dev" | "beta" | "prod"
 
-export const SIDECAR_BINARIES: Array<{
-  rustTarget: string
-  ocBinary: string
-  assetExt: string
-  nodeDist: string
-  nodeArchive: string
-}> = [
+export function resolveChannel(): Channel {
+  const raw = Bun.env.OPENCODE_CHANNEL
+  if (raw === "dev" || raw === "beta" || raw === "prod") return raw
+  return "dev"
+}
+
+export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; assetExt: string }> = [
   {
     rustTarget: "aarch64-apple-darwin",
     ocBinary: "wiscode-cli-darwin-arm64",
@@ -65,26 +65,22 @@ function nativeTarget() {
   throw new Error(`Unsupported platform: ${platform}/${arch}`)
 }
 
-function resolveTarget(target?: string) {
-  return target ?? process.env.TAURI_ENV_TARGET_TRIPLE ?? process.env.RUST_TARGET ?? nativeTarget()
-}
-
-export function getCurrentSidecar(target?: string) {
-  const resolvedTarget = resolveTarget(target)
-  const binaryConfig = SIDECAR_BINARIES.find((b) => b.rustTarget === resolvedTarget)
-  if (!binaryConfig) throw new Error(`Sidecar configuration not available for Rust target '${resolvedTarget}'`)
+export function getCurrentSidecar(target = RUST_TARGET ?? nativeTarget()) {
+  const binaryConfig = SIDECAR_BINARIES.find((b) => b.rustTarget === target)
+  if (!binaryConfig) throw new Error(`Sidecar configuration not available for Rust target '${target}'`)
 
   return binaryConfig
 }
 
-export async function copyBinaryToSidecarFolder(source: string, target?: string, sidecar = "wiscode-cli") {
-  const resolvedTarget = resolveTarget(target)
-  await $`mkdir -p src-tauri/sidecars`
-  const dest = windowsify(`src-tauri/sidecars/${sidecar}-${resolvedTarget}`)
+export async function copyBinaryToSidecarFolder(source: string) {
+  const dir = `resources`
+  await $`mkdir -p ${dir}`
+  const dest = windowsify(`${dir}/opencode-cli`)
   await $`cp ${source} ${dest}`
   if (process.platform === "win32" && process.env.GITHUB_ACTIONS === "true") {
     await $`pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ../../script/sign-windows.ps1 ${dest}`
   }
+  if (process.platform === "darwin") await $`codesign --force --sign - ${dest}`
 
   console.log(`Copied ${source} to ${dest}`)
 }

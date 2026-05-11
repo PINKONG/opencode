@@ -62,17 +62,19 @@ describe("public surface branding", () => {
 
   test("zed extension metadata points to WisCode releases", async () => {
     const ext = await Bun.file(join(root, "packages/extensions/zed/extension.toml")).text()
+    const version = ext.match(/^version = "([^"]+)"/m)?.[1]
 
     expect(ext).toContain('id = "wiscode"')
     expect(ext).toContain('name = "WisCode"')
-    expect(ext).toContain('version = "1.0.26"')
+    expect(version).toBeDefined()
+    const release = `https://github.com/PINKONG/opencode/releases/download/v${version}`
     expect(ext).toContain('repository = "https://github.com/PINKONG/opencode"')
     expect(ext).toContain("[agent_servers.wiscode]")
-    expect(ext).toContain('archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.26/wiscode-cli-darwin-arm64.zip"')
-    expect(ext).toContain('archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.26/wiscode-cli-darwin-x64.zip"')
-    expect(ext).toContain('archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.26/wiscode-cli-linux-arm64.tar.gz"')
-    expect(ext).toContain('archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.26/wiscode-cli-linux-x64.tar.gz"')
-    expect(ext).toContain('archive = "https://github.com/PINKONG/opencode/releases/download/v1.0.26/wiscode-cli-windows-x64.zip"')
+    expect(ext).toContain(`archive = "${release}/wiscode-cli-darwin-arm64.zip"`)
+    expect(ext).toContain(`archive = "${release}/wiscode-cli-darwin-x64.zip"`)
+    expect(ext).toContain(`archive = "${release}/wiscode-cli-linux-arm64.tar.gz"`)
+    expect(ext).toContain(`archive = "${release}/wiscode-cli-linux-x64.tar.gz"`)
+    expect(ext).toContain(`archive = "${release}/wiscode-cli-windows-x64.zip"`)
     expect(ext).toContain('cmd = "./wiscode-cli"')
     expect(ext).toContain('cmd = "./wiscode-cli.exe"')
     expect(ext).not.toContain("anomalyco/opencode")
