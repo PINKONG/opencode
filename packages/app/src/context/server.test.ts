@@ -50,4 +50,28 @@ describe("resolveServerList", () => {
     })
     expect(list[0]?.type === "http" ? list[0].authToken : true).toBeUndefined()
   })
+
+  test("keeps embed_session from startup server when same-url persisted server exists", () => {
+    const list = resolveServerList({
+      stored: [{ url: "https://server.example.test", username: "opencode", password: "saved" }],
+      props: [
+        {
+          type: "http",
+          http: {
+            url: "https://server.example.test",
+            embedSession: "embed_123",
+          },
+        },
+      ],
+    })
+
+    expect(list).toHaveLength(1)
+    expect(list[0]?.type).toBe("http")
+    expect(list[0]?.http).toEqual({
+      url: "https://server.example.test",
+      username: "opencode",
+      password: "saved",
+      embedSession: "embed_123",
+    })
+  })
 })
