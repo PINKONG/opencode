@@ -59,6 +59,7 @@ beforeEach(() => {
 const { MCP } = await import("../../src/mcp/index")
 const { AppRuntime } = await import("../../src/effect/app-runtime")
 const { Instance } = await import("../../src/project/instance")
+const { WithInstance } = await import("../../src/project/with-instance")
 const { tmpdir } = await import("../fixture/fixture")
 const service = MCP.Service as unknown as Effect.Effect<MCPNS.Interface, never, never>
 
@@ -87,7 +88,7 @@ test("headers are passed to transports when oauth is enabled (default)", async (
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       // Trigger MCP initialization - it will fail to connect but we can check the transport options
@@ -140,7 +141,7 @@ test("headers are passed to transports when oauth is explicitly disabled", async
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       transportCalls.length = 0
@@ -192,7 +193,7 @@ test("no requestInit when headers are not provided", async () => {
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       transportCalls.length = 0
@@ -236,7 +237,7 @@ test("maxkb hmac remote uses signed fetch and disables oauth", async () => {
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       transportCalls.length = 0

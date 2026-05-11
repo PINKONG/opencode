@@ -1,11 +1,9 @@
 export * as ConfigPaths from "./paths"
 
 import path from "path"
-import { Filesystem } from "@/util/filesystem"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Global } from "@opencode-ai/core/global"
 import { unique } from "remeda"
-import { JsonError } from "./error"
 import * as Effect from "effect/Effect"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 
@@ -69,12 +67,4 @@ export function isConfigDir(dir: string) {
 
 export function localDir(root: string) {
   return path.join(root, dirs[0])
-}
-
-/** Read a config file, returning undefined for missing files and throwing JsonError for other failures. */
-export async function readFile(filepath: string) {
-  return Filesystem.readText(filepath).catch((err: NodeJS.ErrnoException) => {
-    if (err.code === "ENOENT") return
-    throw new JsonError({ path: filepath }, { cause: err })
-  })
 }

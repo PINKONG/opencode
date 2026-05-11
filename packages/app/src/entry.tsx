@@ -7,9 +7,9 @@ import { type Platform, PlatformProvider } from "@/context/platform"
 import { dict as en } from "@/i18n/en"
 import { dict as zh } from "@/i18n/zh"
 import { handleNotificationClick } from "@/utils/notification-click"
+import { authFromToken } from "@/utils/server"
 import pkg from "../package.json"
 import { ServerConnection } from "./context/server"
-import { readEmbedSessionBootstrap } from "./util/embed-session"
 
 const DEFAULT_SERVER_URL_KEY = "opencode.settings.dat:defaultServerUrl"
 
@@ -112,6 +112,13 @@ const getDefaultUrl = () => {
   return getCurrentUrl()
 }
 
+const clearAuthToken = () => {
+  const params = new URLSearchParams(location.search)
+  if (!params.has("auth_token")) return
+  params.delete("auth_token")
+  history.replaceState(null, "", location.pathname + (params.size ? `?${params}` : "") + location.hash)
+}
+
 const platform: Platform = {
   platform: "web",
   version: pkg.version,
@@ -147,11 +154,14 @@ if (import.meta.env.VITE_SENTRY_DSN) {
 }
 
 if (root instanceof HTMLElement) {
+  const auth = authFromToken(new URLSearchParams(location.search).get("auth_token"))
+  clearAuthToken()
   const server: ServerConnection.Http = {
     type: "http",
+    authToken: !!auth,
     http: {
       url: getCurrentUrl(),
-      embedSession: readEmbedSessionBootstrap(location.search),
+      ...auth,
     },
   }
   render(

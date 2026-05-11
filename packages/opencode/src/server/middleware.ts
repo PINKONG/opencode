@@ -14,6 +14,8 @@ import { compress } from "hono/compress"
 import * as ServerBackend from "./backend"
 import { isAllowedCorsOrigin, type CorsOptions } from "./cors"
 import { issueEmbedSession, resolveEmbedSession } from "./embed-session"
+import { isPtyConnectPath, PTY_CONNECT_TICKET_QUERY } from "./shared/pty-ticket"
+import { isPublicUIPath } from "./shared/public-ui"
 
 const log = Log.create({ service: "server" })
 const EMBED_QUERY = "embed_session"
@@ -72,6 +74,8 @@ export const AuthMiddleware: MiddlewareHandler = async (c, next) => {
   if (isPublicStaticUIAsset(c.req.path, c.req.method)) return next()
   const password = Flag.OPENCODE_SERVER_PASSWORD
   if (!password) return next()
+  if (isPublicUIPath(c.req.method, c.req.path)) return next()
+  if (isPtyConnectPath(c.req.path) && c.req.query(PTY_CONNECT_TICKET_QUERY)) return next()
   const username = Flag.OPENCODE_SERVER_USERNAME ?? "opencode"
   const existingAuth = c.req.raw.headers.get("authorization")
   const queryToken = c.req.query("auth_token")
