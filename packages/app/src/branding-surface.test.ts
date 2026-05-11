@@ -24,7 +24,7 @@ describe("app branding surface", () => {
     expect(manifest).not.toContain('"OpenCode"')
     expect(error).not.toContain("https://opencode.ai/desktop-feedback")
     expect(sidebar).not.toContain("https://opencode.ai/favicon.svg")
-    expect(sidebar).toContain('return "/favicon-v3.svg"')
+    expect(sidebar).not.toContain("OPENCODE_PROJECT_ID")
     expect(entry).not.toContain("https://opencode.ai/favicon-96x96-v3.png")
     expect(electron).not.toContain("https://opencode.ai/favicon-96x96-v3.png")
     expect(schema).not.toContain("OpenCode Desktop Theme")
