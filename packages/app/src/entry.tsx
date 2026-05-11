@@ -10,6 +10,7 @@ import { handleNotificationClick } from "@/utils/notification-click"
 import { authFromToken } from "@/utils/server"
 import pkg from "../package.json"
 import { ServerConnection } from "./context/server"
+import { readEmbedSessionBootstrap } from "./util/embed-session"
 
 const DEFAULT_SERVER_URL_KEY = "opencode.settings.dat:defaultServerUrl"
 
@@ -162,6 +163,7 @@ if (root instanceof HTMLElement) {
     http: {
       url: getCurrentUrl(),
       ...auth,
+      embedSession: readEmbedSessionBootstrap(location.search),
     },
   }
   render(
