@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test"
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const cfg = await Bun.file(join(dir, "../../electron-builder.config.ts")).text()
+const vite = await Bun.file(join(dir, "../../electron.vite.config.ts")).text()
 const main = await Bun.file(join(dir, "index.ts")).text()
 const server = await Bun.file(join(dir, "server.ts")).text()
 const migrate = await Bun.file(join(dir, "migrate.ts")).text()
@@ -13,8 +14,15 @@ const windows = await Bun.file(join(dir, "windows.ts")).text()
 const renderer = await Bun.file(join(dir, "../renderer/index.tsx")).text()
 
 describe("electron branding", () => {
+  test("copies embedded web ui runtime assets from opencode node dist without duplicating node entrypoints", () => {
+    expect(vite).toContain('name: "opencode:copy-server-assets"')
+    expect(vite).toContain('const ignored = new Set(["node.js", "node.js.map"])')
+    expect(vite).toContain("if (ignored.has(l)) continue")
+    expect(vite).not.toContain('if (!l.endsWith(".wasm")) continue')
+  })
+
   test("uses wiscode identity in build config", () => {
-    expect(cfg).toContain('artifactName: "wiscode-electron-${os}-${arch}.${ext}"')
+    expect(cfg).toContain('artifactName: "${productName}_${version}_${arch}.${ext}"')
     expect(cfg).toContain('name: "WisCode"')
     expect(cfg).toContain('schemes: ["wiscode"]')
     expect(cfg).toContain('appId: "ai.wiscode.desktop.dev"')
@@ -40,6 +48,7 @@ describe("electron branding", () => {
     expect(main).toContain('app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : "WisCode Dev")')
     expect(main).toContain('"wiscode://"')
     expect(main).toContain('app.setAsDefaultProtocolClient("wiscode")')
+    expect(main).not.toContain('process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"')
     expect(main).not.toContain("opencode://")
     expect(main).not.toContain("OpenCode")
   })

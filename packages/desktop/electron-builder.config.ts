@@ -27,12 +27,12 @@ const channel = (() => {
 })()
 
 const getBase = (): Configuration => ({
-  artifactName: "wiscode-electron-${os}-${arch}.${ext}",
+  artifactName: "${productName}_${version}_${arch}.${ext}",
   directories: {
     output: "dist",
     buildResources: "resources",
   },
-  files: ["out/**/*", "resources/**/*"],
+  files: ["out/**/*"],
   extraResources: [
     {
       from: "native/",

@@ -24,6 +24,7 @@ describe("cli command branding", () => {
     const script = await Bun.file(path.join(root, "../../install")).text()
 
     expect(script).toContain('APP=wiscode-cli')
+    expect(script).toContain('INSTALL_DIR=$HOME/.wiscode/bin')
     expect(script).toContain('command -v wiscode >/dev/null 2>&1')
     expect(script).toContain('installed_version=$(wiscode --version 2>/dev/null || echo "")')
     expect(script).toContain('mv "$tmp_dir/wiscode-cli" "${INSTALL_DIR}/wiscode"')

@@ -20,6 +20,7 @@ import { MemoryRouter } from "@solidjs/router"
 import { createEffect, createResource, onCleanup, onMount, Show } from "solid-js"
 import { render } from "solid-js/web"
 import pkg from "../../package.json"
+import { installCli } from "./cli"
 import { initI18n, t } from "./i18n"
 import { webviewZoom } from "./webview-zoom"
 import "./styles.css"
@@ -275,6 +276,10 @@ const createPlatform = (): Platform => {
 
 let menuTrigger = null as null | ((id: string) => void)
 window.api.onMenuCommand((id) => {
+  if (id === "install-cli") {
+    void installCli()
+    return
+  }
   menuTrigger?.(id)
 })
 listenForDeepLinks()

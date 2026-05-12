@@ -127,6 +127,23 @@
 - `~/.config/wiscode/wiscode.json` 的全局 MCP 配置不生效
 - 桌面端左下角知识库入口消失，MCP 列表缺少 `maxkb-prod`
 
+### 6. Sidecar embed 链路必须整条保留
+
+这是近期合并事故新增的硬规则。
+
+sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/opencode`、`packages/desktop` 的构建和运行时链路。
+
+必须同时保留：
+- [packages/desktop/src/main/index.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src/main/index.ts) 不能重新设置 `OPENCODE_DISABLE_EMBEDDED_WEB_UI`
+- [packages/opencode/script/build-node.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/script/build-node.ts) 必须继续生成非空 `opencode-web-ui.gen.ts`
+- [packages/desktop/electron.vite.config.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/electron.vite.config.ts) 必须继续复制 node dist 中除 `node.js` / `node.js.map` 之外的 embedded UI 资源
+- [packages/opencode/src/server/routes/ui.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/routes/ui.ts) 必须把 embedded 清单中的相对路径解析成基于 node bundle 的绝对路径，再读文件
+
+这几项任一被冲掉，都会出现直接回归：
+- 浏览器打开 sidecar 链接时回退到线上 UI，导致品牌错位或认证错位
+- `/?auth_token=...` 跳转到 `/?embed_session=...` 后返回 `{"error":"Not Found"}`
+- 打包后 desktop 正常启动，但浏览器访问 sidecar embed URL 失败
+
 ## 合并过程中必须做的事
 
 ### 1. 冲突清完后，先找残留品牌/路径风险
@@ -195,6 +212,19 @@ cd packages/app && bun test --preload ./happydom.ts ./src/util/server-access-url
 cd packages/desktop-electron && bun test ./src/main/lan.test.ts ./src/main/sidecar-config.test.ts
 ```
 
+如果改到了以下任一文件，也按 sidecar embed 高风险处理：
+- `packages/opencode/script/build-node.ts`
+- `packages/opencode/src/server/routes/ui.ts`
+- `packages/desktop/electron.vite.config.ts`
+- `packages/desktop/src/main/index.ts`
+
+额外补跑：
+
+```bash
+cd packages/opencode && bun test ./src/server/routes/ui.test.ts ./test/branding/build-node-script.test.ts
+cd packages/desktop && bun test ./src/main/branding.test.ts
+```
+
 如果改了以下任一文件，必须额外补跑：
 - `packages/core/src/global.ts`
 - `packages/opencode/src/config/config.ts`
@@ -224,11 +254,22 @@ cd packages/opencode && bun test test/config/config.test.ts test/server/httpapi-
 - 浏览器访问 sidecar 链接
 - iframe / 嵌入 URL 场景（如果本次改到了相关链路）
 
+sidecar embed 场景至少确认这 4 点：
+- `/?auth_token=...` 会先 302 到 `/?embed_session=...`
+- `/?embed_session=...` 打开的是本地嵌入 UI，不是线上 `app.opencode.ai`
+- 页面能正常进入会话界面，不返回 `{"error":"Not Found"}`
+- 浏览器里显示的是 WisCode 品牌资源，而不是上游 OpenCode 首页资源
+
 ### 4. 构建物最小验证
 
 如果本次同步涉及桌面、CLI、更新器或安装链路，至少做一项：
 - 本机构建成功
 - 或对应平台已做一次手工验证
+
+如果本次同步涉及 sidecar embed / 浏览器访问链路，构建后额外确认：
+- `packages/desktop/out/main/chunks` 中存在 `index-*.html`
+- 同目录存在 `favicon-*`、`site-*.webmanifest`、`social-share-*`、`oc-theme-preload-*.js`
+- `out/main/chunks/node-*.js` 中仍包含 embedded UI 资源映射和相对路径转绝对路径逻辑
 
 ## 浏览器 / 本地 Web 调试补充
 
@@ -345,5 +386,9 @@ merge: 同步 OpenCode vX.Y.Z 并升级 WisCode 1.0.N
 `v1.4.8` 的桌面启动回归说明两件事：
 - 冲突解决时，`packages/app/src/pages/layout.tsx` 这类大文件不能机械吸收上游重构写法
 - 对桌面端来说，“应用实际启动到首页”必须是 merge 前的硬门槛，而不是可选项
+
+这次 sidecar embed 回归再补充两件事：
+- “单测通过”不代表 embed 链路可用，sidecar embed 必须同时验证 build-node、desktop 资源复制和浏览器访问结果
+- 对 embedded UI 来说，运行时相对路径解析属于打包问题，不是普通业务逻辑问题；以后只要上游改了 build、bundle、desktop packaging 或 UI 路由，都要重新过这条链路
 
 以后同步上游时，严格按本清单执行。

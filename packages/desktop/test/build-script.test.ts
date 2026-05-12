@@ -3,23 +3,44 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "bun:test"
 
 const dir = dirname(fileURLToPath(import.meta.url))
-const file = join(dir, "../../../script/build-desktop-prod-mac.sh")
-const script = await Bun.file(file).text()
+const macFile = join(dir, "../../../script/build-desktop-prod-mac.sh")
+const windowsFile = join(dir, "../../../script/build-desktop-prod-windows.ps1")
+const macScript = await Bun.file(macFile).text()
+const windowsScript = await Bun.file(windowsFile).text()
 
 describe("mac desktop build script", () => {
-  test("checks rust toolchain before tauri bundling", () => {
-    expect(script).toContain("if ! command -v cargo >/dev/null 2>&1; then")
-    expect(script).toContain("Missing cargo in PATH. Install the Rust toolchain first.")
-    expect(script).toContain("if ! command -v rustc >/dev/null 2>&1; then")
-    expect(script).toContain("Missing rustc in PATH. Install the Rust toolchain first.")
+  test("copies wiscode sidecar into electron resources", () => {
+    expect(macScript).toContain('mkdir -p resources')
+    expect(macScript).toContain('cp "${bin}" "resources/wiscode-cli"')
+    expect(macScript).toContain('chmod +x "resources/wiscode-cli"')
   })
 
-  test("cleans stale dmg artifacts before tauri bundling", () => {
-    expect(script).toContain('macos_bundle="${root}/packages/desktop/src-tauri/target/release/bundle/macos"')
-    expect(script).toContain('if [[ -d "${macos_bundle}" ]]; then')
-    expect(script).toContain('find "${macos_bundle}" -maxdepth 1')
-    expect(script).toContain("-name 'WisCode*.dmg'")
-    expect(script).toContain("-name 'rw.*.dmg'")
-    expect(script).toContain("-delete")
+  test("packages with electron-builder in prod channel", () => {
+    const channelIndex = macScript.indexOf("export OPENCODE_CHANNEL=prod")
+    const versionIndex = macScript.indexOf(
+      'export OPENCODE_VERSION="$(bun --print \'require(\"./packages/opencode/package.json\").version\')"',
+    )
+    const buildIndex = macScript.indexOf('echo "==> build sidecar"')
+    expect(channelIndex).toBeGreaterThan(-1)
+    expect(versionIndex).toBeGreaterThan(-1)
+    expect(buildIndex).toBeGreaterThan(-1)
+    expect(channelIndex).toBeLessThan(buildIndex)
+    expect(versionIndex).toBeLessThan(buildIndex)
+    expect(macScript).toContain('./node_modules/.bin/electron-builder --mac --config electron-builder.config.ts')
+    expect(macScript).not.toContain("bun run tauri")
+    expect(macScript).not.toContain("tauri.prod.conf.json")
+  })
+
+  test("passes the release version into the windows sidecar build too", () => {
+    const channelIndex = windowsScript.indexOf('$env:OPENCODE_CHANNEL = "prod"')
+    const versionIndex = windowsScript.indexOf(
+      '$env:OPENCODE_VERSION = & bun --print \'require("./packages/opencode/package.json").version\'',
+    )
+    const buildIndex = windowsScript.indexOf('Write-Host "==> build sidecar"')
+    expect(channelIndex).toBeGreaterThan(-1)
+    expect(versionIndex).toBeGreaterThan(-1)
+    expect(buildIndex).toBeGreaterThan(-1)
+    expect(channelIndex).toBeLessThan(buildIndex)
+    expect(versionIndex).toBeLessThan(buildIndex)
   })
 })

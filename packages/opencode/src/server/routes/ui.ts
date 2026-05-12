@@ -7,6 +7,7 @@ import { proxy } from "hono/proxy"
 import { getMimeType } from "hono/utils/mime"
 import { createHash } from "node:crypto"
 import fs from "node:fs/promises"
+import path from "node:path"
 import { ProxyUtil } from "../proxy-util"
 
 const embeddedUIPromise = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
@@ -60,6 +61,11 @@ function embeddedUI(override?: Record<string, string> | null) {
   return embeddedUIPromise
 }
 
+function resolveEmbeddedAssetPath(match: string) {
+  if (!match.startsWith(".")) return match
+  return path.resolve(import.meta.dirname, match)
+}
+
 export async function serveUI(request: Request, opts?: { embeddedWebUI?: Record<string, string> | null }) {
   const embeddedWebUI = await embeddedUI(opts?.embeddedWebUI)
   const url = new URL(request.url)
@@ -69,20 +75,23 @@ export async function serveUI(request: Request, opts?: { embeddedWebUI?: Record<
   if (embeddedWebUI) {
     const match = embeddedWebUI[path.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
     if (!match) return Response.json({ error: "Not Found" }, { status: 404 })
+    const assetPath = resolveEmbeddedAssetPath(match)
 
-    if (await fs.exists(match)) {
-        const mime = getMimeType(match) ?? "text/plain"
-        if (mime.startsWith("text/html")) {
-          const html = injectEmbedSessionMeta(await fs.readFile(match, "utf8"), embedSession)
-          const preload = themePreloadHash(html)
-          const hash = preload ? createHash("sha256").update(preload[2]).digest("base64") : ""
-          const headers = new Headers({ "content-type": mime, "content-security-policy": csp(hash) || DEFAULT_CSP })
-          return new Response(html, { headers })
-        }
-      return new Response(new Uint8Array(await fs.readFile(match)), { headers: new Headers({ "content-type": mime }) })
+    try {
+      const mime = getMimeType(assetPath) ?? "text/plain"
+      if (mime.startsWith("text/html")) {
+        const html = injectEmbedSessionMeta(await fs.readFile(assetPath, "utf8"), embedSession)
+        const preload = themePreloadHash(html)
+        const hash = preload ? createHash("sha256").update(preload[2]).digest("base64") : ""
+        const headers = new Headers({ "content-type": mime, "content-security-policy": csp(hash) || DEFAULT_CSP })
+        return new Response(html, { headers })
+      }
+      return new Response(new Uint8Array(await fs.readFile(assetPath)), {
+        headers: new Headers({ "content-type": mime }),
+      })
+    } catch {
+      return Response.json({ error: "Not Found" }, { status: 404 })
     }
-
-    return Response.json({ error: "Not Found" }, { status: 404 })
   }
 
   const response = await proxy(upstreamURL(path), {
@@ -115,18 +124,19 @@ export function serveUIEffect(
     if (embeddedWebUI) {
       const match = embeddedWebUI[path.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
       if (!match) return HttpServerResponse.jsonUnsafe({ error: "Not Found" }, { status: 404 })
+      const assetPath = resolveEmbeddedAssetPath(match)
 
-      if (yield* services.fs.existsSafe(match)) {
-        const mime = getMimeType(match) ?? "text/plain"
+      if (yield* services.fs.existsSafe(assetPath)) {
+        const mime = getMimeType(assetPath) ?? "text/plain"
         const headers = new Headers({ "content-type": mime })
         if (mime.startsWith("text/html")) {
-          const html = injectEmbedSessionMeta(yield* services.fs.readFileString(match), embedSession)
+          const html = injectEmbedSessionMeta(yield* services.fs.readFileString(assetPath), embedSession)
           const preload = themePreloadHash(html)
           const hash = preload ? createHash("sha256").update(preload[2]).digest("base64") : ""
           headers.set("content-security-policy", csp(hash) || DEFAULT_CSP)
           return HttpServerResponse.text(html, { headers })
         }
-        return HttpServerResponse.raw(yield* services.fs.readFile(match), { headers })
+        return HttpServerResponse.raw(yield* services.fs.readFile(assetPath), { headers })
       }
 
       return HttpServerResponse.jsonUnsafe({ error: "Not Found" }, { status: 404 })

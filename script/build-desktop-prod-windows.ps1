@@ -60,15 +60,9 @@ else {
 Write-Host "==> root: $Root"
 Write-Host "==> arch: $arch"
 
-if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and $env:TAURI_SIGNING_PRIVATE_KEY_PATH) {
-  if (-not (Test-Path $env:TAURI_SIGNING_PRIVATE_KEY_PATH)) {
-    throw "Missing signing key file: $env:TAURI_SIGNING_PRIVATE_KEY_PATH"
-  }
-  Write-Host "==> load updater signing key from path"
-  $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $env:TAURI_SIGNING_PRIVATE_KEY_PATH -Raw)
-}
-
 Set-Location $Root
+$env:OPENCODE_CHANNEL = "prod"
+$env:OPENCODE_VERSION = & bun --print 'require("./packages/opencode/package.json").version'
 Write-Host "==> bun install"
 bun install
 Assert-LastExitCode "bun install"
@@ -85,9 +79,31 @@ if (-not (Test-Path $bin)) {
 
 Set-Location (Join-Path $Root "packages\desktop")
 Write-Host "==> copy sidecar"
-$sidecar = Join-Path $Root "packages\desktop\src-tauri\sidecars"
-New-Item -ItemType Directory -Force $sidecar | Out-Null
-Copy-Item $bin (Join-Path $sidecar "wiscode-cli-$triple.exe") -Force
+$resources = Join-Path $Root "packages\desktop\resources"
+New-Item -ItemType Directory -Force $resources | Out-Null
+Copy-Item $bin (Join-Path $resources "wiscode-cli.exe") -Force
+New-Item -ItemType Directory -Force (Join-Path $Root "packages\desktop\native") | Out-Null
+
+# Force known-good mirror endpoints to avoid inherited env pollution.
+$env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
+$env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://cdn.npmmirror.com/binaries/electron-builder-binaries/"
+$env:NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR = $env:ELECTRON_BUILDER_BINARIES_MIRROR
+$env:npm_config_electron_builder_binaries_mirror = $env:NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR
+$env:ELECTRON_BUILDER_BINARIES_DOWNLOAD_OVERRIDE_URL = $null
+Remove-Item Env:NPM_CONFIG_ELECTRON_BUILDER_BINARIES_CUSTOM_DIR -ErrorAction SilentlyContinue
+Remove-Item Env:npm_config_electron_builder_binaries_custom_dir -ErrorAction SilentlyContinue
+Remove-Item Env:NPM_PACKAGE_CONFIG_ELECTRON_BUILDER_BINARIES_CUSTOM_DIR -ErrorAction SilentlyContinue
+Remove-Item Env:npm_package_config_electron_builder_binaries_custom_dir -ErrorAction SilentlyContinue
+Remove-Item Env:npm_package_config_electron_builder_binaries_mirror -ErrorAction SilentlyContinue
+Remove-Item Env:NPM_PACKAGE_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR -ErrorAction SilentlyContinue
+if (-not $env:ELECTRON_CACHE) { $env:ELECTRON_CACHE = (Join-Path $Root ".cache\electron") }
+if (-not $env:ELECTRON_BUILDER_CACHE) { $env:ELECTRON_BUILDER_CACHE = (Join-Path $Root ".cache\electron-builder") }
+New-Item -ItemType Directory -Force $env:ELECTRON_CACHE | Out-Null
+New-Item -ItemType Directory -Force $env:ELECTRON_BUILDER_CACHE | Out-Null
+Write-Host "==> electron mirror: $env:ELECTRON_MIRROR"
+Write-Host "==> electron-builder mirror: $env:NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR"
+Write-Host "==> electron-builder env"
+Get-ChildItem Env: | Where-Object { $_.Name -match 'ELECTRON_BUILDER_BINARIES|ELECTRON_MIRROR|npm_config_electron_builder|npm_package_config_electron_builder' } | Sort-Object Name | Format-Table -AutoSize
 
 Write-Host "==> typecheck"
 bun run typecheck
@@ -97,22 +113,11 @@ Write-Host "==> build frontend"
 bun run build
 Assert-LastExitCode "desktop build"
 
-Write-Host "==> tauri prod build"
-if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
-  throw "Missing cargo. Install Rust with rustup or add $cargoBin to PATH."
-}
-$env:WISCODE_SKIP_OPENCODE_BUILD = "1"
-$args = @("run", "tauri", "build", "--config", "src-tauri/tauri.prod.conf.json")
-if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and -not $env:TAURI_SIGNING_PRIVATE_KEY_PATH) {
-  Write-Host "==> updater signing key missing, disabling updater artifacts"
-  $tempConfig = [System.IO.Path]::GetTempFileName() + ".json"
-  '{"bundle":{"createUpdaterArtifacts":false}}' | Set-Content -Path $tempConfig -Encoding UTF8
-  $args += @("--config", $tempConfig)
-}
-& bun @args
-Assert-LastExitCode "tauri prod build"
+Write-Host "==> package windows (electron-builder)"
+bun run package:win
+Assert-LastExitCode "package windows"
 
 Write-Host "==> artifacts"
-Get-ChildItem (Join-Path $Root "packages\desktop\src-tauri\target\release\bundle") -Recurse |
-  Where-Object { $_.Name -like "WisCode*" -or $_.Extension -in ".exe", ".msi", ".zip" } |
+Get-ChildItem (Join-Path $Root "packages\desktop\dist") -Recurse |
+  Where-Object { $_.Name -like "WisCode*" -or $_.Extension -in ".exe", ".msi", ".zip", ".blockmap" } |
   Select-Object -ExpandProperty FullName

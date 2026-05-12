@@ -5,12 +5,14 @@ export const Mark = (props: { class?: string }) => {
     <svg
       data-component="logo-mark"
       classList={{ [props.class ?? ""]: !!props.class }}
-      viewBox="0 0 16 20"
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path data-slot="logo-logo-mark-shadow" d="M12 16H4V8H12V16Z" fill="var(--icon-weak-base)" />
-      <path data-slot="logo-logo-mark-o" d="M12 4H4V16H12V4ZM16 20H0V0H16V20Z" fill="var(--icon-strong-base)" />
+      <path d="M4 18L9 9L11 12L13 9L18 18" stroke="var(--icon-base)" stroke-width="2.2" stroke-linecap="square" />
+      <path d="M4 18H18" stroke="var(--icon-base)" stroke-width="2.2" stroke-linecap="square" />
+      <path d="M7 18L11 12" stroke="var(--icon-weak-base)" stroke-width="2.2" stroke-linecap="square" />
+      <circle cx="19" cy="14" r="3" fill="var(--icon-strong-base)" />
     </svg>
   )
 }
@@ -21,12 +23,19 @@ export const Splash = (props: Pick<ComponentProps<"svg">, "ref" | "class">) => {
       ref={props.ref}
       data-component="logo-splash"
       classList={{ [props.class ?? ""]: !!props.class }}
-      viewBox="0 0 80 100"
+      viewBox="0 0 120 120"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M60 80H20V40H60V80Z" fill="var(--icon-base)" />
-      <path d="M60 20H20V80H60V20ZM80 100H0V0H80V100Z" fill="var(--icon-strong-base)" />
+      <path
+        d="M20 88L46 40L58 56L70 40L96 88"
+        stroke="var(--icon-base)"
+        stroke-width="8"
+        stroke-linecap="square"
+      />
+      <path d="M20 88H96" stroke="var(--icon-base)" stroke-width="8" stroke-linecap="square" />
+      <path d="M35 88L58 56" stroke="var(--icon-weak-base)" stroke-width="8" stroke-linecap="square" />
+      <circle cx="98" cy="70" r="16" fill="var(--icon-strong-base)" />
     </svg>
   )
 }

@@ -17,8 +17,6 @@ try {
   process.chdir(homedir())
 } catch {}
 
-process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"
-
 const APP_NAMES: Record<string, string> = {
   dev: "WisCode Dev",
   beta: "WisCode Beta",
@@ -44,6 +42,8 @@ import { initLogging } from "./logging"
 import { parseMarkdown } from "./markdown"
 import { createMenu } from "./menu"
 import { resolveConfiguredPort } from "./sidecar-config"
+import { installCli, syncCli } from "./cli"
+import { getStore } from "./store"
 import {
   getDefaultServerUrl,
   getSidecarLanConfig,
@@ -129,6 +129,7 @@ function setupApp() {
     registerRendererProtocol()
     setDockIcon()
     setupAutoUpdater()
+    await syncCli(getStore())
     await initialize()
   })
 }
@@ -252,6 +253,7 @@ function wireMenu() {
 
 registerIpcHandlers({
   killSidecar: () => killSidecar(),
+  installCli: () => installCli(),
   awaitInitialization: async (sendStep) => {
     sendStep(initStep)
     const listener = (step: InitStep) => sendStep(step)

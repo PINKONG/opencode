@@ -3,6 +3,8 @@ import { Hono } from "hono"
 import { UIRoutes } from "./ui"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import path from "node:path"
+import fs from "node:fs/promises"
+import { fileURLToPath } from "node:url"
 import { tmpdir } from "../../../test/fixture/fixture"
 
 const originalDisableEmbedded = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
@@ -34,6 +36,37 @@ describe("UIRoutes", () => {
     expect(res.status).toBe(200)
     expect(res.headers.get("content-type")).toContain("text/html")
     expect(await res.text()).toContain("<body>ok</body>")
+  })
+
+  test("resolves relative embedded asset paths against the node bundle directory", async () => {
+    await using tmp = await tmpdir()
+    await using cwd = await tmpdir()
+    const htmlFile = path.join(tmp.path, "index.html")
+    const originalCwd = process.cwd()
+    const moduleDir = path.dirname(fileURLToPath(import.meta.url))
+    const fixture = path.join(moduleDir, "ui-routes-relative-index.html")
+    await Bun.write(htmlFile, "<html><head></head><body>ok</body></html>")
+    await fs.symlink(htmlFile, fixture)
+
+    process.chdir(cwd.path)
+    try {
+      const app = new Hono().route(
+        "/",
+        UIRoutes({
+          embeddedWebUI: {
+            "index.html": "./ui-routes-relative-index.html",
+          },
+        }),
+      )
+
+      const res = await app.request("http://localhost/")
+
+      expect(res.status).toBe(200)
+      expect(await res.text()).toContain("<body>ok</body>")
+    } finally {
+      process.chdir(originalCwd)
+      await fs.unlink(fixture)
+    }
   })
 
   test("removes alt-svc from proxied html response", async () => {

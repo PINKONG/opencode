@@ -32,28 +32,9 @@ fi
 echo "==> root: ${root}"
 echo "==> arch: ${arch}"
 
-if ! command -v cargo >/dev/null 2>&1; then
-  echo "Missing cargo in PATH. Install the Rust toolchain first." >&2
-  echo "Recommended: curl https://sh.rustup.rs -sSf | sh" >&2
-  exit 1
-fi
-
-if ! command -v rustc >/dev/null 2>&1; then
-  echo "Missing rustc in PATH. Install the Rust toolchain first." >&2
-  echo "Recommended: curl https://sh.rustup.rs -sSf | sh" >&2
-  exit 1
-fi
-
-if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" && -n "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]]; then
-  if [[ ! -f "${TAURI_SIGNING_PRIVATE_KEY_PATH}" ]]; then
-    echo "Missing signing key file: ${TAURI_SIGNING_PRIVATE_KEY_PATH}" >&2
-    exit 1
-  fi
-  echo "==> load updater signing key from path"
-  export TAURI_SIGNING_PRIVATE_KEY="$(<"${TAURI_SIGNING_PRIVATE_KEY_PATH}")"
-fi
-
 cd "${root}"
+export OPENCODE_CHANNEL=prod
+export OPENCODE_VERSION="$(bun --print 'require("./packages/opencode/package.json").version')"
 echo "==> bun install"
 bun install
 
@@ -69,9 +50,54 @@ fi
 
 cd "${root}/packages/desktop"
 echo "==> copy sidecar"
-mkdir -p src-tauri/sidecars
-cp "${bin}" "src-tauri/sidecars/wiscode-cli-${triple}"
-chmod +x "src-tauri/sidecars/wiscode-cli-${triple}"
+mkdir -p resources
+cp "${bin}" "resources/wiscode-cli"
+chmod +x "resources/wiscode-cli"
+mkdir -p native
+
+# Force known-good mirror endpoints to avoid inherited env pollution.
+export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
+export ELECTRON_BUILDER_BINARIES_MIRROR="https://cdn.npmmirror.com/binaries/electron-builder-binaries/"
+export NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR="${ELECTRON_BUILDER_BINARIES_MIRROR}"
+export npm_config_electron_builder_binaries_mirror="${ELECTRON_BUILDER_BINARIES_MIRROR}"
+unset ELECTRON_BUILDER_BINARIES_DOWNLOAD_OVERRIDE_URL
+unset NPM_CONFIG_ELECTRON_BUILDER_BINARIES_CUSTOM_DIR
+unset npm_config_electron_builder_binaries_custom_dir
+unset NPM_PACKAGE_CONFIG_ELECTRON_BUILDER_BINARIES_CUSTOM_DIR
+unset npm_package_config_electron_builder_binaries_custom_dir
+unset npm_package_config_electron_builder_binaries_mirror
+unset NPM_PACKAGE_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR
+export ELECTRON_CACHE="${ELECTRON_CACHE:-${root}/.cache/electron}"
+export ELECTRON_BUILDER_CACHE="${ELECTRON_BUILDER_CACHE:-${root}/.cache/electron-builder}"
+mkdir -p "${ELECTRON_CACHE}" "${ELECTRON_BUILDER_CACHE}"
+echo "==> electron mirror: ${ELECTRON_MIRROR}"
+echo "==> electron-builder mirror: ${NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR}"
+echo "==> electron-builder env"
+env | rg -i 'electron_builder_binaries|electron_mirror|npm_config_electron_builder|npm_package_config_electron_builder' || true
+
+# electron-builder's dmg-builder download path is affected by ELECTRON_MIRROR.
+# Preload dmgbuild bundle and force CUSTOM_DMGBUILD_PATH to avoid mirror path collisions.
+if [[ "${arch}" == "arm64" ]]; then
+  dmgbuild_arch="arm64"
+else
+  dmgbuild_arch="x86_64"
+fi
+dmgbuild_ver="75c8a6c"
+dmgbuild_name="dmgbuild-bundle-${dmgbuild_arch}-${dmgbuild_ver}.tar.gz"
+dmgbuild_url="https://cdn.npmmirror.com/binaries/electron-builder-binaries/dmg-builder@1.2.0/${dmgbuild_name}"
+dmgbuild_root="${ELECTRON_BUILDER_CACHE}/dmg-builder-1.2.0-${dmgbuild_arch}"
+dmgbuild_bin="${dmgbuild_root}/dmgbuild"
+if [[ ! -x "${dmgbuild_bin}" ]]; then
+  echo "==> preload dmgbuild bundle: ${dmgbuild_name}"
+  tmp_tgz="${ELECTRON_BUILDER_CACHE}/${dmgbuild_name}"
+  curl -fL --retry 3 --connect-timeout 15 --max-time 300 "${dmgbuild_url}" -o "${tmp_tgz}"
+  rm -rf "${dmgbuild_root}"
+  mkdir -p "${dmgbuild_root}"
+  tar -xzf "${tmp_tgz}" -C "${dmgbuild_root}" --strip-components=1
+  chmod +x "${dmgbuild_bin}" || true
+fi
+export CUSTOM_DMGBUILD_PATH="${dmgbuild_bin}"
+echo "==> custom dmgbuild: ${CUSTOM_DMGBUILD_PATH}"
 
 echo "==> typecheck"
 bun run typecheck
@@ -79,21 +105,9 @@ bun run typecheck
 echo "==> build frontend"
 bun run build
 
-echo "==> clean stale dmg artifacts"
-macos_bundle="${root}/packages/desktop/src-tauri/target/release/bundle/macos"
-if [[ -d "${macos_bundle}" ]]; then
-  find "${macos_bundle}" -maxdepth 1 \
-    \( -name 'WisCode*.dmg' -o -name 'rw.*.dmg' \) -delete
-fi
-
-echo "==> tauri prod build"
-args=(build --config src-tauri/tauri.prod.conf.json)
-if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" && -z "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]]; then
-  echo "==> updater signing key missing, disabling updater artifacts"
-  args+=(--config '{"bundle":{"createUpdaterArtifacts":false}}')
-fi
-bun run tauri "${args[@]}"
+echo "==> package mac (electron-builder)"
+./node_modules/.bin/electron-builder --mac --config electron-builder.config.ts
 
 echo "==> artifacts"
-find "${root}/packages/desktop/src-tauri/target/release/bundle" -maxdepth 3 \
-  \( -name 'WisCode*' -o -name '*.app' -o -name '*.dmg' \) | sort
+find "${root}/packages/desktop/dist" -maxdepth 3 \
+  \( -name 'WisCode*' -o -name '*.app' -o -name '*.dmg' -o -name '*.zip' \) | sort
