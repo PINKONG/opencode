@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { normalize, text } from "./session-diff"
+import * as diffs from "@pierre/diffs"
 
 describe("session diff", () => {
   test("keeps unified patch content", () => {
@@ -64,5 +65,23 @@ describe("session diff", () => {
     expect(view.patch).toBe(diff.patch)
     expect(text(view, "deletions")).toBe("")
     expect(text(view, "additions")).toBe("")
+  })
+
+  test("does not throw when file diff metadata parsing fails", () => {
+    const error = new Error("boom")
+    const parse = spyOn(diffs, "parseDiffFromFile").mockImplementation(() => {
+      throw error
+    })
+
+    expect(() =>
+      normalize({
+        file: "a.ts",
+        patch: "--- a.ts\n+++ a.ts\n@@ -1,1 +1,1 @@\n-one\n+two\n",
+        additions: 1,
+        deletions: 1,
+        status: "modified",
+      }),
+    ).not.toThrow()
+    parse.mockRestore()
   })
 })

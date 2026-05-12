@@ -92,7 +92,22 @@ function file(file: string, patch: string, before: string, after: string) {
   const hit = cache.get(patch)
   if (hit) return hit
 
-  const value = parseDiffFromFile({ name: file, contents: before }, { name: file, contents: after })
+  const value = (() => {
+    try {
+      return parseDiffFromFile({ name: file, contents: before }, { name: file, contents: after })
+    } catch {
+      return {
+        name: file,
+        type: "change" as const,
+        hunks: [],
+        splitLineCount: 0,
+        unifiedLineCount: 0,
+        isPartial: false,
+        additionLines: [],
+        deletionLines: [],
+      }
+    }
+  })()
   cache.set(patch, value)
   return value
 }

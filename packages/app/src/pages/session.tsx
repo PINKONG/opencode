@@ -64,6 +64,7 @@ import { Persist, persisted } from "@/utils/persist"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
+import { safeSessionSync } from "@/utils/session-sync"
 
 const emptyUserMessages: UserMessage[] = []
 type FollowupItem = FollowupDraft & { id: string }
@@ -356,6 +357,15 @@ export default function Page() {
       jump: false,
     },
   })
+
+  const syncSessionSafe = (sessionID: string, opts?: { force?: boolean }) =>
+    safeSessionSync(() => sync.session.sync(sessionID, opts), (error) =>
+      showToast({
+        variant: "error",
+        title: language.t("common.requestFailed"),
+        description: formatServerError(error, language.t),
+      }),
+    )
 
   const composer = createSessionComposerState()
 
@@ -779,12 +789,12 @@ export default function Page() {
           refreshTimer = undefined
           if (params.id !== id) return
           untrack(() => {
-            if (stale) void sync.session.sync(id, { force: true })
+            if (stale) void syncSessionSafe(id, { force: true })
           })
         }, 0)
       })
 
-      return sync.session.sync(id)
+      return syncSessionSafe(id)
     },
   )
 

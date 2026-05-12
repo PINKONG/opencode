@@ -32,6 +32,8 @@ import { useSync } from "@/context/sync"
 import { messageAgentColor } from "@/utils/agent"
 import { sessionTitle } from "@/utils/session-title"
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
+import { formatServerError } from "@/utils/server-errors"
+import { safeSessionSync } from "@/utils/session-sync"
 import { makeTimer } from "@solid-primitives/timer"
 
 type MessageComment = {
@@ -237,10 +239,19 @@ export function MessageTimeline(props: {
   const sdk = useSDK()
   const sync = useSync()
   const settings = useSettings()
-  const dialog = useDialog()
   const language = useLanguage()
+  const dialog = useDialog()
   const { params, sessionKey } = useSessionKey()
   const platform = usePlatform()
+
+  const syncSessionSafe = (sessionID: string, opts?: { force?: boolean }) =>
+    safeSessionSync(() => sync.session.sync(sessionID, opts), (error) =>
+      showToast({
+        variant: "error",
+        title: language.t("common.requestFailed"),
+        description: formatServerError(error, language.t),
+      }),
+    )
 
   const rendered = createMemo(() => props.renderedUserMessages.map((message) => message.id))
   const sessionID = createMemo(() => params.id)
@@ -453,7 +464,7 @@ export function MessageTimeline(props: {
       ([id, description]) => {
         if (!id || description) return
         if (sync.data.message[id] !== undefined) return
-        void sync.session.sync(id)
+        void syncSessionSafe(id)
       },
       { defer: true },
     ),
