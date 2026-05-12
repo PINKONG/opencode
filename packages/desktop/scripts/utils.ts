@@ -104,6 +104,32 @@ function nodeDistName(target = RUST_TARGET ?? nativeTarget()) {
   return nodeArchive(target).replace(/(\.tar\.gz|\.tar\.xz|\.zip)$/, "")
 }
 
+async function extractZip(archive: string, dir: string) {
+  if (process.platform !== "win32") {
+    await $`unzip -q -o ${archive} -d ${dir}`
+    return
+  }
+
+  const ps = (value: string) => `'${value.replaceAll("'", "''")}'`
+  const proc = Bun.spawn(
+    [
+      "powershell.exe",
+      "-NoLogo",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      `Expand-Archive -LiteralPath ${ps(archive)} -DestinationPath ${ps(dir)} -Force`,
+    ],
+    {
+      stdout: "inherit",
+      stderr: "inherit",
+    },
+  )
+  const exitCode = await proc.exited
+  if (exitCode !== 0) throw new Error(`Failed to extract ${archive}`)
+}
+
 export async function ensureBundledNodeBinary(target?: string) {
   const resolvedTarget = target ?? RUST_TARGET ?? nativeTarget()
   const archiveName = nodeArchive(resolvedTarget)
@@ -120,7 +146,7 @@ export async function ensureBundledNodeBinary(target?: string) {
     await $`curl -fL ${url} -o ${archive}`
   }
   if (!existsSync(extracted)) {
-    if (archiveName.endsWith(".zip")) await $`unzip -q -o ${archive} -d ${dir}`
+    if (archiveName.endsWith(".zip")) await extractZip(archive, dir)
     else if (archiveName.endsWith(".tar.xz")) await $`tar -xJf ${archive} -C ${dir}`
     else await $`tar -xzf ${archive} -C ${dir}`
   }

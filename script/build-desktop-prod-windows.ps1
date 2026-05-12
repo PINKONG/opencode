@@ -43,6 +43,14 @@ if ((Test-Path (Join-Path $cargoBin "cargo.exe")) -and (($env:PATH -split ';') -
   $env:PATH = "$cargoBin;$env:PATH"
 }
 
+$Bun = (Get-Command bun -ErrorAction SilentlyContinue).Source
+if (-not $Bun) {
+  $Bun = Join-Path $HOME ".bun\bin\bun.exe"
+}
+if (-not (Test-Path $Bun)) {
+  throw "Missing bun executable. Add bun to PATH or install it at $Bun"
+}
+
 if ($arch -eq "X64") {
   $triple = "x86_64-pc-windows-msvc"
   $dir = "wiscode-cli-windows-x64-baseline"
@@ -62,14 +70,14 @@ Write-Host "==> arch: $arch"
 
 Set-Location $Root
 $env:OPENCODE_CHANNEL = "prod"
-$env:OPENCODE_VERSION = & bun --print 'require("./packages/opencode/package.json").version'
+$env:OPENCODE_VERSION = (Get-Content (Join-Path $Root "packages\opencode\package.json") -Raw | ConvertFrom-Json).version
 Write-Host "==> bun install"
-bun install
+& $Bun install
 Assert-LastExitCode "bun install"
 
 Set-Location (Join-Path $Root "packages\opencode")
 Write-Host "==> build sidecar"
-& bun @args
+& $Bun @args
 Assert-LastExitCode "build sidecar"
 
 $bin = Join-Path $Root "packages\opencode\dist\$dir\bin\wiscode-cli.exe"
@@ -100,21 +108,32 @@ if (-not $env:ELECTRON_CACHE) { $env:ELECTRON_CACHE = (Join-Path $Root ".cache\e
 if (-not $env:ELECTRON_BUILDER_CACHE) { $env:ELECTRON_BUILDER_CACHE = (Join-Path $Root ".cache\electron-builder") }
 New-Item -ItemType Directory -Force $env:ELECTRON_CACHE | Out-Null
 New-Item -ItemType Directory -Force $env:ELECTRON_BUILDER_CACHE | Out-Null
+
+$rceditSource = Join-Path $Root "node_modules\.bun\electron-winstaller@5.4.0\node_modules\electron-winstaller\vendor\rcedit.exe"
+if (Test-Path $rceditSource) {
+  $rceditDir = Join-Path $env:ELECTRON_BUILDER_CACHE "rcedit"
+  New-Item -ItemType Directory -Force $rceditDir | Out-Null
+  Copy-Item $rceditSource (Join-Path $rceditDir "rcedit-x64.exe") -Force
+  Copy-Item $rceditSource (Join-Path $rceditDir "rcedit-x86.exe") -Force
+  $env:ELECTRON_BUILDER_RCEDIT_PATH = $rceditDir
+}
+
 Write-Host "==> electron mirror: $env:ELECTRON_MIRROR"
 Write-Host "==> electron-builder mirror: $env:NPM_CONFIG_ELECTRON_BUILDER_BINARIES_MIRROR"
+Write-Host "==> electron-builder rcedit: $env:ELECTRON_BUILDER_RCEDIT_PATH"
 Write-Host "==> electron-builder env"
-Get-ChildItem Env: | Where-Object { $_.Name -match 'ELECTRON_BUILDER_BINARIES|ELECTRON_MIRROR|npm_config_electron_builder|npm_package_config_electron_builder' } | Sort-Object Name | Format-Table -AutoSize
+Get-ChildItem Env: | Where-Object { $_.Name -match 'ELECTRON_BUILDER_BINARIES|ELECTRON_BUILDER_RCEDIT|ELECTRON_MIRROR|npm_config_electron_builder|npm_package_config_electron_builder' } | Sort-Object Name | Format-Table -AutoSize
 
 Write-Host "==> typecheck"
-bun run typecheck
+& $Bun run typecheck
 Assert-LastExitCode "desktop typecheck"
 
 Write-Host "==> build frontend"
-bun run build
+& $Bun run build
 Assert-LastExitCode "desktop build"
 
 Write-Host "==> package windows (electron-builder)"
-bun run package:win
+& $Bun run package:win
 Assert-LastExitCode "package windows"
 
 Write-Host "==> artifacts"

@@ -34,7 +34,7 @@ describe("mac desktop build script", () => {
   test("passes the release version into the windows sidecar build too", () => {
     const channelIndex = windowsScript.indexOf('$env:OPENCODE_CHANNEL = "prod"')
     const versionIndex = windowsScript.indexOf(
-      '$env:OPENCODE_VERSION = & bun --print \'require("./packages/opencode/package.json").version\'',
+      '$env:OPENCODE_VERSION = (Get-Content (Join-Path $Root "packages\\opencode\\package.json") -Raw | ConvertFrom-Json).version',
     )
     const buildIndex = windowsScript.indexOf('Write-Host "==> build sidecar"')
     expect(channelIndex).toBeGreaterThan(-1)
@@ -42,5 +42,17 @@ describe("mac desktop build script", () => {
     expect(buildIndex).toBeGreaterThan(-1)
     expect(channelIndex).toBeLessThan(buildIndex)
     expect(versionIndex).toBeLessThan(buildIndex)
+  })
+
+  test("uses resolved bun executable in the windows build script", () => {
+    expect(windowsScript).toContain("$Bun = (Get-Command bun -ErrorAction SilentlyContinue).Source")
+    expect(windowsScript).toContain('$Bun = Join-Path $HOME ".bun\\bin\\bun.exe"')
+    expect(windowsScript).toContain("& $Bun install")
+    expect(windowsScript).toContain("& $Bun run package:win")
+  })
+
+  test("uses local rcedit on windows to avoid legacy winCodeSign extraction", () => {
+    expect(windowsScript).toContain('$rceditSource = Join-Path $Root "node_modules\\.bun\\electron-winstaller@5.4.0\\node_modules\\electron-winstaller\\vendor\\rcedit.exe"')
+    expect(windowsScript).toContain('$env:ELECTRON_BUILDER_RCEDIT_PATH = $rceditDir')
   })
 })
