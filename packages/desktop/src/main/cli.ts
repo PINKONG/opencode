@@ -1,11 +1,11 @@
 import { app } from "electron"
+import { execFile } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
 const CLI_INSTALL_DIR = ".wiscode/bin"
 const CLI_BINARY_NAME = "wiscode"
-const CLI_SYNC_DONE_KEY = "cliSyncDone"
 
 function shellName() {
   return path.basename(process.env.SHELL || "bash")
@@ -77,6 +77,22 @@ function installCliUnix(sidecar: string) {
   ensurePathEntry(binDir)
 }
 
+function parseVersion(output: string) {
+  return output.match(/\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/)?.[0] ?? null
+}
+
+function cliVersion(cliPath: string) {
+  return new Promise<string | null>((resolve) => {
+    execFile(cliPath, ["--version"], { windowsHide: true }, (error, stdout, stderr) => {
+      if (error) {
+        resolve(null)
+        return
+      }
+      resolve(parseVersion(`${stdout}\n${stderr}`))
+    })
+  })
+}
+
 export async function installCli() {
   const sidecar = getBundledCliPath()
   if (!existsSync(sidecar)) throw new Error(`Bundled CLI not found: ${sidecar}`)
@@ -90,9 +106,8 @@ export async function installCli() {
   return getCliInstallPath()
 }
 
-export async function syncCli(store: { get: (key: string) => unknown; set: (key: string, value: unknown) => void }) {
+export async function syncCli() {
   if (!app.isPackaged) return
-  if (store.get(CLI_SYNC_DONE_KEY) === true && existsSync(getCliInstallPath())) return
+  if ((await cliVersion(getCliInstallPath())) === app.getVersion()) return
   await installCli()
-  store.set(CLI_SYNC_DONE_KEY, true)
 }

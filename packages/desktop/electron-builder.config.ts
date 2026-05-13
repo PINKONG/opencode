@@ -106,6 +106,7 @@ const getBase = (): Configuration => ({
     allowToChangeInstallationDirectory: true,
     installerIcon: `resources/icons/icon.ico`,
     installerHeaderIcon: `resources/icons/icon.ico`,
+    include: "resources/nsis-installer.nsh",
   },
   linux: {
     icon: `resources/icons`,
