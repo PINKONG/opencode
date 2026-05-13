@@ -7,6 +7,7 @@ import { createStore } from "solid-js/store"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
 import { Icon } from "@opencode-ai/ui/icon"
+import { summarizeConfigJsonMessage } from "@/utils/server-errors"
 
 export type InitError = {
   name: string
@@ -108,7 +109,7 @@ function formatInitError(error: InitError, t: Translator): string {
     }
     case "ConfigJsonError": {
       const path = typeof data.path === "string" ? data.path : json(data.path)
-      const message = typeof data.message === "string" ? data.message : ""
+      const message = summarizeConfigJsonMessage(data.message)
       if (message) return t("error.chain.configJsonInvalidWithMessage", { path, message })
       return t("error.chain.configJsonInvalid", { path })
     }

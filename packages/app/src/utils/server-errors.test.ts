@@ -14,6 +14,8 @@ function fill(text: string, vars?: Record<string, string | number>) {
 function useLanguageMock() {
   const dict: Record<string, string> = {
     "error.chain.unknown": "Erro desconhecido",
+    "error.chain.configJsonInvalid": "Arquivo de config em {{path}} nao e um JSON(C) valido",
+    "error.chain.configJsonInvalidWithMessage": "Arquivo de config em {{path}} nao e um JSON(C) valido: {{message}}",
     "error.chain.configInvalid": "Arquivo de config em {{path}} invalido",
     "error.chain.configInvalidWithMessage": "Arquivo de config em {{path}} invalido: {{message}}",
     "error.chain.modelNotFound": "Modelo nao encontrado: {{provider}}/{{model}}",
@@ -78,6 +80,33 @@ describe("formatServerError", () => {
     const result = formatServerError(error, language.t)
 
     expect(result).toBe("Arquivo de config em config invalido: Missing host")
+  })
+
+  test("formats config json errors", () => {
+    const error = {
+      name: "ConfigJsonError",
+      data: {
+        path: "/Users/ammon/Downloads/moredev-demo2/wiscode.jsonc",
+        message: [
+          "",
+          "--- JSONC Input ---",
+          "{",
+          '  "$schema": "https://opencode.ai/config.json",',
+          "  {",
+          "--- Errors ---",
+          "InvalidSymbol at line 3, column 3",
+          '   Line 3:   {',
+          "            ^",
+          "--- End ---",
+        ].join("\n"),
+      },
+    }
+
+    const result = formatServerError(error, language.t)
+
+    expect(result).toBe(
+      "Arquivo de config em /Users/ammon/Downloads/moredev-demo2/wiscode.jsonc nao e um JSON(C) valido: InvalidSymbol at line 3, column 3",
+    )
   })
 
   test("returns error messages", () => {

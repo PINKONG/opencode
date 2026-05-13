@@ -7,6 +7,14 @@ export type ConfigInvalidError = {
   }
 }
 
+export type ConfigJsonError = {
+  name: "ConfigJsonError"
+  data: {
+    path?: string
+    message?: string
+  }
+}
+
 export type ProviderModelNotFoundError = {
   name: "ProviderModelNotFoundError"
   data: {
@@ -26,12 +34,19 @@ function tr(translator: Translator | undefined, key: string, text: string, vars?
 }
 
 export function formatServerError(error: unknown, translate?: Translator, fallback?: string) {
+  if (isConfigJsonErrorLike(error)) return parseReadableConfigJsonError(error, translate)
   if (isConfigInvalidErrorLike(error)) return parseReadableConfigInvalidError(error, translate)
   if (isProviderModelNotFoundErrorLike(error)) return parseReadableProviderModelNotFoundError(error, translate)
   if (error instanceof Error && error.message) return error.message
   if (typeof error === "string" && error) return error
   if (fallback) return fallback
   return tr(translate, "error.chain.unknown", "Unknown error")
+}
+
+function isConfigJsonErrorLike(error: unknown): error is ConfigJsonError {
+  if (typeof error !== "object" || error === null) return false
+  const o = error as Record<string, unknown>
+  return o.name === "ConfigJsonError" && typeof o.data === "object" && o.data !== null
 }
 
 function isConfigInvalidErrorLike(error: unknown): error is ConfigInvalidError {
@@ -62,6 +77,32 @@ export function parseReadableConfigInvalidError(errorInput: ConfigInvalidError, 
     path: file,
     message: msg,
   })
+}
+
+export function parseReadableConfigJsonError(errorInput: ConfigJsonError, translator?: Translator) {
+  const file = errorInput.data.path?.trim() || "config"
+  const message = summarizeConfigJsonMessage(errorInput.data.message)
+  if (!message) return tr(translator, "error.chain.configJsonInvalid", `Config file at ${file} is not valid JSON(C)`, { path: file })
+  return tr(
+    translator,
+    "error.chain.configJsonInvalidWithMessage",
+    `Config file at ${file} is not valid JSON(C): ${message}`,
+    { path: file, message },
+  )
+}
+
+export function summarizeConfigJsonMessage(message: unknown) {
+  if (typeof message !== "string") return ""
+  const text = message.trim()
+  if (!text) return ""
+
+  const parseLine = text
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => /\bat line \d+, column \d+\b/.test(line))
+  if (parseLine) return parseLine
+
+  return text.split("\n").map((line) => line.trim()).find(Boolean) ?? ""
 }
 
 function parseReadableProviderModelNotFoundError(errorInput: ProviderModelNotFoundError, translator?: Translator) {
