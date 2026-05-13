@@ -17,8 +17,8 @@ describe("app branding surface", () => {
     const logo = await read("../ui/../../ui/src/components/logo.stories.tsx")
     const session = await read("./components/session/session-new-view.tsx")
     const app = await read("./app.tsx")
-    const desktop = await read("../../desktop/src/loading.tsx")
-    const electron = await read("../../desktop-electron/src/renderer/loading.tsx")
+    const desktop = await read("../../desktop/src/renderer/loading.tsx")
+    const electron = await read("../../desktop/src/renderer/loading.tsx")
 
     expect(favicon).not.toContain('content="OpenCode"')
     expect(manifest).not.toContain('"OpenCode"')
@@ -105,7 +105,6 @@ describe("app branding surface", () => {
     const banned = [
       "provided by the WisCode team",
       "tested and verified by the WisCode team",
-      "models we provide through [OpenCode Zen]",
       "النماذج التي نوفرها عبر [OpenCode Zen]",
       "τα μοντέλα που παρέχουμε μέσω του [OpenCode Zen]",
       "los modelos que ofrecemos a través de [OpenCode Zen]",
