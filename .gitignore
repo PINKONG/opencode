@@ -36,3 +36,5 @@ tsconfig.tsbuildinfo
 /packages/desktop/resources/node-cache
 packages/desktop/resources/wiscode-cli
 packages/desktop/resources/wiscode-node
+packages/desktop/resources/wiscode-cli.exe
+packages/desktop/resources/wiscode-node.exe
