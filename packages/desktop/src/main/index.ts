@@ -160,14 +160,15 @@ async function initialize() {
   const config = getSidecarLanConfig()
   const port = await getSidecarPort(config)
   const hosts = resolveSidecarHosts(config, networkInterfaces())
-  const url = `http://${hosts.advertiseHost}:${port}`
+  const url = `http://${hosts.clientHost}:${port}`
+  const advertiseUrl = `http://${hosts.advertiseHost}:${port}`
   const password =
     config.fixedToken === true
       ? process.env.OPENCODE_SERVER_PASSWORD || SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD
       : randomUUID()
 
   const loadingTask = (async () => {
-    logger.log("sidecar connection started", { url, healthHost: hosts.healthHost })
+    logger.log("sidecar connection started", { url, advertiseUrl, healthHost: hosts.healthHost })
 
     initEmitter.on("sqlite", (progress: SqliteMigrationProgress) => {
       setInitStep({ phase: "sqlite_waiting" })
@@ -193,7 +194,7 @@ async function initialize() {
       await sqliteDone?.promise
     }
 
-    logger.log("spawning sidecar", { url, bindHost: hosts.bindHost })
+    logger.log("spawning sidecar", { url, advertiseUrl, bindHost: hosts.bindHost })
     const { listener, health } = await spawnLocalServer(hosts.bindHost, port, password, hosts.healthHost)
     server = listener
     serverReady.resolve({

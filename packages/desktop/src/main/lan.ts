@@ -10,6 +10,7 @@ export function resolveSidecarHosts(config: SidecarLanConfig, interfaces: NodeJS
   if (!config.enabled) {
     return {
       bindHost: "127.0.0.1",
+      clientHost: "127.0.0.1",
       advertiseHost: "127.0.0.1",
       healthHost: "127.0.0.1",
     }
@@ -23,6 +24,7 @@ export function resolveSidecarHosts(config: SidecarLanConfig, interfaces: NodeJS
 
   return {
     bindHost: "0.0.0.0",
+    clientHost: "127.0.0.1",
     advertiseHost: preferred ?? ipv4[0]?.address ?? "127.0.0.1",
     healthHost: "127.0.0.1",
   }

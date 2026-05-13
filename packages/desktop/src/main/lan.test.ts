@@ -8,6 +8,7 @@ describe("lan sidecar hosts", () => {
     })
 
     expect(result.bindHost).toBe("127.0.0.1")
+    expect(result.clientHost).toBe("127.0.0.1")
     expect(result.advertiseHost).toBe("127.0.0.1")
   })
 
@@ -18,6 +19,7 @@ describe("lan sidecar hosts", () => {
     })
 
     expect(result.bindHost).toBe("0.0.0.0")
+    expect(result.clientHost).toBe("127.0.0.1")
     expect(result.advertiseHost).toBe("192.168.1.23")
   })
 
