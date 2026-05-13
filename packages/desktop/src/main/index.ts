@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { EventEmitter } from "node:events"
 import { existsSync } from "node:fs"
+import * as http from "node:http"
 import { createServer } from "node:net"
 import { networkInterfaces } from "node:os"
 import { homedir } from "node:os"
@@ -102,6 +103,7 @@ setupApp()
 
 function setupApp() {
   ensureLoopbackNoProxy()
+  useEnvProxy()
   app.commandLine.appendSwitch("proxy-bypass-list", "<-loopback>")
   if (!app.isPackaged) app.commandLine.appendSwitch("remote-debugging-port", "9222")
 
@@ -156,6 +158,15 @@ function useSystemCertificates() {
     setDefaultCACertificates([...new Set([...getCACertificates("default"), ...getCACertificates("system")])])
   } catch (error) {
     logger.warn("failed to load system certificates", error)
+  }
+}
+
+function useEnvProxy() {
+  try {
+    // Electron 41.2 runs Node 24.14.1; latest @types/node@24 is 24.12.2.
+    ;(http as any).setGlobalProxyFromEnv()
+  } catch (error) {
+    logger.warn("failed to load proxy environment", error)
   }
 }
 
@@ -227,7 +238,16 @@ async function initialize() {
     }
 
     logger.log("spawning sidecar", { url, advertiseUrl, bindHost: hosts.bindHost })
-    const { listener, health } = await spawnLocalServer(hosts.bindHost, port, password, hosts.healthHost)
+    const { listener, health } = await spawnLocalServer(
+      hosts.bindHost,
+      port,
+      password,
+      hosts.healthHost,
+      () => {
+        ensureLoopbackNoProxy()
+        useEnvProxy()
+      },
+    )
     server = listener
     serverReady.resolve({
       url,

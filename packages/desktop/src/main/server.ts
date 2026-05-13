@@ -71,8 +71,15 @@ export function getOrCreatePersistentPassword() {
   return next
 }
 
-export async function spawnLocalServer(hostname: string, port: number, password: string, healthHost = hostname) {
+export async function spawnLocalServer(
+  hostname: string,
+  port: number,
+  password: string,
+  healthHost = hostname,
+  configureEnv?: () => void,
+) {
   prepareServerEnv(password)
+  configureEnv?.()
   const { Log, Server } = await import("virtual:opencode-server")
   await Log.init({ level: "WARN" })
   const listener = await Server.listen({
