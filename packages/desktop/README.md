@@ -1,32 +1,24 @@
 # WisCode Desktop
 
-Native WisCode desktop app, built with Tauri v2.
+Native WisCode desktop app, built with Electron.
 
 ## Development
 
-From the repo root:
+From this package:
 
 ```bash
 bun install
-bun run --cwd packages/desktop tauri dev
+bun dev
 ```
 
-This starts the Vite dev server on http://localhost:1420 and opens the native window.
-
-If you only want the web dev server (no native shell):
-
-```bash
-bun run --cwd packages/desktop dev
-```
+This starts the Electron Vite dev server and opens the native window.
 
 ## Build
 
-To create a production `dist/` and build the native app bundle:
+Build the app's JS assets, then package the native app bundle:
 
 ```bash
-bun run --cwd packages/desktop tauri build
+bun run build && bun run package
 ```
 
-## Prerequisites
-
-Running the desktop app requires additional Tauri dependencies (Rust toolchain, platform-specific libraries). See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for setup instructions.
+The resulting app will be in `dist/`.

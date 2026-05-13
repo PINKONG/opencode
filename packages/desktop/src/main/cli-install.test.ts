@@ -10,7 +10,8 @@ const main = await Bun.file(join(dir, "index.ts")).text()
 
 describe("electron cli install path", () => {
   test("installs wiscode into the wiscode namespace", () => {
-    expect(src).toContain('XDG_STATE_HOME: app.getPath("userData")')
+    expect(src).toContain("preferAppEnv")
+    expect(src).toContain('XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? userDataPath')
     expect(src).toContain('OPENCODE_CLIENT: "desktop"')
     expect(src).toContain("WISCODE_BUNDLED_NODE_PATH")
     expect(src).toContain("resolveBundledNodePath")

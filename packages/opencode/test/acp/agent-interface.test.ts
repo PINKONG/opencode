@@ -20,11 +20,8 @@ const _typeCheck: _AssertAgentImplementsACPAgent = true
  * The SDK's router checks `if (!agent.methodName)` and throws MethodNotFound if missing.
  */
 describe("acp.agent interface compliance", () => {
-  // Extract method names from the ACPAgent interface type
-  type ACPAgentMethods = keyof ACPAgent
-
   // Methods that the SDK's router explicitly checks for at runtime
-  const sdkCheckedMethods: ACPAgentMethods[] = [
+  const sdkCheckedMethods = [
     // Required
     "initialize",
     "newSession",
@@ -34,12 +31,13 @@ describe("acp.agent interface compliance", () => {
     "loadSession",
     "setSessionMode",
     "authenticate",
-    // Unstable - SDK checks these with unstable_ prefix
+    // Capability-gated methods checked by the SDK router
     "listSessions",
+    "resumeSession",
+    "closeSession",
     "unstable_forkSession",
-    "unstable_resumeSession",
     "unstable_setSessionModel",
-  ]
+  ] as const
 
   test("Agent implements all SDK-checked methods", () => {
     for (const method of sdkCheckedMethods) {

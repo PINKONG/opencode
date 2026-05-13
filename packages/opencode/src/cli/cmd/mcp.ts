@@ -20,6 +20,7 @@ import { modify, applyEdits } from "jsonc-parser"
 import { Filesystem } from "@/util/filesystem"
 import { Bus } from "../../bus"
 import { Effect } from "effect"
+import { ConfigPaths } from "@/config/paths"
 
 function getAuthStatusIcon(status: MCP.AuthStatus): string {
   switch (status) {
@@ -119,7 +120,7 @@ export const McpListCommand = effectCmd({
 
     if (servers.length === 0) {
       prompts.log.warn("No MCP servers configured")
-      prompts.outro("Add servers with: opencode mcp add")
+      prompts.outro("Add servers with: wiscode mcp add")
       return
     }
 
@@ -187,7 +188,7 @@ export const McpAuthCommand = effectCmd({
 
     if (servers.length === 0) {
       prompts.log.warn("No OAuth-capable MCP servers configured")
-      prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in opencode.json:")
+      prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in wiscode.json:")
       prompts.log.info(`
   "mcp": {
     "my-server": {
@@ -396,28 +397,50 @@ export const McpLogoutCommand = effectCmd({
   }),
 })
 
-async function resolveConfigPath(baseDir: string, global = false) {
-  // Check for existing config files (prefer .jsonc over .json, check .opencode/ subdirectory too)
-  const candidates = [path.join(baseDir, "opencode.json"), path.join(baseDir, "opencode.jsonc")]
-
-  if (!global) {
-    candidates.push(path.join(baseDir, ".opencode", "opencode.json"), path.join(baseDir, ".opencode", "opencode.jsonc"))
-  }
-
-  for (const candidate of candidates) {
-    if (await Filesystem.exists(candidate)) {
-      return candidate
-    }
-  }
-
-  // Default to opencode.json if none exist
-  return candidates[0]
+function projectMcpCandidates(baseDir: string) {
+  const localDir = ConfigPaths.localDir(baseDir)
+  return [
+    ...ConfigPaths.preferredFileInDirectory(localDir, "opencode"),
+    ...ConfigPaths.preferredFileInDirectory(baseDir, "opencode"),
+    path.join(baseDir, ".opencode", "opencode.jsonc"),
+    path.join(baseDir, ".opencode", "opencode.json"),
+  ]
 }
 
-async function addMcpToConfig(name: string, mcpConfig: ConfigMCP.Info, configPath: string) {
+function globalMcpCandidates(baseDir: string) {
+  return ConfigPaths.preferredFileInDirectory(baseDir, "opencode")
+}
+
+function rewriteTarget(baseDir: string, global: boolean, read: string) {
+  const ext = path.extname(read) || ".jsonc"
+  const base = path.basename(read)
+  if (base.startsWith("wiscode.")) return read
+  if (global) return path.join(baseDir, `wiscode${ext}`)
+  if (read.includes(`${path.sep}.opencode${path.sep}`)) {
+    return path.join(ConfigPaths.localDir(baseDir), `wiscode${ext}`)
+  }
+  return path.join(path.dirname(read), `wiscode${ext}`)
+}
+
+export async function resolveMcpConfig(baseDir: string, global: boolean) {
+  const candidates = global ? globalMcpCandidates(baseDir) : projectMcpCandidates(baseDir)
+  for (const candidate of candidates) {
+    if (!(await Filesystem.exists(candidate))) continue
+    return {
+      read: candidate,
+      write: rewriteTarget(baseDir, global, candidate),
+    }
+  }
+  return {
+    read: global ? path.join(baseDir, "wiscode.jsonc") : path.join(ConfigPaths.localDir(baseDir), "wiscode.jsonc"),
+    write: global ? path.join(baseDir, "wiscode.jsonc") : path.join(ConfigPaths.localDir(baseDir), "wiscode.jsonc"),
+  }
+}
+
+export async function patchMcpConfig(name: string, mcpConfig: ConfigMCP.Info, target: { read: string; write: string }) {
   let text = "{}"
-  if (await Filesystem.exists(configPath)) {
-    text = await Filesystem.readText(configPath)
+  if (await Filesystem.exists(target.read)) {
+    text = await Filesystem.readText(target.read)
   }
 
   // Use jsonc-parser to modify while preserving comments
@@ -426,9 +449,9 @@ async function addMcpToConfig(name: string, mcpConfig: ConfigMCP.Info, configPat
   })
   const result = applyEdits(text, edits)
 
-  await Filesystem.write(configPath, result)
+  await Filesystem.write(target.write, result)
 
-  return configPath
+  return target.write
 }
 
 export const McpAddCommand = effectCmd({
@@ -445,31 +468,31 @@ export const McpAddCommand = effectCmd({
       const project = ctx.project
 
       // Resolve config paths eagerly for hints
-      const [projectConfigPath, globalConfigPath] = await Promise.all([
-        resolveConfigPath(ctx.worktree),
-        resolveConfigPath(Global.Path.config, true),
+      const [projectConfig, globalConfig] = await Promise.all([
+        resolveMcpConfig(ctx.worktree, false),
+        resolveMcpConfig(Global.Path.config, true),
       ])
 
       // Determine scope
-      let configPath = globalConfigPath
+      let configTarget = globalConfig
       if (project.vcs === "git") {
         const scopeResult = await prompts.select({
           message: "Location",
           options: [
             {
               label: "Current project",
-              value: projectConfigPath,
-              hint: projectConfigPath,
+              value: "project",
+              hint: projectConfig.write,
             },
             {
               label: "Global",
-              value: globalConfigPath,
-              hint: globalConfigPath,
+              value: "global",
+              hint: globalConfig.write,
             },
           ],
         })
         if (prompts.isCancel(scopeResult)) throw new UI.CancelledError()
-        configPath = scopeResult
+        configTarget = scopeResult === "project" ? projectConfig : globalConfig
       }
 
       const name = await prompts.text({
@@ -508,7 +531,7 @@ export const McpAddCommand = effectCmd({
           command: command.split(" "),
         }
 
-        await addMcpToConfig(name, mcpConfig, configPath)
+        const configPath = await patchMcpConfig(name, mcpConfig, configTarget)
         prompts.log.success(`MCP server "${name}" added to ${configPath}`)
         prompts.outro("MCP server added successfully")
         return
@@ -586,7 +609,7 @@ export const McpAddCommand = effectCmd({
           }
         }
 
-        await addMcpToConfig(name, mcpConfig, configPath)
+        const configPath = await patchMcpConfig(name, mcpConfig, configTarget)
         prompts.log.success(`MCP server "${name}" added to ${configPath}`)
       }
 

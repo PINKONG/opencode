@@ -27,6 +27,11 @@ export function createMenu(deps: Deps) {
           label: "Install CLI...",
           click: () => deps.trigger("install-cli"),
         },
+        {
+          label: "Settings",
+          accelerator: "Cmd+,",
+          click: () => deps.trigger("settings.open"),
+        },
         { type: "separator" },
         {
           label: "Reload Webview",

@@ -61,10 +61,12 @@ import {
   getDefaultServerUrl,
   getSidecarLanConfig,
   getWslConfig,
+  preferAppEnv,
   setDefaultServerUrl,
   setSidecarLanConfig,
   setWslConfig,
   spawnLocalServer,
+  type SidecarListener,
 } from "./server"
 import {
   createLoadingWindow,
@@ -73,15 +75,13 @@ import {
   setBackgroundColor,
   setDockIcon,
 } from "./windows"
-import { drizzle } from "drizzle-orm/node-sqlite/driver"
-import type { Server } from "virtual:opencode-server"
 import { migrate } from "./migrate"
 
 const initEmitter = new EventEmitter()
 let initStep: InitStep = { phase: "server_waiting" }
 
 let mainWindow: BrowserWindow | null = null
-let server: Server.Listener | null = null
+let server: SidecarListener | null = null
 const loadingComplete = defer<void>()
 
 const pendingDeepLinks: string[] = []
@@ -132,6 +132,8 @@ function setupApp() {
     return
   }
 
+  preferAppEnv(app.getPath("userData"))
+
   app.on("second-instance", (_event: Event, argv: string[]) => {
     const urls = argv.filter((arg: string) => arg.startsWith("wiscode://"))
     if (urls.length) {
@@ -148,17 +150,16 @@ function setupApp() {
   })
 
   app.on("before-quit", () => {
-    killSidecar()
+    void killSidecar()
   })
 
   app.on("will-quit", () => {
-    killSidecar()
+    void killSidecar()
   })
 
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.on(signal, () => {
-      killSidecar()
-      app.exit(0)
+      void killSidecar().finally(() => app.exit(0))
     })
   }
 
@@ -210,7 +211,6 @@ function setInitStep(step: InitStep) {
 
 async function initialize() {
   const needsMigration = !sqliteFileExists()
-  const sqliteDone = needsMigration ? defer<void>() : undefined
   let overlay: BrowserWindow | null = null
 
   const config = getSidecarLanConfig()
@@ -237,35 +237,25 @@ async function initialize() {
       setInitStep({ phase: "sqlite_waiting" })
       if (overlay) sendSqliteMigrationProgress(overlay, progress)
       if (mainWindow) sendSqliteMigrationProgress(mainWindow, progress)
-      if (progress.type === "Done") sqliteDone?.resolve()
     })
-
-    if (needsMigration) {
-      const { Database, JsonMigration } = await import("virtual:opencode-server")
-      await JsonMigration.run(drizzle({ client: Database.Client().$client }), {
-        progress: (event: { current: number; total: number }) => {
-          const percent = Math.round(event.current / event.total) * 100
-          initEmitter.emit("sqlite", { type: "InProgress", value: percent })
-        },
-      })
-      initEmitter.emit("sqlite", { type: "Done" })
-
-      sqliteDone?.resolve()
-    }
-
-    if (needsMigration) {
-      await sqliteDone?.promise
-    }
 
     logger.log("spawning sidecar", { url, advertiseUrl, bindHost: hosts.bindHost })
     const { listener, health } = await spawnLocalServer(
       hosts.bindHost,
       port,
       password,
-      hosts.healthHost,
       () => {
         ensureLoopbackNoProxy()
         useEnvProxy()
+      },
+      {
+        needsMigration,
+        userDataPath: app.getPath("userData"),
+        healthHost: hosts.healthHost,
+        onSqliteProgress: (progress) => initEmitter.emit("sqlite", progress),
+        onStdout: (message) => logger.log("sidecar stdout", { message }),
+        onStderr: (message) => logger.warn("sidecar stderr", { message }),
+        onExit: (code) => logger.warn("sidecar exited", { code }),
       },
     )
     server = listener
@@ -318,9 +308,10 @@ function wireMenu() {
     },
     reload: () => mainWindow?.reload(),
     relaunch: () => {
-      killSidecar()
-      app.relaunch()
-      app.exit(0)
+      void killSidecar().finally(() => {
+        app.relaunch()
+        app.exit(0)
+      })
     },
   })
 }
@@ -363,10 +354,11 @@ registerIpcHandlers({
   setBackgroundColor: (color) => setBackgroundColor(color),
 })
 
-function killSidecar() {
+async function killSidecar() {
   if (!server) return
-  server.stop()
+  const current = server
   server = null
+  await current.stop()
 }
 
 function ensureLoopbackNoProxy() {
@@ -486,7 +478,7 @@ async function installUpdate() {
   logger.log("installing downloaded update", {
     version: downloadedUpdateVersion,
   })
-  killSidecar()
+  await killSidecar()
   autoUpdater.quitAndInstall()
 }
 

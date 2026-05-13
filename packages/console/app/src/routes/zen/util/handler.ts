@@ -23,7 +23,8 @@ import {
   ModelError,
   RateLimitError,
   FreeUsageLimitError,
-  SubscriptionUsageLimitError,
+  GoUsageLimitError,
+  BlackUsageLimitError,
 } from "./error"
 import {
   buildCostChunk,
@@ -396,7 +397,8 @@ export async function handler(
     if (
       error instanceof RateLimitError ||
       error instanceof FreeUsageLimitError ||
-      error instanceof SubscriptionUsageLimitError
+      error instanceof GoUsageLimitError ||
+      error instanceof BlackUsageLimitError
     ) {
       const headers = new Headers()
       if (error.retryAfter) {
@@ -405,7 +407,14 @@ export async function handler(
       return new Response(
         JSON.stringify({
           type: "error",
-          error: { type: error.constructor.name, message: error.message },
+          error: {
+            type: error.constructor.name,
+            message: error.message,
+          },
+          metadata:
+            error instanceof GoUsageLimitError || error instanceof BlackUsageLimitError
+              ? { workspace: error.workspace }
+              : {},
         }),
         { status: 429, headers },
       )
@@ -694,10 +703,11 @@ export async function handler(
             timeUpdated: sub.timeFixedUpdated,
           })
           if (result.status === "rate-limited")
-            throw new SubscriptionUsageLimitError(
+            throw new BlackUsageLimitError(
               t("zen.api.error.subscriptionQuotaExceeded", {
                 retryIn: formatRetryTime(result.resetInSec),
               }),
+              authInfo.workspaceID,
               result.resetInSec,
             )
         }
@@ -712,10 +722,11 @@ export async function handler(
             timeUpdated: sub.timeRollingUpdated,
           })
           if (result.status === "rate-limited")
-            throw new SubscriptionUsageLimitError(
+            throw new BlackUsageLimitError(
               t("zen.api.error.subscriptionQuotaExceeded", {
                 retryIn: formatRetryTime(result.resetInSec),
               }),
+              authInfo.workspaceID,
               result.resetInSec,
             )
         }
@@ -740,8 +751,9 @@ export async function handler(
             timeUpdated: sub.timeWeeklyUpdated,
           })
           if (result.status === "rate-limited")
-            throw new SubscriptionUsageLimitError(
+            throw new GoUsageLimitError(
               t("zen.api.error.subscriptionQuotaExceededUseFreeModels"),
+              authInfo.workspaceID,
               result.resetInSec,
             )
         }
@@ -755,8 +767,9 @@ export async function handler(
             timeSubscribed: sub.timeCreated,
           })
           if (result.status === "rate-limited")
-            throw new SubscriptionUsageLimitError(
+            throw new GoUsageLimitError(
               t("zen.api.error.subscriptionQuotaExceededUseFreeModels"),
+              authInfo.workspaceID,
               result.resetInSec,
             )
         }
@@ -770,8 +783,9 @@ export async function handler(
             timeUpdated: sub.timeRollingUpdated,
           })
           if (result.status === "rate-limited")
-            throw new SubscriptionUsageLimitError(
+            throw new GoUsageLimitError(
               t("zen.api.error.subscriptionQuotaExceededUseFreeModels"),
+              authInfo.workspaceID,
               result.resetInSec,
             )
         }

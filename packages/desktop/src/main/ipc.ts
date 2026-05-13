@@ -21,7 +21,7 @@ const pickerFilters = (ext?: string[]) => {
 }
 
 type Deps = {
-  killSidecar: () => void
+  killSidecar: () => Promise<void> | void
   installCli: () => Promise<string>
   awaitInitialization: (sendStep: (step: InitStep) => void) => Promise<ServerReadyData>
   getWindowConfig: () => Promise<WindowConfig> | WindowConfig

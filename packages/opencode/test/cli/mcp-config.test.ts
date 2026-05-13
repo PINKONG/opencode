@@ -47,7 +47,7 @@ describe("mcp config isolation", () => {
     await using tmp = await tmpdir()
     const dir = path.join(tmp.path, ".opencode")
     const file = path.join(dir, "opencode.json")
-    const next = path.join(tmp.path, ".wiscode", "wiscode.jsonc")
+    const next = path.join(tmp.path, ".wiscode", "wiscode.json")
     await fs.mkdir(dir, { recursive: true })
     await Bun.write(file, "{}")
 
