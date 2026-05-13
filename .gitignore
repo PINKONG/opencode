@@ -32,3 +32,7 @@ tsconfig.tsbuildinfo
 /.playwright-mcp
 /temp
 /.opencode
+/.cache
+/packages/desktop/resources/node-cache
+packages/desktop/resources/wiscode-cli
+packages/desktop/resources/wiscode-node
