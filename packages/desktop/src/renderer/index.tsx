@@ -237,6 +237,10 @@ const createPlatform = (): Platform => {
       await window.api.setSidecarLanConfig(config)
     },
 
+    getSidecarLanStatus: async () => {
+      return window.api.getSidecarLanStatus()
+    },
+
     getDefaultServer: async () => {
       const url = await window.api.getDefaultServerUrl().catch(() => null)
       if (!url) return null

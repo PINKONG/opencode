@@ -15,6 +15,13 @@ type SidecarLanConfig = {
   fixedPort?: number
   fixedToken?: boolean
 }
+type SidecarLanStatus = {
+  enabled: boolean
+  status: "disabled" | "available" | "unavailable" | "custom_unavailable"
+  address: string | null
+  url: string | null
+  port: number | null
+}
 
 export type Platform = {
   /** Platform discriminator */
@@ -82,6 +89,9 @@ export type Platform = {
 
   /** Set whether sidecar LAN exposure is enabled (desktop only) */
   setSidecarLanConfig?(config: SidecarLanConfig): Promise<void> | void
+
+  /** Get the active sidecar LAN advertise status (desktop only) */
+  getSidecarLanStatus?(): Promise<SidecarLanStatus>
 
   /** Get the preferred display backend (desktop only) */
   getDisplayBackend?(): Promise<DisplayBackend | null> | DisplayBackend | null

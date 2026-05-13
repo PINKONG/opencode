@@ -33,7 +33,14 @@ app.setAppUserModelId(appId)
 app.setPath("userData", join(app.getPath("appData"), appId))
 const { autoUpdater } = pkg
 
-import type { InitStep, ServerReadyData, SidecarLanConfig, SqliteMigrationProgress, WslConfig } from "../preload/types"
+import type {
+  InitStep,
+  ServerReadyData,
+  SidecarLanConfig,
+  SidecarLanStatus,
+  SqliteMigrationProgress,
+  WslConfig,
+} from "../preload/types"
 import { checkAppExists, resolveAppPath, wslPath } from "./apps"
 import { CHANNEL, SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD, UPDATER_ENABLED } from "./constants"
 import { registerIpcHandlers, sendDeepLinks, sendMenuCommand, sendSqliteMigrationProgress } from "./ipc"
@@ -75,6 +82,13 @@ const pendingDeepLinks: string[] = []
 
 const serverReady = defer<ServerReadyData>()
 const logger = initLogging()
+let sidecarLanStatus: SidecarLanStatus = {
+  enabled: false,
+  status: "disabled",
+  address: null,
+  url: null,
+  port: null,
+}
 
 logger.log("app starting", {
   version: app.getVersion(),
@@ -162,6 +176,13 @@ async function initialize() {
   const hosts = resolveSidecarHosts(config, networkInterfaces())
   const url = `http://${hosts.clientHost}:${port}`
   const advertiseUrl = `http://${hosts.advertiseHost}:${port}`
+  sidecarLanStatus = {
+    enabled: config.enabled,
+    status: hosts.status,
+    address: hosts.status === "available" ? hosts.advertiseHost : null,
+    url: hosts.status === "available" ? advertiseUrl : null,
+    port,
+  }
   const password =
     config.fixedToken === true
       ? process.env.OPENCODE_SERVER_PASSWORD || SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD
@@ -276,6 +297,7 @@ registerIpcHandlers({
   setWslConfig: (config: WslConfig) => setWslConfig(config),
   getSidecarLanConfig: () => Promise.resolve(getSidecarLanConfig()),
   setSidecarLanConfig: (config: SidecarLanConfig) => setSidecarLanConfig(config),
+  getSidecarLanStatus: () => sidecarLanStatus,
   getDisplayBackend: async () => null,
   setDisplayBackend: async () => undefined,
   parseMarkdown: async (markdown) => parseMarkdown(markdown),

@@ -6,6 +6,7 @@ import type {
   InitStep,
   ServerReadyData,
   SidecarLanConfig,
+  SidecarLanStatus,
   SqliteMigrationProgress,
   TitlebarTheme,
   WindowConfig,
@@ -31,6 +32,7 @@ type Deps = {
   setWslConfig: (config: WslConfig) => Promise<void> | void
   getSidecarLanConfig: () => Promise<SidecarLanConfig>
   setSidecarLanConfig: (config: SidecarLanConfig) => Promise<void> | void
+  getSidecarLanStatus: () => Promise<SidecarLanStatus> | SidecarLanStatus
   getDisplayBackend: () => Promise<string | null>
   setDisplayBackend: (backend: string | null) => Promise<void> | void
   parseMarkdown: (markdown: string) => Promise<string> | string
@@ -63,6 +65,7 @@ export function registerIpcHandlers(deps: Deps) {
   ipcMain.handle("set-sidecar-lan-config", (_event: IpcMainInvokeEvent, config: SidecarLanConfig) =>
     deps.setSidecarLanConfig(config),
   )
+  ipcMain.handle("get-sidecar-lan-status", () => deps.getSidecarLanStatus())
   ipcMain.handle("get-display-backend", () => deps.getDisplayBackend())
   ipcMain.handle("set-display-backend", (_event: IpcMainInvokeEvent, backend: string | null) =>
     deps.setDisplayBackend(backend),

@@ -727,6 +727,7 @@ export const SettingsGeneral: Component = () => {
     <Show when={desktop() && platform.getSidecarLanConfig && platform.setSidecarLanConfig}>
       {(_) => {
         const [configResource, actions] = createResource(() => platform.getSidecarLanConfig?.())
+        const [lanStatus, lanStatusActions] = createResource(() => platform.getSidecarLanStatus?.())
         const config = createMemo(() => configResource.latest)
         const enabled = createMemo(() => config()?.enabled ?? false)
         const addressMode = createMemo(() => config()?.addressMode ?? "lan")
@@ -762,7 +763,20 @@ export const SettingsGeneral: Component = () => {
             }),
           )
           await actions.refetch()
+          await lanStatusActions.refetch()
         }
+
+        const statusDescription = createMemo(() => {
+          const status = lanStatus.latest
+          if (!status || status.status === "disabled") return language.t("settings.desktop.sidecarLan.status.disabled")
+          if (status.status === "available" && status.url) {
+            return language.t("settings.desktop.sidecarLan.status.available", { url: status.url })
+          }
+          if (status.status === "custom_unavailable") {
+            return language.t("settings.desktop.sidecarLan.status.customUnavailable")
+          }
+          return language.t("settings.desktop.sidecarLan.status.unavailable")
+        })
 
         const onChange = (checked: boolean) => {
           if (!checked) {
@@ -803,6 +817,15 @@ export const SettingsGeneral: Component = () => {
               </SettingsRow>
 
               <Show when={enabled()}>
+                <SettingsRow
+                  title={language.t("settings.desktop.sidecarLan.status.title")}
+                  description={statusDescription()}
+                >
+                  <div class="text-12-regular text-text-muted text-right break-all max-w-[260px]">
+                    {lanStatus.latest?.url ?? language.t("settings.desktop.sidecarLan.status.notAdvertised")}
+                  </div>
+                </SettingsRow>
+
                 <SettingsRow
                   title={language.t("settings.desktop.sidecarLan.addressMode.title")}
                   description={language.t("settings.desktop.sidecarLan.addressMode.description")}

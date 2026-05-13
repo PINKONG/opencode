@@ -16,6 +16,13 @@ export type SidecarLanConfig = {
   fixedPort?: number
   fixedToken?: boolean
 }
+export type SidecarLanStatus = {
+  enabled: boolean
+  status: "disabled" | "available" | "unavailable" | "custom_unavailable"
+  address: string | null
+  url: string | null
+  port: number | null
+}
 
 export type LinuxDisplayBackend = "wayland" | "auto"
 export type TitlebarTheme = {
@@ -38,6 +45,7 @@ export type ElectronAPI = {
   setWslConfig: (config: WslConfig) => Promise<void>
   getSidecarLanConfig: () => Promise<SidecarLanConfig>
   setSidecarLanConfig: (config: SidecarLanConfig) => Promise<void>
+  getSidecarLanStatus: () => Promise<SidecarLanStatus>
   getDisplayBackend: () => Promise<LinuxDisplayBackend | null>
   setDisplayBackend: (backend: LinuxDisplayBackend | null) => Promise<void>
   parseMarkdownCommand: (markdown: string) => Promise<string>

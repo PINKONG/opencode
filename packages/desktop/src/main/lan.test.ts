@@ -21,6 +21,7 @@ describe("lan sidecar hosts", () => {
     expect(result.bindHost).toBe("0.0.0.0")
     expect(result.clientHost).toBe("127.0.0.1")
     expect(result.advertiseHost).toBe("192.168.1.23")
+    expect(result.status).toBe("available")
   })
 
   test("falls back to loopback advertise host when no lan ip is available", () => {
@@ -30,6 +31,23 @@ describe("lan sidecar hosts", () => {
 
     expect(result.bindHost).toBe("0.0.0.0")
     expect(result.advertiseHost).toBe("127.0.0.1")
+    expect(result.status).toBe("unavailable")
+  })
+
+  test("ignores public-looking and virtual interface addresses", () => {
+    const result = resolveSidecarHosts({ enabled: true, addressMode: "lan" }, {
+      Ethernet: [{ address: "190.160.9.212", family: "IPv4", internal: false, netmask: "255.255.255.0", mac: "" }],
+      "Tailscale Tunnel": [
+        { address: "100.64.1.20", family: "IPv4", internal: false, netmask: "255.255.255.0", mac: "" },
+      ],
+      "vEthernet (WSL)": [
+        { address: "172.20.48.1", family: "IPv4", internal: false, netmask: "255.255.240.0", mac: "" },
+      ],
+    })
+
+    expect(result.bindHost).toBe("0.0.0.0")
+    expect(result.advertiseHost).toBe("127.0.0.1")
+    expect(result.status).toBe("unavailable")
   })
 
   test("prioritizes configured custom lan address when present", () => {
@@ -46,9 +64,10 @@ describe("lan sidecar hosts", () => {
 
     expect(result.bindHost).toBe("0.0.0.0")
     expect(result.advertiseHost).toBe("192.168.1.99")
+    expect(result.status).toBe("available")
   })
 
-  test("falls back to auto lan address when configured custom address is unavailable", () => {
+  test("does not advertise another address when configured custom address is unavailable", () => {
     const result = resolveSidecarHosts(
       { enabled: true, addressMode: "custom", customAddress: "192.168.1.200" },
       {
@@ -58,6 +77,7 @@ describe("lan sidecar hosts", () => {
     )
 
     expect(result.bindHost).toBe("0.0.0.0")
-    expect(result.advertiseHost).toBe("192.168.1.23")
+    expect(result.advertiseHost).toBe("127.0.0.1")
+    expect(result.status).toBe("custom_unavailable")
   })
 })

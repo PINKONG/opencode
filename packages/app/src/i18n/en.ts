@@ -771,7 +771,14 @@ export const dict = {
   "settings.desktop.sidecarLan.addressMode.option.custom": "Specific LAN IP",
   "settings.desktop.sidecarLan.customAddress.title": "Specific LAN IP",
   "settings.desktop.sidecarLan.customAddress.description":
-    "Preferred LAN address shown in copied links. Falls back to auto LAN IP when unavailable.",
+    "Preferred LAN address shown in copied links. It must match an active private LAN interface.",
+  "settings.desktop.sidecarLan.status.title": "Current LAN URL",
+  "settings.desktop.sidecarLan.status.available": "Advertised as {{url}}. Requires restart after changing LAN settings.",
+  "settings.desktop.sidecarLan.status.disabled": "LAN exposure is disabled.",
+  "settings.desktop.sidecarLan.status.unavailable": "No active private LAN address was found. Restart after changing networks.",
+  "settings.desktop.sidecarLan.status.customUnavailable":
+    "The configured address is not on an active private LAN interface. It will not be advertised.",
+  "settings.desktop.sidecarLan.status.notAdvertised": "Not advertised",
   "settings.desktop.sidecarLan.fixedPort.title": "Fixed server port",
   "settings.desktop.sidecarLan.fixedPort.description":
     "Set a fixed sidecar port (1-65535). Leave empty to auto-assign each start.",
