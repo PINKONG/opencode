@@ -5,6 +5,7 @@ import { createServer } from "node:net"
 import { networkInterfaces } from "node:os"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import { getCACertificates, setDefaultCACertificates } from "node:tls"
 import type { Event } from "electron"
 import { app, BrowserWindow, dialog } from "electron"
 import pkg from "electron-updater"
@@ -90,6 +91,8 @@ let sidecarLanStatus: SidecarLanStatus = {
   port: null,
 }
 
+useSystemCertificates()
+
 logger.log("app starting", {
   version: app.getVersion(),
   packaged: app.isPackaged,
@@ -146,6 +149,14 @@ function setupApp() {
     await syncCli(getStore())
     await initialize()
   })
+}
+
+function useSystemCertificates() {
+  try {
+    setDefaultCACertificates([...new Set([...getCACertificates("default"), ...getCACertificates("system")])])
+  } catch (error) {
+    logger.warn("failed to load system certificates", error)
+  }
 }
 
 function emitDeepLinks(urls: string[]) {
