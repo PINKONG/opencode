@@ -324,6 +324,7 @@ render(() => {
       variant: "base",
       http: {
         url: data.url,
+        displayUrl: data.displayUrl ?? undefined,
         username: data.username ?? undefined,
         password: data.password ?? undefined,
       },

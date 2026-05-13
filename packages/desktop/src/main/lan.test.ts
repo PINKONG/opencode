@@ -34,7 +34,7 @@ describe("lan sidecar hosts", () => {
     expect(result.status).toBe("unavailable")
   })
 
-  test("ignores public-looking and virtual interface addresses", () => {
+  test("prefers public-looking non-virtual addresses when they are the only lan option", () => {
     const result = resolveSidecarHosts({ enabled: true, addressMode: "lan" }, {
       Ethernet: [{ address: "190.160.9.212", family: "IPv4", internal: false, netmask: "255.255.255.0", mac: "" }],
       "Tailscale Tunnel": [
@@ -46,8 +46,20 @@ describe("lan sidecar hosts", () => {
     })
 
     expect(result.bindHost).toBe("0.0.0.0")
-    expect(result.advertiseHost).toBe("127.0.0.1")
-    expect(result.status).toBe("unavailable")
+    expect(result.advertiseHost).toBe("190.160.9.212")
+    expect(result.status).toBe("available")
+  })
+
+  test("ignores common virtual adapter names across windows mac and linux", () => {
+    const result = resolveSidecarHosts({ enabled: true, addressMode: "lan" }, {
+      "vEthernet (WSL)": [{ address: "172.20.48.1", family: "IPv4", internal: false, netmask: "255.255.240.0", mac: "" }],
+      bridge0: [{ address: "192.168.122.1", family: "IPv4", internal: false, netmask: "255.255.255.0", mac: "" }],
+      wg0: [{ address: "10.7.0.2", family: "IPv4", internal: false, netmask: "255.255.255.0", mac: "" }],
+      en0: [{ address: "192.168.1.23", family: "IPv4", internal: false, netmask: "255.255.255.0", mac: "" }],
+    })
+
+    expect(result.advertiseHost).toBe("192.168.1.23")
+    expect(result.status).toBe("available")
   })
 
   test("prioritizes configured custom lan address when present", () => {

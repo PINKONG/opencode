@@ -220,6 +220,7 @@ async function initialize() {
     server = listener
     serverReady.resolve({
       url,
+      displayUrl: hosts.status === "available" ? advertiseUrl : null,
       username: "opencode",
       password,
     })

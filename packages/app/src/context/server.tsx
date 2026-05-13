@@ -81,6 +81,7 @@ export namespace ServerConnection {
 
   export type HttpBase = {
     url: string
+    displayUrl?: string
     username?: string
     password?: string
     embedSession?: string

@@ -24,4 +24,14 @@ describe("buildServerAccessUrl", () => {
     })
     expect(result).toBe("http://127.0.0.1:4096/?embed_session=session123")
   })
+
+  test("uses display url when present", () => {
+    const result = buildServerAccessUrl({
+      url: "http://127.0.0.1:4096",
+      displayUrl: "http://190.160.7.95:4096",
+      password: "secret",
+    })
+
+    expect(result).toBe("http://190.160.7.95:4096/?auth_token=b3BlbmNvZGU6c2VjcmV0")
+  })
 })
