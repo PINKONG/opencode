@@ -7,6 +7,9 @@ const file = join(dir, "server.ts")
 const src = await Bun.file(file).text()
 const ipc = await Bun.file(join(dir, "ipc.ts")).text()
 const main = await Bun.file(join(dir, "index.ts")).text()
+const cli = await Bun.file(join(dir, "cli.ts")).text()
+const builder = await Bun.file(join(dir, "../../electron-builder.config.ts")).text()
+const nsis = await Bun.file(join(dir, "../../resources/nsis-installer.nsh")).text()
 
 describe("electron cli install path", () => {
   test("installs wiscode into the wiscode namespace", () => {
@@ -20,6 +23,18 @@ describe("electron cli install path", () => {
 
   test("exposes install-cli over ipc and syncs cli on startup", () => {
     expect(ipc).toContain('ipcMain.handle("install-cli"')
-    expect(main).toContain("syncCli(getStore())")
+    expect(main).toContain("syncCli()")
+    expect(cli).toContain('execFile(cliPath, ["--version"], { windowsHide: true }')
+    expect(cli).toContain("app.getVersion()")
+    expect(cli).not.toContain("cliSyncDone")
+  })
+
+  test("windows installer overwrites bundled cli and repairs PATH", () => {
+    expect(builder).toContain('include: "resources/nsis-installer.nsh"')
+    expect(nsis).toContain("!macro customInstall")
+    expect(nsis).toContain('$INSTDIR\\resources\\wiscode-cli.exe')
+    expect(nsis).toContain('$WisCodeCliDir\\wiscode.exe')
+    expect(nsis).toContain('WriteRegExpandStr HKCU "Environment" "Path"')
+    expect(nsis).toContain("!macro customUnInstall")
   })
 })

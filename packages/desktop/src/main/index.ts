@@ -56,7 +56,6 @@ import { parseMarkdown } from "./markdown"
 import { createMenu } from "./menu"
 import { resolveConfiguredPort } from "./sidecar-config"
 import { installCli, syncCli } from "./cli"
-import { getStore } from "./store"
 import {
   getDefaultServerUrl,
   getSidecarLanConfig,
@@ -169,7 +168,7 @@ function setupApp() {
     registerRendererProtocol()
     setDockIcon()
     setupAutoUpdater()
-    await syncCli(getStore())
+    await syncCli()
     await initialize()
   })
 }
