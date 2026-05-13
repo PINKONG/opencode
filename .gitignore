@@ -38,3 +38,9 @@ packages/desktop/resources/wiscode-cli
 packages/desktop/resources/wiscode-node
 packages/desktop/resources/wiscode-cli.exe
 packages/desktop/resources/wiscode-node.exe
+packages/desktop/src-tauri/sidecars/wiscode-node-x86_64-pc-windows-msvc.exe
+packages/desktop/src-tauri/sidecars/wiscode-cli-x86_64-pc-windows-msvc.exe
+packages/desktop/src-tauri/gen/schemas/windows-schema.json
+packages/desktop/src-tauri/gen/schemas/desktop-schema.json
+packages/desktop/src-tauri/gen/schemas/capabilities.json
+packages/desktop/src-tauri/gen/schemas/acl-manifests.json
