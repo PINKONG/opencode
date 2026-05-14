@@ -294,6 +294,26 @@ sidecar embed 场景至少确认这 4 点：
 - 同目录存在 `favicon-*`、`site-*.webmanifest`、`social-share-*`、`oc-theme-preload-*.js`
 - `out/main/chunks/node-*.js` 中仍包含 embedded UI 资源映射和相对路径转绝对路径逻辑
 
+### 5. 版本号硬门禁（必须执行）
+
+这是每次上游合并后的强制 gate，顺序不能变：
+
+- merge 完成
+- 版本号统一到本次目标版本（例：`1.0.43`）
+- 跑全仓 residual grep
+- gate 通过后才允许提交
+
+执行命令（在仓库根目录）：
+
+```bash
+bun script/check-upstream-merge-version-gate.ts --version 1.0.N
+```
+
+说明：
+- 该脚本会校验所有约定包（含 `packages/opencode`、`sdks/vscode`、`packages/extensions/zed/extension.toml`）是否统一到目标版本
+- 同时会拦截上一版本残留（例如 `1.0.42` / `1.14.42` / `download/v1.0.42/`）的 residual grep 命中
+- 任一失败即返回非 0，视为“禁止提交”
+
 ## 浏览器 / 本地 Web 调试补充
 
 这部分不是只给 merge 用。
