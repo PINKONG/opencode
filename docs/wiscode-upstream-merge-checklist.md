@@ -144,6 +144,15 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 - `/?auth_token=...` 跳转到 `/?embed_session=...` 后返回 `{"error":"Not Found"}`
 - 打包后 desktop 正常启动，但浏览器访问 sidecar embed URL 失败
 
+### 7. 内置 `/init` 命令必须保持屏蔽
+
+这是 WisCode 的长期分叉语义，不能被上游默认命令注册逻辑覆盖。
+
+必须同时确认：
+- [packages/opencode/src/command/index.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/command/index.ts) 没有把 `init` 加回默认 commands 列表
+- [packages/opencode/src/project/project.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/project/project.ts) 的 project 初始化订阅逻辑没有反向要求 slash `/init` 可见
+- [packages/opencode/src/server/routes/instance/session.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/routes/instance/session.ts) 与 HTTP API 兼容入口可保留，但不能等价为重新开放内置 slash command
+
 ## 合并过程中必须做的事
 
 ### 1. 冲突清完后，先找残留品牌/路径风险
@@ -160,6 +169,8 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 - `embed_session`
 - `wiscode_auth_token`
 - `x-opencode-embed-session`
+- `Command.Default.INIT`
+- `/init`
 
 ### 2. OpenAPI / SDK 改动必须成套处理
 
@@ -232,6 +243,18 @@ cd packages/desktop && bun test ./src/main/branding.test.ts
 
 ```bash
 cd packages/opencode && bun test test/config/config.test.ts test/server/httpapi-mcp.test.ts
+```
+
+如果改了以下任一文件，必须额外确认内置 `/init` 屏蔽没有回归：
+- `packages/opencode/src/command/index.ts`
+- `packages/opencode/src/project/project.ts`
+- `packages/opencode/src/server/routes/instance/session.ts`
+- `packages/opencode/src/server/routes/instance/httpapi/handlers/session.ts`
+
+至少执行：
+
+```bash
+cd packages/opencode && bun test test/server/httpapi-session.test.ts test/server/httpapi-instance.legacy.test.ts
 ```
 
 ### 3. 桌面端冒烟验证
