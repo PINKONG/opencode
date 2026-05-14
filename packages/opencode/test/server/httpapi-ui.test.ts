@@ -22,7 +22,6 @@ import { Server } from "../../src/server/server"
 void Log.init({ print: false })
 
 const original = {
-  OPENCODE_EXPERIMENTAL_HTTPAPI: Flag.OPENCODE_EXPERIMENTAL_HTTPAPI,
   OPENCODE_DISABLE_EMBEDDED_WEB_UI: Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI,
   OPENCODE_SERVER_PASSWORD: Flag.OPENCODE_SERVER_PASSWORD,
   OPENCODE_SERVER_USERNAME: Flag.OPENCODE_SERVER_USERNAME,
@@ -31,7 +30,6 @@ const original = {
 }
 
 afterEach(() => {
-  Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = original.OPENCODE_EXPERIMENTAL_HTTPAPI
   Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = original.OPENCODE_DISABLE_EMBEDDED_WEB_UI
   Flag.OPENCODE_SERVER_PASSWORD = original.OPENCODE_SERVER_PASSWORD
   Flag.OPENCODE_SERVER_USERNAME = original.OPENCODE_SERVER_USERNAME
@@ -117,7 +115,6 @@ function httpClient(response: Response, onRequest?: (request: HttpClientRequest.
 
 describe("HttpApi UI fallback", () => {
   test("serves the web UI through the experimental backend", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
     let proxiedUrl: string | undefined
 
@@ -137,7 +134,6 @@ describe("HttpApi UI fallback", () => {
   })
 
   test("strips upstream transfer encoding headers from proxied assets", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
     let proxiedUrl: string | undefined
 
@@ -189,7 +185,6 @@ describe("HttpApi UI fallback", () => {
   // forwarded through the proxy while the proxy itself re-frames the body,
   // causing browsers to fail with `ERR_INVALID_CHUNKED_ENCODING`.
   test("strips upstream transfer-encoding header from proxied assets", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
 
     const response = await Effect.runPromise(
@@ -232,7 +227,6 @@ describe("HttpApi UI fallback", () => {
   })
 
   test("serves embedded UI assets when Bun can read them but access reports missing", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     let readPath: string | undefined
 
     const response = await Effect.runPromise(
@@ -262,7 +256,6 @@ describe("HttpApi UI fallback", () => {
   })
 
   test("allows embedded UI terminal wasm and theme preload CSP", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     const script = 'document.documentElement.dataset.theme = "dark"'
 
     const response = await Effect.runPromise(
@@ -294,15 +287,12 @@ describe("HttpApi UI fallback", () => {
   })
 
   test("keeps matched API routes ahead of the UI fallback", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
-
     const response = await Server.Default().app.request("/session/nope")
 
     expect(response.status).toBe(404)
   })
 
   test("requires server password for the web UI", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
 
     const response = await uiApp({ password: "secret", username: "opencode" }).request("/")
@@ -312,7 +302,6 @@ describe("HttpApi UI fallback", () => {
   })
 
   test("accepts auth token for the web UI", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
 
     const response = await uiApp({
@@ -325,8 +314,80 @@ describe("HttpApi UI fallback", () => {
     expect(await response.text()).toBe("<html>opencode</html>")
   })
 
+  test("redirects html auth_token requests to embed_session and sets auth cookie", async () => {
+    Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
+    const token = btoa("opencode:secret")
+    const first = await uiApp({
+      password: "secret",
+      username: "opencode",
+      client: httpClient(new Response("<html><head></head><body>ok</body></html>", { headers: { "content-type": "text/html" } })),
+    }).request(`/?auth_token=${encodeURIComponent(token)}`, {
+      headers: { accept: "text/html" },
+      redirect: "manual",
+    })
+
+    expect(first.status).toBe(302)
+    expect(first.headers.get("set-cookie") ?? "").toContain("wiscode_auth_token=")
+    const location = first.headers.get("location")
+    expect(location).toBeTruthy()
+    expect(location).toContain("embed_session=")
+    expect(location).not.toContain("auth_token=")
+  })
+
+  test("uses relative embed_session redirect location (preserves external host)", async () => {
+    Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
+    const token = btoa("opencode:secret")
+    const first = await uiApp({
+      password: "secret",
+      username: "opencode",
+      client: httpClient(new Response("<html><head></head><body>ok</body></html>", { headers: { "content-type": "text/html" } })),
+    }).request(new Request("http://190.160.9.196:53796/?auth_token=" + encodeURIComponent(token), {
+      headers: { accept: "text/html" },
+      redirect: "manual",
+    }))
+
+    expect(first.status).toBe(302)
+    const location = first.headers.get("location")
+    expect(location).toBeTruthy()
+    expect(location?.startsWith("/")).toBe(true)
+    expect(location).not.toContain("http://localhost")
+    expect(location).toContain("embed_session=")
+  })
+
+  test("accepts follow-up web UI request via embed_session query and injects embed meta", async () => {
+    Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
+    const token = btoa("opencode:secret")
+    const server = uiApp({
+      password: "secret",
+      username: "opencode",
+      client: httpClient(new Response("<html><head></head><body>ok</body></html>", { headers: { "content-type": "text/html" } })),
+    })
+
+    const first = await server.request(`/?auth_token=${encodeURIComponent(token)}`, {
+      headers: { accept: "text/html" },
+      redirect: "manual",
+    })
+    const location = first.headers.get("location")
+    expect(location).toBeTruthy()
+    const embed = new URL(location!, "http://localhost").searchParams.get("embed_session")
+    expect(embed).toBeTruthy()
+
+    const second = await server.request(`/?embed_session=${embed}`)
+    const body = await second.text()
+    expect(second.status).toBe(200)
+    const html = body
+    expect(html).toContain('meta name="oc-embed-session"')
+  })
+
+  test("rejects invalid embed_session for the web UI", async () => {
+    Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
+
+    const response = await uiApp({ password: "secret", username: "opencode" }).request("/?embed_session=invalid")
+
+    expect(response.status).toBe(401)
+  })
+
   test("accepts basic auth for the web UI", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
 
     const response = await uiApp({ password: "secret", username: "opencode" }).request("/", {
@@ -342,7 +403,6 @@ describe("HttpApi UI fallback", () => {
   // server returning 401 breaks PWA install. These specific public assets
   // should bypass auth.
   test("serves the PWA manifest without auth even when a server password is set", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
     Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
 
     for (const path of ["/site.webmanifest", "/web-app-manifest-192x192.png", "/web-app-manifest-512x512.png"]) {
@@ -356,8 +416,6 @@ describe("HttpApi UI fallback", () => {
   })
 
   test("allows web UI preflight without auth", async () => {
-    Flag.OPENCODE_EXPERIMENTAL_HTTPAPI = true
-
     const response = await app({ password: "secret", username: "opencode" }).request("/", {
       method: "OPTIONS",
       headers: {

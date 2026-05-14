@@ -3,6 +3,7 @@ import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Effect, Stream } from "effect"
 import { HttpBody, HttpClient, HttpClientRequest, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { createHash } from "node:crypto"
+import path from "node:path"
 import { ProxyUtil } from "../proxy-util"
 
 const embeddedUIPromise = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
@@ -11,6 +12,7 @@ const embeddedUIPromise = Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI
     import("opencode-web-ui.gen.ts").then((module) => module.default as Record<string, string>).catch(() => null)
 
 export const UI_UPSTREAM = new URL("https://app.opencode.ai")
+const EMBED_META_NAME = "oc-embed-session"
 
 export const csp = (hash = "") =>
   `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src * data:`
@@ -54,6 +56,19 @@ function notFound() {
   return HttpServerResponse.jsonUnsafe({ error: "Not Found" }, { status: 404 })
 }
 
+function injectEmbedSessionMeta(input: string, embedSession: string | undefined) {
+  if (!embedSession) return input
+  const meta = `<meta name="${EMBED_META_NAME}" content="${embedSession}">`
+  if (input.includes(meta)) return input
+  if (/<head[^>]*>/i.test(input)) return input.replace(/<head[^>]*>/i, (head) => `${head}\n    ${meta}`)
+  return meta + input
+}
+
+function resolveEmbeddedAssetPath(file: string) {
+  if (!file.startsWith(".")) return file
+  return path.resolve(import.meta.dirname, file)
+}
+
 function embeddedUIResponse(file: string, body: Uint8Array) {
   const mime = AppFileSystem.mimeType(file)
   const headers = new Headers({ "content-type": mime })
@@ -67,12 +82,24 @@ export function serveEmbeddedUIEffect(
   requestPath: string,
   fs: AppFileSystem.Interface,
   embeddedWebUI: Record<string, string>,
+  embedSession?: string,
 ) {
   const file = embeddedWebUI[requestPath.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
   if (!file) return Effect.succeed(notFound())
+  const resolvedPath = resolveEmbeddedAssetPath(file)
 
-  return fs.readFile(file).pipe(
-    Effect.map((body) => embeddedUIResponse(file, body)),
+  return fs.readFile(resolvedPath).pipe(
+    Effect.map((body) => {
+      const mime = AppFileSystem.mimeType(resolvedPath)
+      if (!mime.startsWith("text/html")) return embeddedUIResponse(resolvedPath, body)
+      const html = injectEmbedSessionMeta(new TextDecoder().decode(body), embedSession)
+      return HttpServerResponse.text(html, {
+        headers: new Headers({
+          "content-type": mime,
+          "content-security-policy": cspForHtml(html),
+        }),
+      })
+    }),
     Effect.catchReason("PlatformError", "NotFound", () => Effect.succeed(notFound())),
   )
 }
@@ -84,8 +111,12 @@ export function serveUIEffect(
   return Effect.gen(function* () {
     const embeddedWebUI = yield* Effect.promise(() => embeddedUI())
     const path = new URL(request.url, "http://localhost").pathname
+    const embedSession =
+      request.headers["x-opencode-embed-session"] ??
+      new URL(request.url, "http://localhost").searchParams.get("embed_session") ??
+      undefined
 
-    if (embeddedWebUI) return yield* serveEmbeddedUIEffect(path, services.fs, embeddedWebUI)
+    if (embeddedWebUI) return yield* serveEmbeddedUIEffect(path, services.fs, embeddedWebUI, embedSession)
 
     const response = yield* services.client.execute(
       HttpClientRequest.make(request.method)(upstreamURL(path), {
@@ -96,7 +127,7 @@ export function serveUIEffect(
     const headers = proxyResponseHeaders(response.headers)
 
     if (response.headers["content-type"]?.includes("text/html")) {
-      const body = yield* response.text
+      const body = injectEmbedSessionMeta(yield* response.text, embedSession)
       headers.set("Content-Security-Policy", cspForHtml(body))
       return HttpServerResponse.text(body, { status: response.status, headers })
     }

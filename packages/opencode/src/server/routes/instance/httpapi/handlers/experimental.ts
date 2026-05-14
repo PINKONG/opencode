@@ -12,7 +12,7 @@ import { Effect, Option } from "effect"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
-import { ConsoleSwitchPayload, SessionListQuery, ToolListQuery } from "../groups/experimental"
+import { ConsoleSwitchPayload, ResourceReadPayload, SessionListQuery, ToolCallPayload, ToolListQuery } from "../groups/experimental"
 
 export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "experimental", (handlers) =>
   Effect.gen(function* () {
@@ -26,7 +26,10 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
 
     const getConsole = Effect.fn("ExperimentalHttpApi.console")(function* () {
       const [state, groups] = yield* Effect.all(
-        [config.getConsoleState(), account.orgsByAccount().pipe(Effect.orDie)],
+        [
+          config.getConsoleState(),
+          account.orgsByAccount().pipe(Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({})))),
+        ],
         {
           concurrency: "unbounded",
         },
@@ -40,7 +43,10 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
 
     const listConsoleOrgs = Effect.fn("ExperimentalHttpApi.consoleOrgs")(function* () {
       const [groups, active] = yield* Effect.all(
-        [account.orgsByAccount().pipe(Effect.orDie), account.active().pipe(Effect.orDie)],
+        [
+          account.orgsByAccount().pipe(Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({})))),
+          account.active().pipe(Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({})))),
+        ],
         {
           concurrency: "unbounded",
         },
@@ -80,6 +86,13 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
         description: item.description,
         parameters: EffectZod.toJsonSchema(item.parameters),
       }))
+    })
+    const toolCall = Effect.fn("ExperimentalHttpApi.toolCall")(function* (ctx: {
+      payload: typeof ToolCallPayload.Type
+    }) {
+      return yield* mcp.callTool(ctx.payload.client, ctx.payload.name, ctx.payload.arguments).pipe(
+        Effect.map((value) => value ?? null),
+      )
     })
 
     const toolIDs = Effect.fn("ExperimentalHttpApi.toolIDs")(function* () {
@@ -138,12 +151,19 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
     const resource = Effect.fn("ExperimentalHttpApi.resource")(function* () {
       return yield* mcp.resources()
     })
+    const resourceRead = Effect.fn("ExperimentalHttpApi.resourceRead")(function* (ctx: {
+      payload: typeof ResourceReadPayload.Type
+    }) {
+      if (!ctx.payload.uri.startsWith("maxkb://")) return yield* new HttpApiError.BadRequest({})
+      return yield* mcp.readResource(ctx.payload.client, ctx.payload.uri).pipe(Effect.map((value) => value ?? null))
+    })
 
     return handlers
       .handle("console", getConsole)
       .handle("consoleOrgs", listConsoleOrgs)
       .handle("consoleSwitch", switchConsole)
       .handle("tool", tool)
+      .handle("toolCall", toolCall)
       .handle("toolIDs", toolIDs)
       .handle("worktree", worktree)
       .handle("worktreeCreate", worktreeCreate)
@@ -151,5 +171,6 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
       .handle("worktreeReset", worktreeReset)
       .handle("session", session)
       .handle("resource", resource)
+      .handle("resourceRead", resourceRead)
   }),
 )

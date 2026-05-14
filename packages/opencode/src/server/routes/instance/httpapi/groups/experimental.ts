@@ -46,6 +46,15 @@ export const ToolListQuery = Schema.Struct({
   provider: ProviderID,
   model: ModelID,
 })
+export const ResourceReadPayload = Schema.Struct({
+  client: Schema.String,
+  uri: Schema.String,
+})
+export const ToolCallPayload = Schema.Struct({
+  client: Schema.String,
+  name: Schema.Literals(["list_dataset_documents", "get_document_paragraphs"]),
+  arguments: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
+})
 
 const QueryBoolean = Schema.Literals(["true", "false"]).pipe(
   Schema.decodeTo(Schema.Boolean, {
@@ -69,11 +78,13 @@ export const ExperimentalPaths = {
   consoleOrgs: "/experimental/console/orgs",
   consoleSwitch: "/experimental/console/switch",
   tool: "/experimental/tool",
+  toolCall: "/experimental/tool/call",
   toolIDs: "/experimental/tool/ids",
   worktree: "/experimental/worktree",
   worktreeReset: "/experimental/worktree/reset",
   session: "/experimental/session",
   resource: "/experimental/resource",
+  resourceRead: "/experimental/resource/read",
 } as const
 
 export const ExperimentalApi = HttpApi.make("experimental")
@@ -82,6 +93,7 @@ export const ExperimentalApi = HttpApi.make("experimental")
       .add(
         HttpApiEndpoint.get("console", ExperimentalPaths.console, {
           success: described(ConsoleStateResponse, "Active Console provider metadata"),
+          error: HttpApiError.InternalServerError,
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "experimental.console.get",
@@ -91,6 +103,7 @@ export const ExperimentalApi = HttpApi.make("experimental")
         ),
         HttpApiEndpoint.get("consoleOrgs", ExperimentalPaths.consoleOrgs, {
           success: described(ConsoleOrgList, "Switchable Console orgs"),
+          error: HttpApiError.InternalServerError,
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "experimental.console.listOrgs",
@@ -119,6 +132,18 @@ export const ExperimentalApi = HttpApi.make("experimental")
             summary: "List tools",
             description:
               "Get a list of available tools with their JSON schema parameters for a specific provider and model combination.",
+          }),
+        ),
+        HttpApiEndpoint.post("toolCall", ExperimentalPaths.toolCall, {
+          payload: ToolCallPayload,
+          success: described(Schema.Unknown, "MCP tool call result"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "experimental.tool.call",
+            summary: "Call MaxKB MCP browse tool",
+            description:
+              "Call a whitelisted MaxKB MCP browse tool from a connected MCP server. This experimental route is used by knowledge base browsing UI.",
           }),
         ),
         HttpApiEndpoint.get("toolIDs", ExperimentalPaths.toolIDs, {
@@ -192,6 +217,17 @@ export const ExperimentalApi = HttpApi.make("experimental")
             identifier: "experimental.resource.list",
             summary: "Get MCP resources",
             description: "Get all available MCP resources from connected servers. Optionally filter by name.",
+          }),
+        ),
+        HttpApiEndpoint.post("resourceRead", ExperimentalPaths.resourceRead, {
+          payload: ResourceReadPayload,
+          success: described(Schema.Unknown, "MCP resource read result"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "experimental.resource.read",
+            summary: "Read MCP resource",
+            description: "Read a MaxKB MCP resource from a connected MCP server. This experimental route is used by TUI /kb.",
           }),
         ),
       )

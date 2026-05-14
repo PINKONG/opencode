@@ -29,6 +29,27 @@ describe("experimental resource read", () => {
 
     expect(response.status).toBe(400)
   })
+
+  test("uses JSON response path for maxkb resource uri", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const app = Server.Default().app
+
+    const response = await app.request("/experimental/resource/read", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-opencode-directory": tmp.path,
+      },
+      body: JSON.stringify({
+        client: "demo",
+        uri: "maxkb://datasets",
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toContain("application/json")
+    expect(await response.json()).toBeNull()
+  })
 })
 
 describe("experimental tool call", () => {

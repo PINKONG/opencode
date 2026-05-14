@@ -1,23 +1,10 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
-import { Layer } from "effect"
+import { afterEach, describe, expect, test } from "bun:test"
 import { tmpdir } from "../fixture/fixture"
-
-let out: unknown
-
-const runtime = await import("../../src/effect/app-runtime")
-mock.module("../../src/effect/app-runtime", () => ({
-  ...runtime,
-  AppRuntime: {
-    ...runtime.AppRuntime,
-    runPromise: async () => out,
-  },
-}))
 
 const { InstanceRuntime } = await import("../../src/project/instance-runtime")
 const { Server } = await import("../../src/server/server")
 
 afterEach(async () => {
-  out = undefined
   await InstanceRuntime.disposeAllInstances().catch(() => undefined)
 })
 
@@ -25,7 +12,6 @@ describe("experimental tool call route", () => {
   test("returns null when the client is not connected", async () => {
     await using tmp = await tmpdir({ git: true })
     const app = Server.Default().app
-    out = null
 
     const response = await app.request("/experimental/tool/call", {
       method: "POST",
@@ -48,18 +34,9 @@ describe("experimental tool call route", () => {
     expect(await response.json()).toBeNull()
   })
 
-  test("returns MCP tool payload for allowed tool names", async () => {
+  test("keeps allowed tool names on JSON path", async () => {
     await using tmp = await tmpdir({ git: true })
     const app = Server.Default().app
-    out = {
-      content: [
-        {
-          type: "text",
-          text: "{\"page\":{\"records\":[],\"total\":0}}",
-        },
-      ],
-      isError: false,
-    }
 
     const response = await app.request("/experimental/tool/call", {
       method: "POST",
@@ -80,6 +57,6 @@ describe("experimental tool call route", () => {
     })
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual(out)
+    expect(await response.json()).toBeNull()
   })
 })

@@ -1,11 +1,15 @@
 import { ServerAuth } from "@/server/auth"
+import { issueEmbedSession, resolveEmbedSession } from "@/server/embed-session"
 import { Effect, Encoding, Layer, Redacted } from "effect"
-import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
+import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiError, HttpApiMiddleware } from "effect/unstable/httpapi"
 import { hasPtyConnectTicketURL } from "@/server/shared/pty-ticket"
 import { isPublicUIPath } from "@/server/shared/public-ui"
 
 const AUTH_TOKEN_QUERY = "auth_token"
+const AUTH_COOKIE = "wiscode_auth_token"
+const EMBED_QUERY = "embed_session"
+const EMBED_HEADER = "x-opencode-embed-session"
 const UNAUTHORIZED = 401
 const WWW_AUTHENTICATE = 'Basic realm="Secure Area"'
 
@@ -33,7 +37,12 @@ function validateCredential<A, E, R>(
 ) {
   return Effect.gen(function* () {
     if (!ServerAuth.required(config)) return yield* effect
-    if (!ServerAuth.authorized(credential, config)) return yield* new HttpApiError.Unauthorized({})
+    if (!ServerAuth.authorized(credential, config)) {
+      yield* HttpEffect.appendPreResponseHandler((_request, response) =>
+        Effect.succeed(HttpServerResponse.setHeader(response, "www-authenticate", WWW_AUTHENTICATE)),
+      )
+      return yield* new HttpApiError.Unauthorized({})
+    }
     return yield* effect
   })
 }
@@ -63,6 +72,23 @@ function credentialFromRequest(request: HttpServerRequest.HttpServerRequest) {
 function credentialFromURL(url: URL, request: HttpServerRequest.HttpServerRequest) {
   const token = url.searchParams.get(AUTH_TOKEN_QUERY)
   if (token) return decodeCredential(token)
+  const embedSession = url.searchParams.get(EMBED_QUERY) ?? request.headers[EMBED_HEADER] ?? undefined
+  const embedToken = resolveEmbedSession(embedSession)
+  if (embedToken) return decodeCredential(embedToken)
+  const cookieToken = getCookie(request.headers.cookie, AUTH_COOKIE)
+  if (cookieToken) return decodeCredential(cookieToken)
+  const match = /^Basic\s+(.+)$/i.exec(request.headers.authorization ?? "")
+  if (match) return decodeCredential(match[1])
+  return Effect.succeed(emptyCredential())
+}
+
+function credentialFromToken(
+  token: string | undefined,
+  embedToken: string | undefined,
+  request: HttpServerRequest.HttpServerRequest,
+) {
+  if (token) return decodeCredential(token)
+  if (embedToken) return decodeCredential(embedToken)
   const match = /^Basic\s+(.+)$/i.exec(request.headers.authorization ?? "")
   if (match) return decodeCredential(match[1])
   return Effect.succeed(emptyCredential())
@@ -95,12 +121,61 @@ export const authorizationRouterMiddleware = HttpRouter.middleware()(
         const url = new URL(request.url, "http://localhost")
         if (isPublicUIPath(request.method, url.pathname)) return yield* effect
         if (hasPtyConnectTicketURL(url)) return yield* effect
-        return yield* credentialFromURL(url, request).pipe(
+        const existingAuth = request.headers.authorization
+        const queryToken = url.searchParams.get(AUTH_TOKEN_QUERY)
+        const embedSession = url.searchParams.get(EMBED_QUERY) ?? request.headers[EMBED_HEADER] ?? undefined
+        const embedToken = existingAuth ? undefined : resolveEmbedSession(embedSession)
+        const cookieToken = existingAuth ? undefined : getCookie(request.headers.cookie, AUTH_COOKIE)
+        const token = existingAuth ? undefined : (embedToken ?? queryToken ?? cookieToken)
+        const mintedEmbedSession = queryToken ? issueEmbedSession(queryToken) : embedSession
+        const mintedEmbedToken = queryToken ?? embedToken
+        const redirectURL = shouldRedirectToEmbedSession(url, request) ? embedRedirectURL(url, mintedEmbedSession) : undefined
+        const shouldSetCookie = !!queryToken && request.headers["sec-fetch-site"] !== "cross-site"
+        const withCookie = (next: HttpServerResponse.HttpServerResponse) => {
+          if (!shouldSetCookie || !queryToken) return next
+          return HttpServerResponse.setHeader(
+            next,
+            "set-cookie",
+            `${AUTH_COOKIE}=${queryToken}; Max-Age=28800; Path=/; HttpOnly; SameSite=Lax`,
+          )
+        }
+        if (redirectURL && queryToken) {
+          const gate = yield* credentialFromToken(queryToken, undefined, request).pipe(
+            Effect.flatMap((credential) => validateRawCredential(Effect.succeed(HttpServerResponse.empty()), credential, config)),
+          )
+          if (gate.status === UNAUTHORIZED) return gate
+          return withCookie(HttpServerResponse.empty({ status: 302, headers: { location: redirectURL } }))
+        }
+        const response = yield* credentialFromToken(token, mintedEmbedToken, request).pipe(
           Effect.flatMap((credential) => validateRawCredential(effect, credential, config)),
         )
+        return withCookie(response)
       })
   }),
 )
+
+function getCookie(cookieHeader: string | undefined, name: string) {
+  if (!cookieHeader) return
+  for (const pair of cookieHeader.split(";")) {
+    const token = pair.trim()
+    if (!token.startsWith(`${name}=`)) continue
+    return token.slice(name.length + 1)
+  }
+}
+
+function shouldRedirectToEmbedSession(url: URL, request: HttpServerRequest.HttpServerRequest) {
+  if (!url.searchParams.get(AUTH_TOKEN_QUERY)) return false
+  if (request.method !== "GET") return false
+  if (url.pathname !== "/") return false
+  return !!request.headers.accept?.includes("text/html")
+}
+
+function embedRedirectURL(url: URL, embedSession: string | undefined) {
+  const next = new URL(url.toString())
+  next.searchParams.delete(AUTH_TOKEN_QUERY)
+  if (embedSession) next.searchParams.set(EMBED_QUERY, embedSession)
+  return next.pathname + next.search + next.hash
+}
 
 export const authorizationLayer = Layer.effect(
   Authorization,
