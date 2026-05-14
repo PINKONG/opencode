@@ -10,7 +10,6 @@ import { withStatics } from "@/util/schema"
 import { Config } from "@/config/config"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
-import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
 
 type State = {
@@ -80,15 +79,6 @@ export const layer = Layer.effect(
       const bridge = yield* EffectBridge.make()
       const commands: Record<string, Info> = {}
 
-      commands[Default.INIT] = {
-        name: Default.INIT,
-        description: "guided AGENTS.md setup",
-        source: "command",
-        get template() {
-          return PROMPT_INITIALIZE.replace("${path}", ctx.worktree)
-        },
-        hints: hints(PROMPT_INITIALIZE),
-      }
       commands[Default.REVIEW] = {
         name: Default.REVIEW,
         description: "review changes [commit|branch|pr], defaults to uncommitted",

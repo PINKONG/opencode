@@ -3,6 +3,7 @@
 import fs from "fs"
 import path from "path"
 import os from "os"
+import childProcess from "child_process"
 import { fileURLToPath } from "url"
 import { createRequire } from "module"
 
@@ -82,13 +83,36 @@ async function main() {
     // Don't replace the wrapper script - it handles binary execution
     const { binaryPath } = findBinary()
     const target = path.join(__dirname, "bin", ".wiscode-cli")
-    if (fs.existsSync(target)) fs.unlinkSync(target)
+    const temp = path.join(__dirname, "bin", ".wiscode-cli.tmp")
+    if (fs.existsSync(temp)) fs.unlinkSync(temp)
     try {
-      fs.linkSync(binaryPath, target)
+      fs.linkSync(binaryPath, temp)
     } catch {
-      fs.copyFileSync(binaryPath, target)
+      fs.copyFileSync(binaryPath, temp)
     }
-    fs.chmodSync(target, 0o755)
+    fs.chmodSync(temp, 0o755)
+
+    if (os.platform() === "darwin") {
+      const verify = childProcess.spawnSync("codesign", ["--verify", "--verbose=2", temp], {
+        encoding: "utf8",
+      })
+      if (verify.status !== 0) {
+        const remove = childProcess.spawnSync("codesign", ["--remove-signature", temp], {
+          encoding: "utf8",
+        })
+        if (remove.status !== 0) {
+          throw new Error(`codesign remove failed: ${(remove.stderr || remove.stdout || "").trim()}`)
+        }
+        const sign = childProcess.spawnSync("codesign", ["--force", "--sign", "-", temp], {
+          encoding: "utf8",
+        })
+        if (sign.status !== 0) {
+          throw new Error(`codesign ad-hoc sign failed: ${(sign.stderr || sign.stdout || "").trim()}`)
+        }
+      }
+    }
+
+    fs.renameSync(temp, target)
   } catch (error) {
     console.error(`Failed to setup ${cli} binary:`, error.message)
     process.exit(1)

@@ -1,6 +1,6 @@
 import { app } from "electron"
-import { execFile } from "node:child_process"
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { execFile, spawnSync } from "node:child_process"
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
@@ -67,13 +67,30 @@ function ensurePathEntry(binDir: string) {
 function installCliWindows(sidecar: string) {
   const binDir = path.dirname(getCliInstallPath())
   mkdirSync(binDir, { recursive: true })
-  copyFileSync(sidecar, getCliInstallPath())
+  const target = getCliInstallPath()
+  const temp = `${target}.tmp`
+  if (existsSync(temp)) unlinkSync(temp)
+  copyFileSync(sidecar, temp)
+  renameSync(temp, target)
 }
 
 function installCliUnix(sidecar: string) {
   const binDir = path.dirname(getCliInstallPath())
   mkdirSync(binDir, { recursive: true })
-  copyFileSync(sidecar, getCliInstallPath())
+  const target = getCliInstallPath()
+  const temp = `${target}.tmp`
+  if (existsSync(temp)) unlinkSync(temp)
+  copyFileSync(sidecar, temp)
+  if (process.platform === "darwin") {
+    const verify = spawnSync("codesign", ["--verify", "--verbose=2", temp], { encoding: "utf8" })
+    if (verify.status !== 0) {
+      const remove = spawnSync("codesign", ["--remove-signature", temp], { encoding: "utf8" })
+      if (remove.status !== 0) throw new Error(`codesign remove failed: ${(remove.stderr || remove.stdout || "").trim()}`)
+      const sign = spawnSync("codesign", ["--force", "--sign", "-", temp], { encoding: "utf8" })
+      if (sign.status !== 0) throw new Error(`codesign ad-hoc sign failed: ${(sign.stderr || sign.stdout || "").trim()}`)
+    }
+  }
+  renameSync(temp, target)
   ensurePathEntry(binDir)
 }
 
