@@ -25,8 +25,8 @@ import { ConfigPaths } from "@/config/paths"
 import { InstanceState } from "@/effect/instance-state"
 import * as Option from "effect/Option"
 import * as OtelTracer from "@effect/opentelemetry/Tracer"
-import { zod } from "@/util/effect-zod"
-import { withStatics, type DeepMutable } from "@/util/schema"
+import { zod } from "@opencode-ai/core/effect-zod"
+import { withStatics, type DeepMutable } from "@opencode-ai/core/schema"
 
 type ReferenceEntry = NonNullable<Config.Info["reference"]>[string]
 type ResolvedReference = { kind: "git"; repository: string; branch?: string } | { kind: "local"; path: string }
