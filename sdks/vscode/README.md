@@ -15,7 +15,7 @@ This extension requires the [WisCode CLI](https://opencode.ai) to be installed o
 
 ## Support
 
-This is an early release. If you encounter issues or have feedback, please create an issue at https://github.com/anomalyco/opencode/issues.
+This is an early release. If you encounter issues or have feedback, please create an issue at https://github.com/PINKONG/opencode/issues.
 
 ## Development
 

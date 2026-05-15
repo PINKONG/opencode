@@ -115,6 +115,7 @@ describe("user visible branding copy", () => {
     expect(providers).not.toContain("Configure via opencode.json options (profile, region, endpoint) or")
     expect(providers).not.toContain("https://opencode.ai/auth")
     expect(providers).not.toContain("https://opencode.ai/docs/providers/#cloudflare-ai-gateway")
+    expect(providers).not.toContain("Configure the provider in opencode.json to use it.")
 
     expect(status).toContain("Needs authentication (run: wiscode mcp auth {key})")
     expect(status).not.toContain("Needs authentication (run: opencode mcp auth {key})")

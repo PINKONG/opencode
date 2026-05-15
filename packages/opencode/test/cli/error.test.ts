@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { AccountTransportError } from "../../src/account/schema"
 import { FormatError } from "../../src/cli/error"
+import * as UI from "../../src/cli/ui"
 import { Provider } from "../../src/provider/provider"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 
@@ -77,5 +78,26 @@ describe("cli.error", () => {
     expect(formatted).toContain("Try: `wiscode models` to list available models")
     expect(formatted).toContain("Or check your config (wiscode.json) provider/model names")
     expect(formatted).not.toContain("opencode.json")
+  })
+
+  test("formats legacy and tagged provider model errors the same way", () => {
+    const data = {
+      providerID: "anthropic",
+      modelID: "claude-sonet-4",
+      suggestions: ["claude-sonnet-4"],
+    }
+    const expected = [
+      "Model not found: anthropic/claude-sonet-4",
+      "Did you mean: claude-sonnet-4",
+      "Try: `wiscode models` to list available models",
+      "Or check your config (wiscode.json) provider/model names",
+    ].join("\n")
+
+    expect(FormatError({ name: "ProviderModelNotFoundError", data })).toBe(expected)
+    expect(FormatError({ _tag: "ProviderModelNotFoundError", ...data })).toBe(expected)
+  })
+
+  test("formats cancelled UI errors as empty output", () => {
+    expect(FormatError(new UI.CancelledError())).toBe("")
   })
 })
