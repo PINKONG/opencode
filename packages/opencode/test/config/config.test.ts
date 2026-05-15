@@ -65,13 +65,8 @@ const load = () => Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe
 const save = (config: Config.Info) =>
   Effect.runPromise(Config.Service.use((svc) => svc.update(config)).pipe(Effect.scoped, Effect.provide(layer)))
 const saveGlobal = (config: Config.Info) =>
-  Effect.runPromise(
-    Config.Service.use((svc) => svc.updateGlobal(config)).pipe(
-      Effect.map((result) => result.info),
-      Effect.scoped,
-      Effect.provide(layer),
-    ),
-  )
+  Effect.runPromise(Config.Service.use((svc) => svc.updateGlobal(config)).pipe(Effect.scoped, Effect.provide(layer)))
+
 const clear = async (wait = false) => {
   await Effect.runPromise(Config.Service.use((svc) => svc.invalidate()).pipe(Effect.scoped, Effect.provide(layer)))
   if (wait) await InstanceRuntime.disposeAllInstances()
@@ -143,6 +138,92 @@ test("loads config with defaults when no files exist", async () => {
 
 test("uses wiscode global config directory", () => {
   expect(path.basename(Global.Path.config)).toBe("wiscode")
+})
+
+test("creates global jsonc config with schema when no global configs exist", async () => {
+  await using tmp = await tmpdir()
+  const prev = Global.Path.config
+  ;(Global.Path as { config: string }).config = tmp.path
+  await clear(true)
+
+  try {
+    await WithInstance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await load()
+      },
+    })
+
+    const content = await Filesystem.readText(path.join(tmp.path, "wiscode.jsonc"))
+    expect(content).toContain('"$schema": "https://opencode.ai/config.json"')
+  } finally {
+    ;(Global.Path as { config: string }).config = prev
+    await clear(true)
+  }
+})
+
+test("updateGlobal writes to wiscode config even when legacy opencode config exists", async () => {
+  await using tmp = await tmpdir()
+  const prev = Global.Path.config
+  ;(Global.Path as { config: string }).config = tmp.path
+  await clear(true)
+
+  try {
+    await Filesystem.write(
+      path.join(tmp.path, "opencode.json"),
+      JSON.stringify({
+        $schema: "https://opencode.ai/config.json",
+        shell: "/bin/legacy",
+      }),
+    )
+
+    await WithInstance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await saveGlobal({
+          shell: "/bin/wiscode",
+        })
+      },
+    })
+
+    const wiscodeExists = await Filesystem.exists(path.join(tmp.path, "wiscode.jsonc"))
+    expect(wiscodeExists).toBe(true)
+
+    const legacy = JSON.parse(await Filesystem.readText(path.join(tmp.path, "opencode.json")))
+    expect(legacy.shell).toBe("/bin/legacy")
+
+    const next = await Filesystem.readText(path.join(tmp.path, "wiscode.jsonc"))
+    expect(next).toContain("/bin/wiscode")
+  } finally {
+    ;(Global.Path as { config: string }).config = prev
+    await clear(true)
+  }
+})
+
+test("does not create global config when OPENCODE_CONFIG_DIR is set", async () => {
+  await using tmp = await tmpdir()
+  await using custom = await tmpdir()
+  const prevConfig = Global.Path.config
+  const prevEnv = process.env.OPENCODE_CONFIG_DIR
+  ;(Global.Path as { config: string }).config = tmp.path
+  process.env.OPENCODE_CONFIG_DIR = custom.path
+  await clear(true)
+
+  try {
+    await WithInstance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await load()
+      },
+    })
+
+    expect(await Filesystem.exists(path.join(tmp.path, "wiscode.jsonc"))).toBe(false)
+  } finally {
+    ;(Global.Path as { config: string }).config = prevConfig
+    if (prevEnv === undefined) delete process.env.OPENCODE_CONFIG_DIR
+    else process.env.OPENCODE_CONFIG_DIR = prevEnv
+    await clear(true)
+  }
 })
 
 test("includes built-in MaxKB production MCP by default", async () => {
@@ -408,10 +489,11 @@ test("updates global config and omits empty shell key in json", async () => {
   await clear(true)
 
   try {
-    await saveGlobal({ shell: "" })
+    const result = await saveGlobal({ shell: "" })
 
-    const writtenConfig = await Filesystem.readJson<{ shell?: string }>(path.join(tmp.path, "opencode.json"))
-    expect("shell" in writtenConfig).toBe(false)
+    const legacyConfig = await Filesystem.readJson<{ shell?: string }>(path.join(tmp.path, "opencode.json"))
+    expect(legacyConfig.shell).toBe("bash")
+    expect(result.info.shell).toBeUndefined()
   } finally {
     ;(Global.Path as { config: string }).config = prev
     await clear(true)
@@ -437,14 +519,12 @@ test("updates global config and omits empty shell key in jsonc", async () => {
   await clear(true)
 
   try {
-    await saveGlobal({ shell: "" })
+    const result = await saveGlobal({ shell: "" })
 
-    const file = path.join(tmp.path, "opencode.jsonc")
-    const writtenConfig = await Filesystem.readText(file)
-    const parsed = ConfigParse.schema(Config.Info.zod, ConfigParse.jsonc(writtenConfig, file), file)
-    expect(writtenConfig).not.toContain('"shell"')
-    expect(parsed.shell).toBeUndefined()
-    expect(parsed.model).toBe("test/model")
+    const legacyFile = path.join(tmp.path, "opencode.jsonc")
+    const legacyConfig = await Filesystem.readText(legacyFile)
+    expect(legacyConfig).toContain('"shell":"bash"')
+    expect(result.info.shell).toBeUndefined()
   } finally {
     ;(Global.Path as { config: string }).config = prev
     await clear(true)
@@ -1891,8 +1971,8 @@ test("permission config preserves user key order", async () => {
   })
 })
 
-test("Effect config parser preserves permission order while rejecting unknown top-level keys", () => {
-  const config = ConfigParse.effectSchema(
+test("config parser preserves permission order while rejecting unknown top-level keys", () => {
+  const config = ConfigParse.schema(
     Config.Info,
     {
       permission: {
@@ -1906,7 +1986,7 @@ test("Effect config parser preserves permission order while rejecting unknown to
 
   expect(Object.keys(config.permission!)).toEqual(["bash", "*", "edit"])
   try {
-    ConfigParse.effectSchema(Config.Info, { invalid_field: true }, "test")
+    ConfigParse.schema(Config.Info, { invalid_field: true }, "test")
     throw new Error("expected config parse to fail")
   } catch (err) {
     const error = err as { data?: { issues?: Array<{ code?: string; keys?: string[]; path?: string[] }> } }
@@ -2673,7 +2753,7 @@ describe("OPENCODE_CONFIG_CONTENT token substitution", () => {
 // parseManagedPlist unit tests — pure function, no OS interaction
 
 test("parseManagedPlist strips MDM metadata keys", async () => {
-  const config = ConfigParse.effectSchema(
+  const config = ConfigParse.schema(
     Config.Info,
     ConfigParse.jsonc(
       await ConfigManaged.parseManagedPlist(
@@ -2701,7 +2781,7 @@ test("parseManagedPlist strips MDM metadata keys", async () => {
 })
 
 test("parseManagedPlist parses server settings", async () => {
-  const config = ConfigParse.effectSchema(
+  const config = ConfigParse.schema(
     Config.Info,
     ConfigParse.jsonc(
       await ConfigManaged.parseManagedPlist(
@@ -2721,7 +2801,7 @@ test("parseManagedPlist parses server settings", async () => {
 })
 
 test("parseManagedPlist parses permission rules", async () => {
-  const config = ConfigParse.effectSchema(
+  const config = ConfigParse.schema(
     Config.Info,
     ConfigParse.jsonc(
       await ConfigManaged.parseManagedPlist(
@@ -2751,7 +2831,7 @@ test("parseManagedPlist parses permission rules", async () => {
 })
 
 test("parseManagedPlist parses enabled_providers", async () => {
-  const config = ConfigParse.effectSchema(
+  const config = ConfigParse.schema(
     Config.Info,
     ConfigParse.jsonc(
       await ConfigManaged.parseManagedPlist(
@@ -2768,7 +2848,7 @@ test("parseManagedPlist parses enabled_providers", async () => {
 })
 
 test("parseManagedPlist handles empty config", async () => {
-  const config = ConfigParse.effectSchema(
+  const config = ConfigParse.schema(
     Config.Info,
     ConfigParse.jsonc(
       await ConfigManaged.parseManagedPlist(JSON.stringify({ $schema: "https://opencode.ai/config.json" })),

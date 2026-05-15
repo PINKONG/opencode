@@ -466,7 +466,6 @@ async function checkUpdate() {
     return { updateAvailable: false, failed: true }
   }
 }
-
 async function installUpdate() {
   if (!downloadedUpdateVersion) {
     logger.log("install update skipped", {

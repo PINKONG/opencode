@@ -4,6 +4,7 @@ import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstab
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { Installation } from "../../src/installation"
 import { InstallationChannel } from "@opencode-ai/core/installation/version"
+import { AppProcess } from "@opencode-ai/core/process"
 
 const encoder = new TextEncoder()
 
@@ -46,7 +47,8 @@ function testLayer(
   httpHandler: (request: HttpClientRequest.HttpClientRequest) => Response,
   spawnHandler?: (cmd: string, args: readonly string[]) => string,
 ) {
-  return Installation.layer.pipe(Layer.provide(mockHttpClient(httpHandler)), Layer.provide(mockSpawner(spawnHandler)))
+  const appProcess = AppProcess.layer.pipe(Layer.provide(mockSpawner(spawnHandler)))
+  return Installation.layer.pipe(Layer.provide(mockHttpClient(httpHandler)), Layer.provide(appProcess))
 }
 
 describe("installation", () => {
@@ -79,6 +81,27 @@ describe("installation", () => {
         Installation.Service.use((svc) => svc.method()).pipe(Effect.provide(layer)),
       )
       expect(result).toBe("unknown")
+    })
+
+    test("detects .wiscode/bin installs as curl installations", async () => {
+      const prev = process.execPath
+      Object.defineProperty(process, "execPath", {
+        value: "/Users/test/.wiscode/bin/wiscode",
+        configurable: true,
+      })
+
+      try {
+        const layer = testLayer(() => jsonResponse({}))
+        const result = await Effect.runPromise(
+          Installation.Service.use((svc) => svc.method()).pipe(Effect.provide(layer)),
+        )
+        expect(result).toBe("curl")
+      } finally {
+        Object.defineProperty(process, "execPath", {
+          value: prev,
+          configurable: true,
+        })
+      }
     })
   })
 
@@ -180,7 +203,6 @@ describe("installation", () => {
       const layer = testLayer(
         () => jsonResponse({ versions: { stable: "2.0.0" } }),
         (cmd, args) => {
-          // getBrewFormula: return core formula (no tap)
           if (cmd === "brew" && args.includes("--formula") && args.includes("PINKONG/tap/wiscode")) return ""
           if (cmd === "brew" && args.includes("--formula") && args.includes("wiscode")) return "wiscode"
           return ""
@@ -198,7 +220,7 @@ describe("installation", () => {
         formulae: [{ versions: { stable: "2.1.0" } }],
       })
       const layer = testLayer(
-        () => jsonResponse({}), // HTTP not used for tap formula
+        () => jsonResponse({}),
         (cmd, args) => {
           if (cmd === "brew" && args.includes("PINKONG/tap/wiscode") && args.includes("--formula")) return "wiscode"
           if (cmd === "brew" && args.includes("--json=v2")) return brewInfoJson

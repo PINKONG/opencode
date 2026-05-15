@@ -26,13 +26,10 @@ const branded = [
   "server/mdns.ts",
   "cli/cmd/tui/routes/session/permission.tsx",
   "cli/cmd/tui/routes/session/index.tsx",
-  "cli/cmd/tui/component/dialog-provider.tsx",
-  "cli/cmd/tui/feature-plugins/home/tips-view.tsx",
   "cli/cmd/tui/feature-plugins/sidebar/footer.tsx",
   "cli/error.ts",
   "provider/error.ts",
   "mcp/oauth-provider.ts",
-  "session/retry.ts",
 ]
 
 describe("user visible branding copy", () => {
@@ -185,5 +182,22 @@ describe("user visible branding copy", () => {
     expect(tips).not.toContain("Run {highlight}opencode agent create{/highlight}")
     expect(tips).not.toContain("{highlight}/opencode{/highlight}")
     expect(tips).not.toContain("{highlight}/opencode fix this{/highlight}")
+  })
+
+  test("provider-branded surfaces keep upstream OpenCode Zen/Go names", async () => {
+    const dialogProvider = await Bun.file(join(root, "cli/cmd/tui/component/dialog-provider.tsx")).text()
+    const retry = await Bun.file(join(root, "session/retry.ts")).text()
+    const tips = await Bun.file(join(root, "cli/cmd/tui/feature-plugins/home/tips-view.tsx")).text()
+
+    expect(dialogProvider).toContain("OpenCode Zen")
+    expect(dialogProvider).toContain("OpenCode Go")
+    expect(dialogProvider).not.toContain("WisCode Zen")
+    expect(dialogProvider).not.toContain("WisCode Go")
+
+    expect(retry).toContain("Subscribe to OpenCode Go")
+    expect(retry).not.toContain("Subscribe to WisCode Go")
+
+    expect(tips).toContain("Use {highlight}/connect{/highlight} with OpenCode Zen for curated, tested models")
+    expect(tips).not.toContain("Use {highlight}/connect{/highlight} with WisCode Zen")
   })
 })

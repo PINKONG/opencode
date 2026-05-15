@@ -1,6 +1,46 @@
 import { Schema } from "effect"
-import { zod } from "@opencode-ai/core/effect-zod"
 import { PositiveInt, withStatics } from "@opencode-ai/core/schema"
+import { z } from "zod"
+
+const localZod = z.object({
+  type: z.literal("local"),
+  command: z.array(z.string()),
+  environment: z.record(z.string(), z.string()).optional(),
+  enabled: z.boolean().optional(),
+  timeout: z.number().int().positive().optional(),
+})
+
+const oauthZod = z.object({
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
+  scope: z.string().optional(),
+  redirectUri: z.string().optional(),
+})
+
+const maxkbHmacAuthZod = z.object({
+  type: z.literal("maxkb-hmac"),
+  appKey: z.string(),
+  appSecret: z.string(),
+})
+
+const remoteZod = z
+  .object({
+    type: z.literal("remote"),
+    url: z.string(),
+    enabled: z.boolean().optional(),
+    headers: z.record(z.string(), z.string()).optional(),
+    auth: maxkbHmacAuthZod.optional(),
+    oauth: z.union([oauthZod, z.literal(false)]).optional(),
+    timeout: z.number().int().positive().optional(),
+  })
+  .superRefine((input, ctx) => {
+    if (input.auth?.type !== "maxkb-hmac") return
+    if (input.oauth === false) return
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "maxkb-hmac auth requires oauth to be explicitly set to false",
+    })
+  })
 
 export const Local = Schema.Struct({
   type: Schema.Literal("local").annotate({ description: "Type of MCP server connection" }),
@@ -18,7 +58,7 @@ export const Local = Schema.Struct({
   }),
 })
   .annotate({ identifier: "McpLocalConfig" })
-  .pipe(withStatics((s) => ({ zod: zod(s) })))
+  .pipe(withStatics(() => ({ zod: localZod })))
 export type Local = Schema.Schema.Type<typeof Local>
 
 export const OAuth = Schema.Struct({
@@ -34,7 +74,7 @@ export const OAuth = Schema.Struct({
   }),
 })
   .annotate({ identifier: "McpOAuthConfig" })
-  .pipe(withStatics((s) => ({ zod: zod(s) })))
+  .pipe(withStatics(() => ({ zod: oauthZod })))
 export type OAuth = Schema.Schema.Type<typeof OAuth>
 
 export const MaxkbHmacAuth = Schema.Struct({
@@ -43,7 +83,7 @@ export const MaxkbHmacAuth = Schema.Struct({
   appSecret: Schema.String,
 })
   .annotate({ identifier: "McpMaxkbHmacAuthConfig" })
-  .pipe(withStatics((s) => ({ zod: zod(s) })))
+  .pipe(withStatics(() => ({ zod: maxkbHmacAuthZod })))
 export type MaxkbHmacAuth = Schema.Schema.Type<typeof MaxkbHmacAuth>
 
 const maxkbRequiresOauthDisabled = Schema.makeFilter<
@@ -81,12 +121,12 @@ export const Remote = Schema.Struct({
 })
   .check(maxkbRequiresOauthDisabled)
   .annotate({ identifier: "McpRemoteConfig" })
-  .pipe(withStatics((s) => ({ zod: zod(s) })))
+  .pipe(withStatics(() => ({ zod: remoteZod })))
 export type Remote = Schema.Schema.Type<typeof Remote>
 
 export const Info = Schema.Union([Local, Remote])
   .annotate({ discriminator: "type" })
-  .pipe(withStatics((s) => ({ zod: zod(s) })))
+  .pipe(withStatics(() => ({ zod: z.union([localZod, remoteZod]) })))
 export type Info = Schema.Schema.Type<typeof Info>
 
 export * as ConfigMCP from "./mcp"

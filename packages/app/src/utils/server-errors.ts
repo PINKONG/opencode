@@ -34,9 +34,10 @@ function tr(translator: Translator | undefined, key: string, text: string, vars?
 }
 
 export function formatServerError(error: unknown, translate?: Translator, fallback?: string) {
-  if (isConfigJsonErrorLike(error)) return parseReadableConfigJsonError(error, translate)
-  if (isConfigInvalidErrorLike(error)) return parseReadableConfigInvalidError(error, translate)
-  if (isProviderModelNotFoundErrorLike(error)) return parseReadableProviderModelNotFoundError(error, translate)
+  const unwrapped = unwrapNamedError(error)
+  if (isConfigJsonErrorLike(unwrapped)) return parseReadableConfigJsonError(unwrapped, translate)
+  if (isConfigInvalidErrorLike(unwrapped)) return parseReadableConfigInvalidError(unwrapped, translate)
+  if (isProviderModelNotFoundErrorLike(unwrapped)) return parseReadableProviderModelNotFoundError(unwrapped, translate)
   if (error instanceof Error && error.message) return error.message
   if (typeof error === "string" && error) return error
   if (fallback) return fallback
@@ -47,6 +48,13 @@ function isConfigJsonErrorLike(error: unknown): error is ConfigJsonError {
   if (typeof error !== "object" || error === null) return false
   const o = error as Record<string, unknown>
   return o.name === "ConfigJsonError" && typeof o.data === "object" && o.data !== null
+}
+
+function unwrapNamedError(error: unknown): unknown {
+  if (error instanceof Error && error.cause && typeof error.cause === "object" && "body" in error.cause) {
+    return (error.cause as Record<string, unknown>).body
+  }
+  return error
 }
 
 function isConfigInvalidErrorLike(error: unknown): error is ConfigInvalidError {

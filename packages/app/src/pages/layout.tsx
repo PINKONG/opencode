@@ -989,6 +989,15 @@ export default function Layout(props: ParentProps) {
     void openProject(target.worktree)
   }
 
+  function navigateToProjectIndex(index: number) {
+    const projects = layout.projects.list()
+    const target = projects[index]
+    if (!target) return
+
+    globalSync.child(target.worktree)
+    void openProject(target.worktree)
+  }
+
   function navigateSessionByUnseen(offset: number) {
     const sessions = currentSessions()
     if (sessions.length === 0) return
@@ -1069,6 +1078,19 @@ export default function Layout(props: ParentProps) {
         keybind: "mod+alt+arrowdown",
         onSelect: () => navigateProjectByOffset(1),
       },
+      ...Array.from({ length: 9 }, (_, i) => {
+        const index = i
+        const number = index + 1
+        return {
+          id: `project.${number}`,
+          category: language.t("command.category.project"),
+          title: `Open Project {number}`,
+          keybind: `mod+${number}`,
+          disabled: layout.projects.list().length <= index,
+          hidden: true,
+          onSelect: () => navigateToProjectIndex(index),
+        }
+      }),
       {
         id: "provider.connect",
         title: language.t("command.provider.connect"),
@@ -1438,18 +1460,19 @@ export default function Layout(props: ParentProps) {
     const index = list.findIndex((x) => pathKey(x.worktree) === key)
     const active = pathKey(currentProject()?.worktree ?? "") === key
     if (index === -1) return
-    const next = list[index + 1]
 
     if (!active) {
       layout.projects.close(directory)
       return
     }
 
-    if (!next) {
+    if (list.length === 1) {
       layout.projects.close(directory)
       navigate("/")
       return
     }
+
+    const next = list[index + 1] ?? list[index - 1]
 
     navigateWithSidebarReset(`/${base64Encode(next.worktree)}/session`)
     layout.projects.close(directory)
@@ -1963,7 +1986,7 @@ export default function Layout(props: ParentProps) {
 
     if (!created?.directory) return
 
-    setWorkspaceName(created.directory, created.branch, project.id, created.branch)
+    setWorkspaceName(created.directory, created.branch ?? getFilename(created.directory), project.id, created.branch)
 
     const local = project.worktree
     const key = pathKey(created.directory)
@@ -2177,7 +2200,9 @@ export default function Layout(props: ParentProps) {
                     <DropdownMenu.Portal>
                       <DropdownMenu.Content class="mt-1">
                         <DropdownMenu.Item
-                          onSelect={() => showEditProjectDialog(project)}
+                          onSelect={() => {
+                            showEditProjectDialog(project)
+                          }}
                         >
                           <DropdownMenu.ItemLabel>{language.t("common.edit")}</DropdownMenu.ItemLabel>
                         </DropdownMenu.Item>
@@ -2185,7 +2210,9 @@ export default function Layout(props: ParentProps) {
                           data-action="project-workspaces-toggle"
                           data-project={slug()}
                           disabled={!canToggle()}
-                          onSelect={() => toggleProjectWorkspaces(project)}
+                          onSelect={() => {
+                            toggleProjectWorkspaces(project)
+                          }}
                         >
                           <DropdownMenu.ItemLabel>
                             {workspacesEnabled()
@@ -2257,7 +2284,9 @@ export default function Layout(props: ParentProps) {
                         size="large"
                         icon="plus-small"
                         class="w-full"
-                        onClick={() => void createWorkspace(project)}
+                        onClick={() => {
+                          void createWorkspace(project)
+                        }}
                       >
                         {language.t("workspace.new")}
                       </Button>
@@ -2280,13 +2309,13 @@ export default function Layout(props: ParentProps) {
                           <SortableProvider ids={workspaces()}>
                             <For each={workspaces()}>
                               {(directory) => (
-                              <SortableWorkspace
-                                ctx={workspaceSidebarCtx}
-                                directory={directory}
-                                project={project}
-                                sortNow={sortNow}
-                                mobile={panelProps.mobile}
-                              />
+                                <SortableWorkspace
+                                  ctx={workspaceSidebarCtx}
+                                  directory={directory}
+                                  project={project}
+                                  sortNow={sortNow}
+                                  mobile={panelProps.mobile}
+                                />
                               )}
                             </For>
                           </SortableProvider>
