@@ -50,6 +50,7 @@ import { Reference } from "../../src/reference/reference"
 import { provideTmpdirInstance, provideTmpdirServer } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 import { reply, TestLLMServer } from "../lib/llm-server"
+import { SyncEvent } from "@/sync"
 
 void Log.init({ print: false })
 
@@ -175,6 +176,7 @@ function makeHttp() {
     mcp,
     AppFileSystem.defaultLayer,
     status,
+    SyncEvent.defaultLayer,
   ).pipe(Layer.provideMerge(infra))
   const question = Question.layer.pipe(Layer.provideMerge(deps))
   const todo = Todo.layer.pipe(Layer.provideMerge(deps))
@@ -2062,7 +2064,8 @@ it.live(
             expect(NamedError.Unknown.isInstance(err)).toBe(true)
             if (NamedError.Unknown.isInstance(err)) {
               expect(err.data.message).toContain('Command not found: "nonexistent-command-xyz"')
-              expect(err.data.message).toContain("init")
+              expect(err.data.message).toContain("review")
+              expect(err.data.message).not.toContain("init")
             }
           }
         }),
