@@ -175,24 +175,12 @@ const TIPS: Tip[] = [
   (shortcuts) => `Use ${commandText("/models", shortcuts.modelList())} to see and switch between available AI models`,
   (shortcuts) => `Use ${commandText("/themes", shortcuts.themeList())} to switch between ${themeCount} built-in themes`,
   (shortcuts) => `Use ${commandText("/new", shortcuts.sessionNew())} to start a fresh conversation session`,
-  (shortcuts) => `Use ${commandText("/sessions", shortcuts.sessionList())} to list and continue previous conversations`,
-  ...(Flag.OPENCODE_EXPERIMENTAL_SESSION_SWITCHING
-    ? ([
-        (shortcuts) =>
-          press(shortcuts.sessionPinToggle(), "in the session list to pin a session so it stays at the top"),
-        (shortcuts) =>
-          shortcuts.sessionQuickSwitch1() && shortcuts.sessionQuickSwitch9()
-            ? `Pinned and recent sessions are bound to ${shortcutText(shortcuts.sessionQuickSwitch1())} through ${shortcutText(shortcuts.sessionQuickSwitch9())} for one-press switching`
-            : undefined,
-        (shortcuts) =>
-          shortcuts.sessionCycleRecent() && shortcuts.sessionCycleRecentReverse()
-            ? `Press ${shortcutText(shortcuts.sessionCycleRecent())} / ${shortcutText(shortcuts.sessionCycleRecentReverse())} to cycle through recently visited sessions`
-            : undefined,
-        (shortcuts) =>
-          press(shortcuts.sessionToggleRecent(), "in the session list to show or hide a session in the Recent group"),
-      ] satisfies Tip[])
-    : []),
-  themeTip,
+  (shortcuts) => `Use ${commandText("/sessions", shortcuts.sessionList())} to list, pin, and continue sessions`,
+  (shortcuts) => press(shortcuts.sessionPinToggle(), "in the session list to pin a session so it stays at the top"),
+  (shortcuts) =>
+    shortcuts.sessionQuickSwitch1() && shortcuts.sessionQuickSwitch9()
+      ? `Pinned sessions are assigned quick slots; use ${shortcutText(shortcuts.sessionQuickSwitch1())} through ${shortcutText(shortcuts.sessionQuickSwitch9())} to switch`
+      : undefined,
   "Run {highlight}/compact{/highlight} to summarize long sessions near context limits",
   (shortcuts) => `Use ${commandText("/export", shortcuts.sessionExport())} to save the conversation as Markdown`,
   (shortcuts) => press(shortcuts.messagesCopy(), "to copy the assistant's last message to clipboard"),

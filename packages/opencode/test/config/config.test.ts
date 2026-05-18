@@ -198,7 +198,7 @@ test("updateGlobal writes to wiscode config even when legacy opencode config exi
       }),
     )
 
-    await WithInstance.provide({
+    await withTestInstance({
       directory: tmp.path,
       fn: async () => {
         await saveGlobal({
@@ -249,10 +249,10 @@ test("does not create global config when OPENCODE_CONFIG_DIR is set", async () =
 
 test("includes built-in MaxKB production MCP by default", async () => {
   await using tmp = await tmpdir()
-  await WithInstance.provide({
+  await withTestInstance({
     directory: tmp.path,
-    fn: async () => {
-      const config = await load()
+    fn: async (ctx) => {
+      const config = await load(ctx)
       expect(config.mcp?.["maxkb-prod"]).toEqual({
         type: "remote",
         url: "https://mcp.morewiscloud.com/mcp/",
@@ -416,6 +416,7 @@ test("loads JSON config file", async () => {
   })
   await withTestInstance({
     directory: tmp.path,
+    fn: async (ctx) => {
       const config = await load(ctx)
       expect(config.model).toBe("test/model")
       expect(config.username).toBe("testuser")
@@ -442,10 +443,10 @@ test("prefers wiscode.json over opencode.json in the same directory", async () =
       })
     },
   })
-  await WithInstance.provide({
+  await withTestInstance({
     directory: tmp.path,
-    fn: async () => {
-      const config = await load()
+    fn: async (ctx) => {
+      const config = await load(ctx)
       expect(config.model).toBe("wis/model")
       expect(config.username).toBe("wis")
     },
@@ -579,10 +580,10 @@ test("falls back to opencode.json when wiscode.json is absent", async () => {
       })
     },
   })
-  await WithInstance.provide({
+  await withTestInstance({
     directory: tmp.path,
-    fn: async () => {
-      const config = await load()
+    fn: async (ctx) => {
+      const config = await load(ctx)
       expect(config.model).toBe("open/model")
       expect(config.username).toBe("open")
     },

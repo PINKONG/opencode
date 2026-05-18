@@ -46,7 +46,8 @@ export function FormatError(input: unknown): string | undefined {
 
   // MCPFailed: { name: string }
   if (NamedError.hasName(input, "MCPFailed")) {
-    return `MCP server "${(input as ErrorLike).data?.name}" failed. Note, WisCode does not support MCP authentication yet.`
+    const data = isRecord(input) && isRecord(input.data) ? stringField(input.data, "name") : undefined
+    return `MCP server "${data}" failed. Note, WisCode does not support MCP authentication yet.`
   }
 
   // AccountServiceError, AccountTransportError: TaggedErrorClass
