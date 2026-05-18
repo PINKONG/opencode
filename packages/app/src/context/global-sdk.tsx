@@ -11,6 +11,25 @@ import { useServer } from "./server"
 const isAbortError = (error: unknown) =>
   error !== null && typeof error === "object" && "name" in error && error.name === "AbortError"
 
+export function shouldUsePlatformEventFetch(input: {
+  platformFetch?: typeof fetch
+  server?: {
+    type: string
+    http: {
+      url: string
+    }
+  }
+}) {
+  if (!input.platformFetch || !input.server) return false
+  try {
+    const url = new URL(input.server.http.url)
+    const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1"
+    return url.protocol === "http:" && !loopback
+  } catch {
+    return false
+  }
+}
+
 export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleContext({
   name: "GlobalSDK",
   init: () => {
@@ -19,16 +38,12 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     const platform = usePlatform()
     const abort = new AbortController()
 
-    const eventFetch = (() => {
-      if (!platform.fetch || !server.current) return
-      try {
-        const url = new URL(server.current.http.url)
-        const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1"
-        if (url.protocol === "http:" && !loopback) return platform.fetch
-      } catch {
-        return
-      }
-    })()
+    const eventFetch = shouldUsePlatformEventFetch({
+      platformFetch: platform.fetch,
+      server: server.current,
+    })
+      ? platform.fetch
+      : undefined
 
     const currentServer = server.current
     if (!currentServer) throw new Error(language.t("error.globalSDK.noServerAvailable"))
