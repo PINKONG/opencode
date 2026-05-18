@@ -1,127 +1,214 @@
 #!/usr/bin/env node
 
-import fs from "fs"
-import path from "path"
-import os from "os"
 import childProcess from "child_process"
-import { fileURLToPath } from "url"
+import fs from "fs"
+import os from "os"
+import path from "path"
 import { createRequire } from "module"
+import { fileURLToPath } from "url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"))
+
 const cli = "wiscode-cli"
-
-function detectPlatformAndArch() {
-  // Map platform names
-  let platform
-  switch (os.platform()) {
-    case "darwin":
-      platform = "darwin"
-      break
-    case "linux":
-      platform = "linux"
-      break
-    case "win32":
-      platform = "windows"
-      break
-    default:
-      platform = os.platform()
-      break
-  }
-
-  // Map architecture names
-  let arch
-  switch (os.arch()) {
-    case "x64":
-      arch = "x64"
-      break
-    case "arm64":
-      arch = "arm64"
-      break
-    case "arm":
-      arch = "arm"
-      break
-    default:
-      arch = os.arch()
-      break
-  }
-
-  return { platform, arch }
+const platformMap = {
+  darwin: "darwin",
+  linux: "linux",
+  win32: "windows",
+}
+const archMap = {
+  x64: "x64",
+  arm64: "arm64",
+  arm: "arm",
 }
 
-function findBinary() {
-  const { platform, arch } = detectPlatformAndArch()
-  const packageName = `${cli}-${platform}-${arch}`
-  const binaryName = platform === "windows" ? `${cli}.exe` : cli
+const platform = platformMap[os.platform()] ?? os.platform()
+const arch = archMap[os.arch()] ?? os.arch()
+const base = `${cli}-${platform}-${arch}`
+const sourceBinary = platform === "windows" ? `${cli}.exe` : cli
+const cachedBinary = path.join(__dirname, "bin", ".wiscode-cli")
 
-  try {
-    // Use require.resolve to find the package
-    const packageJsonPath = require.resolve(`${packageName}/package.json`)
-    const packageDir = path.dirname(packageJsonPath)
-    const binaryPath = path.join(packageDir, "bin", binaryName)
+function supportsAvx2() {
+  if (arch !== "x64") return false
 
-    if (!fs.existsSync(binaryPath)) {
-      throw new Error(`Binary not found at ${binaryPath}`)
-    }
-
-    return { binaryPath, binaryName }
-  } catch (error) {
-    throw new Error(`Could not find package ${packageName}: ${error.message}`, { cause: error })
-  }
-}
-
-async function main() {
-  try {
-    if (os.platform() === "win32") {
-      // On Windows, the .exe is already included in the package and bin field points to it
-      // No postinstall setup needed
-      console.log("Windows detected: binary setup not needed (using packaged .exe)")
-      return
-    }
-
-    // On non-Windows platforms, just verify the binary package exists
-    // Don't replace the wrapper script - it handles binary execution
-    const { binaryPath } = findBinary()
-    const target = path.join(__dirname, "bin", ".wiscode-cli")
-    const temp = path.join(__dirname, "bin", ".wiscode-cli.tmp")
-    if (fs.existsSync(temp)) fs.unlinkSync(temp)
+  if (platform === "linux") {
     try {
-      fs.linkSync(binaryPath, temp)
+      return /(^|\s)avx2(\s|$)/i.test(fs.readFileSync("/proc/cpuinfo", "utf8"))
     } catch {
-      fs.copyFileSync(binaryPath, temp)
+      return false
     }
-    fs.chmodSync(temp, 0o755)
+  }
 
-    if (os.platform() === "darwin") {
-      const verify = childProcess.spawnSync("codesign", ["--verify", "--verbose=2", temp], {
+  if (platform === "darwin") {
+    try {
+      const result = childProcess.spawnSync("sysctl", ["-n", "hw.optional.avx2_0"], {
         encoding: "utf8",
+        timeout: 1500,
       })
-      if (verify.status !== 0) {
-        const remove = childProcess.spawnSync("codesign", ["--remove-signature", temp], {
+      if (result.status !== 0) return false
+      return (result.stdout || "").trim() === "1"
+    } catch {
+      return false
+    }
+  }
+
+  if (platform === "windows") {
+    const command =
+      '(Add-Type -MemberDefinition "[DllImport(""kernel32.dll"")] public static extern bool IsProcessorFeaturePresent(int ProcessorFeature);" -Name Kernel32 -Namespace Win32 -PassThru)::IsProcessorFeaturePresent(40)'
+
+    for (const executable of ["powershell.exe", "pwsh.exe", "pwsh", "powershell"]) {
+      try {
+        const result = childProcess.spawnSync(executable, ["-NoProfile", "-NonInteractive", "-Command", command], {
           encoding: "utf8",
+          timeout: 3000,
+          windowsHide: true,
         })
-        if (remove.status !== 0) {
-          throw new Error(`codesign remove failed: ${(remove.stderr || remove.stdout || "").trim()}`)
-        }
-        const sign = childProcess.spawnSync("codesign", ["--force", "--sign", "-", temp], {
-          encoding: "utf8",
-        })
-        if (sign.status !== 0) {
-          throw new Error(`codesign ad-hoc sign failed: ${(sign.stderr || sign.stdout || "").trim()}`)
-        }
+        if (result.status !== 0) continue
+        const output = (result.stdout || "").trim().toLowerCase()
+        if (output === "true" || output === "1") return true
+        if (output === "false" || output === "0") return false
+      } catch {
+        continue
       }
     }
-
-    fs.renameSync(temp, target)
-  } catch (error) {
-    console.error(`Failed to setup ${cli} binary:`, error.message)
-    process.exit(1)
   }
+
+  return false
+}
+
+function isMusl() {
+  if (platform !== "linux") return false
+
+  try {
+    if (fs.existsSync("/etc/alpine-release")) return true
+  } catch {
+    // Ignore filesystem probes that are blocked by the host.
+  }
+
+  try {
+    const result = childProcess.spawnSync("ldd", ["--version"], { encoding: "utf8" })
+    return `${result.stdout || ""}${result.stderr || ""}`.toLowerCase().includes("musl")
+  } catch {
+    return false
+  }
+}
+
+function packageNames() {
+  const baseline = arch === "x64" && !supportsAvx2()
+
+  if (platform === "linux") {
+    if (isMusl()) {
+      if (arch === "x64")
+        return baseline
+          ? [`${base}-baseline-musl`, `${base}-musl`, `${base}-baseline`, base]
+          : [`${base}-musl`, `${base}-baseline-musl`, base, `${base}-baseline`]
+      return [`${base}-musl`, base]
+    }
+
+    if (arch === "x64")
+      return baseline
+        ? [`${base}-baseline`, base, `${base}-baseline-musl`, `${base}-musl`]
+        : [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
+    return [base, `${base}-musl`]
+  }
+
+  if (arch === "x64") return baseline ? [`${base}-baseline`, base] : [base, `${base}-baseline`]
+  return [base]
+}
+
+function resolveBinary(name) {
+  const packageJsonPath = require.resolve(`${name}/package.json`)
+  const binaryPath = path.join(path.dirname(packageJsonPath), "bin", sourceBinary)
+  if (!fs.existsSync(binaryPath)) throw new Error(`Binary not found at ${binaryPath}`)
+  return binaryPath
+}
+
+function copyBinary(source, target) {
+  if (!fs.existsSync(source)) throw new Error(`Binary not found at ${source}`)
+  fs.mkdirSync(path.dirname(target), { recursive: true })
+  if (fs.existsSync(target)) fs.unlinkSync(target)
+  try {
+    fs.linkSync(source, target)
+  } catch {
+    fs.copyFileSync(source, target)
+  }
+  fs.chmodSync(target, 0o755)
+}
+
+function repairMacCodeSignature(target) {
+  if (platform !== "darwin") return
+  const verify = childProcess.spawnSync("codesign", ["--verify", "--verbose=2", target], {
+    encoding: "utf8",
+  })
+  if (verify.status === 0) return
+
+  const remove = childProcess.spawnSync("codesign", ["--remove-signature", target], {
+    encoding: "utf8",
+  })
+  if (remove.status !== 0) {
+    throw new Error(`codesign remove failed: ${(remove.stderr || remove.stdout || "").trim()}`)
+  }
+
+  const sign = childProcess.spawnSync("codesign", ["--force", "--sign", "-", target], {
+    encoding: "utf8",
+  })
+  if (sign.status !== 0) {
+    throw new Error(`codesign ad-hoc sign failed: ${(sign.stderr || sign.stdout || "").trim()}`)
+  }
+}
+
+function verifyBinary(target) {
+  const result = childProcess.spawnSync(target, ["--version"], {
+    encoding: "utf8",
+    stdio: "ignore",
+    windowsHide: true,
+  })
+  return result.status === 0
+}
+
+function installPackage(name) {
+  const version = packageJson.optionalDependencies?.[name]
+  if (!version) return false
+
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "wiscode-install-"))
+  try {
+    const result = childProcess.spawnSync(
+      "npm",
+      ["install", "--ignore-scripts", "--no-save", "--loglevel=error", "--prefix", temp, `${name}@${version}`],
+      { stdio: "inherit", windowsHide: true },
+    )
+    if (result.status !== 0) return false
+    const packageDir = path.join(temp, "node_modules", name)
+    copyBinary(path.join(packageDir, "bin", sourceBinary), cachedBinary)
+    repairMacCodeSignature(cachedBinary)
+    return true
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
+  }
+}
+
+function main() {
+  for (const name of packageNames()) {
+    try {
+      copyBinary(resolveBinary(name), cachedBinary)
+      repairMacCodeSignature(cachedBinary)
+      if (verifyBinary(cachedBinary)) return
+    } catch {
+      if (installPackage(name) && verifyBinary(cachedBinary)) return
+    }
+  }
+
+  throw new Error(
+    `It seems your package manager failed to install the right WisCode CLI package. Try manually installing ${packageNames()
+      .map((name) => JSON.stringify(name))
+      .join(" or ")}.`,
+  )
 }
 
 try {
-  void main()
+  main()
 } catch (error) {
-  console.error("Postinstall script error:", error.message)
-  process.exit(0)
+  console.error(error.message)
+  process.exit(1)
 }

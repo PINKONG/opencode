@@ -1,7 +1,6 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import { createMemo, For, type Accessor } from "solid-js"
 import { DEFAULT_THEMES, useTheme } from "@tui/context/theme"
-import { Flag } from "@opencode-ai/core/flag/flag"
 import { useCommandShortcut } from "../../keymap"
 
 const themeCount = Object.keys(DEFAULT_THEMES).length
@@ -30,8 +29,6 @@ type Shortcuts = {
   messagesToggleConceal: TipShortcut
   modelCycleRecent: TipShortcut
   modelList: TipShortcut
-  sessionCycleRecent: TipShortcut
-  sessionCycleRecentReverse: TipShortcut
   sessionExport: TipShortcut
   sessionInterrupt: TipShortcut
   sessionList: TipShortcut
@@ -42,7 +39,6 @@ type Shortcuts = {
   sessionQuickSwitch9: TipShortcut
   sessionSidebarToggle: TipShortcut
   sessionTimeline: TipShortcut
-  sessionToggleRecent: TipShortcut
   statusView: TipShortcut
   terminalSuspend: TipShortcut
   themeList: TipShortcut
@@ -74,6 +70,7 @@ function parse(tip: string): TipPart[] {
 }
 
 const NO_MODELS_TIP = "Run {highlight}/connect{/highlight} to add an AI provider and start coding"
+const NO_MODELS_PARTS = parse(NO_MODELS_TIP)
 
 function shortcutText(value: string) {
   return `{highlight}${value}{/highlight}`
@@ -122,8 +119,6 @@ export function Tips(props: { api: TuiPluginApi; connected?: boolean }) {
     messagesToggleConceal: configShortcut(props.api, "session.toggle.conceal"),
     modelCycleRecent: useCommandShortcut("model.cycle_recent"),
     modelList: useCommandShortcut("model.list"),
-    sessionCycleRecent: useCommandShortcut("session.cycle_recent"),
-    sessionCycleRecentReverse: useCommandShortcut("session.cycle_recent_reverse"),
     sessionExport: configShortcut(props.api, "session.export"),
     sessionInterrupt: configShortcut(props.api, "session.interrupt"),
     sessionList: useCommandShortcut("session.list"),
@@ -134,7 +129,6 @@ export function Tips(props: { api: TuiPluginApi; connected?: boolean }) {
     sessionQuickSwitch9: useCommandShortcut("session.quick_switch.9"),
     sessionSidebarToggle: configShortcut(props.api, "session.sidebar.toggle"),
     sessionTimeline: configShortcut(props.api, "session.timeline"),
-    sessionToggleRecent: configShortcut(props.api, "session.toggle.recent"),
     statusView: useCommandShortcut("opencode.status"),
     terminalSuspend: useCommandShortcut("terminal.suspend"),
     themeList: useCommandShortcut("theme.switch"),
@@ -146,8 +140,13 @@ export function Tips(props: { api: TuiPluginApi; connected?: boolean }) {
       return value ? [value] : []
     })
     return tips[Math.floor(tipOffset * tips.length)] ?? NO_MODELS_TIP
-  })
-  const parts = createMemo(() => parse(tip()))
+  }, NO_MODELS_TIP)
+  // Solid can expose a memo's initial value while a pure computation is pending.
+  const parts = createMemo(() => {
+    const value = tip()
+    if (typeof value === "string") return parse(value)
+    return NO_MODELS_PARTS
+  }, NO_MODELS_PARTS)
 
   return (
     <box flexDirection="row" maxWidth="100%">
