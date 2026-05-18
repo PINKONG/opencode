@@ -4,12 +4,11 @@ import path from "path"
 const root = path.resolve(import.meta.dirname, "../..")
 
 describe("cli command branding", () => {
-  test("exposes wiscode as the public npm bin command", async () => {
-    const pkg = await Bun.file(path.join(root, "package.json")).json()
+  test("exposes wiscode as the public npm bin command in the published wrapper package", async () => {
+    const script = await Bun.file(path.join(root, "script/publish.ts")).text()
 
-    expect(pkg.bin).toEqual({
-      wiscode: "./bin/opencode",
-    })
+    expect(script).toContain('const cmd = "wiscode"')
+    expect(script).toContain("[cmd]: `./bin/opencode`")
   })
 
   test("publishes wiscode as the public npm package name", async () => {

@@ -408,11 +408,11 @@ describe("HttpApi UI fallback", () => {
 
   it.live("redirects html auth_token requests to embed_session and sets auth cookie", () =>
     Effect.gen(function* () {
-      Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
       const token = btoa("opencode:secret")
       const first = yield* uiApp({
         password: "secret",
         username: "opencode",
+        disableEmbeddedWebUi: true,
         client: httpClient(new Response("<html><head></head><body>ok</body></html>", {
           headers: { "content-type": "text/html" },
         })),
@@ -432,11 +432,11 @@ describe("HttpApi UI fallback", () => {
 
   it.live("uses relative embed_session redirect location and preserves external host", () =>
     Effect.gen(function* () {
-      Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
       const token = btoa("opencode:secret")
       const first = yield* uiApp({
         password: "secret",
         username: "opencode",
+        disableEmbeddedWebUi: true,
         client: httpClient(new Response("<html><head></head><body>ok</body></html>", {
           headers: { "content-type": "text/html" },
         })),
@@ -458,11 +458,11 @@ describe("HttpApi UI fallback", () => {
 
   it.live("accepts follow-up web UI request via embed_session query and injects embed meta", () =>
     Effect.gen(function* () {
-      Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
       const token = btoa("opencode:secret")
       const server = uiApp({
         password: "secret",
         username: "opencode",
+        disableEmbeddedWebUi: true,
         client: httpClient(new Response("<html><head></head><body>ok</body></html>", {
           headers: { "content-type": "text/html" },
         })),
@@ -485,8 +485,11 @@ describe("HttpApi UI fallback", () => {
 
   it.live("rejects invalid embed_session for the web UI", () =>
     Effect.gen(function* () {
-      Flag.OPENCODE_DISABLE_EMBEDDED_WEB_UI = true
-      const response = yield* uiApp({ password: "secret", username: "opencode" }).request("/?embed_session=invalid")
+      const response = yield* uiApp({
+        password: "secret",
+        username: "opencode",
+        disableEmbeddedWebUi: true,
+      }).request("/?embed_session=invalid")
       expect(response.status).toBe(401)
     }),
   )
