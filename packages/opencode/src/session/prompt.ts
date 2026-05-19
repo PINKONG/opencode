@@ -7,20 +7,17 @@ import { SessionRevert } from "./revert"
 import * as Session from "./session"
 import { Agent } from "../agent/agent"
 import { Provider } from "@/provider/provider"
+import { ProviderTransform } from "@/provider/transform"
 import { ModelID, ProviderID } from "../provider/schema"
 import { type Tool as AITool, tool, jsonSchema, type ToolExecutionOptions, asSchema } from "ai"
 import type { JSONSchema7 } from "@ai-sdk/provider"
 import { SessionCompaction } from "./compaction"
 import { Bus } from "../bus"
-import { ProviderTransform } from "@/provider/transform"
 import { SystemPrompt } from "./system"
 import { Instruction } from "./instruction"
 import { Plugin } from "../plugin"
-import PROMPT_PLAN from "../session/prompt/plan.txt"
-import BUILD_SWITCH from "../session/prompt/build-switch.txt"
 import MAX_STEPS from "../session/prompt/max-steps.txt"
 import { ToolRegistry } from "@/tool/registry"
-import { ToolJsonSchema } from "@/tool/json-schema"
 import { MCP } from "../mcp"
 import { LSP } from "@/lsp/lsp"
 import { ulid } from "ulid"
@@ -35,6 +32,7 @@ import { SessionSummary } from "./summary"
 import { NamedError } from "@opencode-ai/core/util/error"
 import { SessionProcessor } from "./processor"
 import { Tool } from "@/tool/tool"
+import { ToolJsonSchema } from "@/tool/json-schema"
 import { Permission } from "@/permission"
 import { SessionStatus } from "./status"
 import { LLM } from "./llm"
@@ -50,8 +48,8 @@ import * as EffectLogger from "@opencode-ai/core/effect/logger"
 import { InstanceState } from "@/effect/instance-state"
 import { TaskTool, type TaskPromptOps } from "@/tool/task"
 import { SessionRunState } from "./run-state"
-import { EffectBridge } from "@/effect/bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { EffectBridge } from "@/effect/bridge"
 import { EventV2 } from "@opencode-ai/core/event"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { SessionEvent } from "@opencode-ai/core/session-event"
@@ -63,6 +61,12 @@ import * as DateTime from "effect/DateTime"
 import { eq } from "@/storage/db"
 import * as Database from "@/storage/db"
 import { SessionTable } from "./session.sql"
+import { referencePromptMetadata, referenceTextPart } from "./prompt/reference"
+import PROMPT_PLAN from "./prompt/plan.txt"
+import BUILD_SWITCH from "./prompt/build-switch.txt"
+import { SessionReminders } from "./reminders"
+import { SessionTools } from "./tools"
+import { LLMEvent } from "@opencode-ai/llm"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -135,88 +139,6 @@ function kbError(result: unknown, key: string) {
 const log = Log.create({ service: "session.prompt" })
 const elog = EffectLogger.create({ service: "session.prompt" })
 
-type ReferencePromptMetadata = {
-  name: string
-  kind: "local" | "git" | "invalid"
-  path?: string
-  repository?: string
-  branch?: string
-  target?: string
-  targetPath?: string
-  problem?: string
-  source: { value: string; start: number; end: number }
-}
-
-function stringField(record: Record<string, unknown>, key: string) {
-  return typeof record[key] === "string" ? record[key] : undefined
-}
-
-function referencePromptMetadata(input: unknown): ReferencePromptMetadata | undefined {
-  if (!input || typeof input !== "object" || Array.isArray(input)) return
-  const record = input as Record<string, unknown>
-  const name = stringField(record, "name")
-  const kind = stringField(record, "kind")
-  if (!name || (kind !== "local" && kind !== "git" && kind !== "invalid")) return
-  if (!record.source || typeof record.source !== "object" || Array.isArray(record.source)) return
-  const source = record.source as Record<string, unknown>
-  const value = stringField(source, "value")
-  if (!value || typeof source.start !== "number" || typeof source.end !== "number") return
-  return {
-    name,
-    kind,
-    path: stringField(record, "path"),
-    repository: stringField(record, "repository"),
-    branch: stringField(record, "branch"),
-    target: stringField(record, "target"),
-    targetPath: stringField(record, "targetPath"),
-    problem: stringField(record, "problem"),
-    source: { value, start: source.start, end: source.end },
-  }
-}
-
-function referenceTextPart(input: {
-  reference: Reference.Resolved
-  source: ReferencePromptMetadata["source"]
-  target?: string
-  targetPath?: string
-  problem?: string
-}): MessageV2.TextPartInput {
-  const metadata: ReferencePromptMetadata = {
-    name: input.reference.name,
-    kind: input.reference.kind,
-    ...(input.reference.kind === "invalid"
-      ? { repository: input.reference.repository }
-      : { path: input.reference.path }),
-    ...(input.reference.kind === "git"
-      ? { repository: input.reference.repository, branch: input.reference.branch }
-      : {}),
-    ...(input.target === undefined ? {} : { target: input.target }),
-    ...(input.targetPath ? { targetPath: input.targetPath } : {}),
-    problem: input.problem ?? (input.reference.kind === "invalid" ? input.reference.message : undefined),
-    source: input.source,
-  }
-  const label = metadata.target === undefined ? `@${metadata.name}` : `@${metadata.name}/${metadata.target}`
-  return {
-    type: "text",
-    synthetic: true,
-    text: [
-      `Referenced configured reference ${label}.`,
-      ...(metadata.kind === "local" ? ["Kind: local directory"] : []),
-      ...(metadata.kind === "git" ? ["Kind: git repository"] : []),
-      ...(metadata.repository ? [`Repository: ${metadata.repository}`] : []),
-      ...(metadata.branch ? [`Branch/ref: ${metadata.branch}`] : []),
-      ...(metadata.path ? [`Reference root: ${metadata.path}`] : []),
-      ...(metadata.targetPath ? [`Resolved path: ${metadata.targetPath}`] : []),
-      ...(metadata.problem
-        ? [`Problem: ${metadata.problem}`]
-        : [
-            "For targeted context, inspect the reference path directly with Read, Glob, and Grep. For broader research, call the task tool with subagent scout and include this reference path.",
-          ]),
-    ].join("\n"),
-    metadata: { reference: metadata },
-  }
-}
-
 export interface Interface {
   readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
   readonly prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Image.Error>
@@ -259,9 +181,6 @@ export const layer = Layer.effect(
     const references = yield* Reference.Service
     const events = yield* EventV2Bridge.Service
     const flags = yield* RuntimeFlags.Service
-    const runner = Effect.fn("SessionPrompt.runner")(function* () {
-      return yield* EffectBridge.make()
-    })
     const ops = Effect.fn("SessionPrompt.ops")(function* () {
       return {
         cancel: (sessionID: SessionID) => cancel(sessionID),
@@ -417,7 +336,7 @@ export const layer = Layer.effect(
           messages: [{ role: "user", content: "Generate a title for this conversation:\n" }, ...msgs],
         })
         .pipe(
-          Stream.filter((e): e is Extract<LLM.Event, { type: "text-delta" }> => e.type === "text-delta"),
+          Stream.filter(LLMEvent.is.textDelta),
           Stream.map((e) => e.text),
           Stream.mkString,
           Effect.orDie,
@@ -582,7 +501,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     }) {
       using _ = log.time("resolveTools")
       const tools: Record<string, AITool> = {}
-      const run = yield* runner()
+      const run = yield* EffectBridge.make()
       const promptOps = yield* ops()
 
       const context = (args: any, options: ToolExecutionOptions): Tool.Context => ({
@@ -761,7 +680,6 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
       return tools
     })
-
     const handleSubtask = Effect.fn("SessionPrompt.handleSubtask")(function* (input: {
       task: MessageV2.SubtaskPart
       model: Provider.Model
@@ -1789,7 +1707,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           }
           const maxSteps = agent.steps ?? Infinity
           const isLastStep = step >= maxSteps
-          msgs = yield* insertReminders({ messages: msgs, agent, session })
+          msgs = yield* SessionReminders.apply({ messages: msgs, agent, session }).pipe(
+            Effect.provideService(RuntimeFlags.Service, flags),
+            Effect.provideService(AppFileSystem.Service, fsys),
+            Effect.provideService(Session.Service, sessions),
+          )
 
           const msg: MessageV2.Assistant = {
             id: MessageID.ascending(),
@@ -1829,16 +1751,23 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           const outcome: "break" | "continue" = yield* Effect.gen(function* () {
             const lastUserMsg = msgs.findLast((m) => m.info.role === "user")
             const bypassAgentCheck = lastUserMsg?.parts.some((p) => p.type === "agent") ?? false
+            const promptOps = yield* ops()
 
-            const tools = yield* resolveTools({
+            const tools = yield* SessionTools.resolve({
               agent,
               session,
               model,
-              tools: lastUser.tools,
               processor: handle,
               bypassAgentCheck,
               messages: msgs,
-            })
+              promptOps,
+            }).pipe(
+              Effect.provideService(Plugin.Service, plugin),
+              Effect.provideService(Permission.Service, permission),
+              Effect.provideService(ToolRegistry.Service, registry),
+              Effect.provideService(MCP.Service, mcp),
+              Effect.provideService(Truncate.Service, truncate),
+            )
 
             if (lastUser.format?.type === "json_schema") {
               tools["StructuredOutput"] = createStructuredOutputTool({
