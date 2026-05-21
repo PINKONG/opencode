@@ -77,6 +77,7 @@ export const DESKTOP_MENU: DesktopMenu[] = [
     items: [
       { type: "item", role: "about" },
       { type: "item", label: "Check for Updates...", action: "app.checkForUpdates", enabled: "updater" },
+      { type: "item", label: "Install CLI...", command: "install-cli", platforms: ["macos"] },
       { type: "item", label: "Settings", command: "settings.open", accelerator: { macos: "Cmd+," } },
       { type: "item", label: "Reload Webview", action: "view.reload" },
       { type: "item", label: "Restart", action: "app.relaunch" },
@@ -112,7 +113,6 @@ export const DESKTOP_MENU: DesktopMenu[] = [
         action: "window.new",
         accelerator: { macos: "Cmd+Shift+N", windows: "Ctrl+Shift+N" },
       },
-      { type: "item", label: "Install CLI...", command: "install-cli", platforms: ["macos"] },
       { type: "separator" },
       { type: "item", label: "Close Window", action: "window.close", role: "close" },
     ],
