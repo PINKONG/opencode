@@ -112,6 +112,7 @@ export const DESKTOP_MENU: DesktopMenu[] = [
         action: "window.new",
         accelerator: { macos: "Cmd+Shift+N", windows: "Ctrl+Shift+N" },
       },
+      { type: "item", label: "Install CLI...", command: "install-cli", platforms: ["macos"] },
       { type: "separator" },
       { type: "item", label: "Close Window", action: "window.close", role: "close" },
     ],
