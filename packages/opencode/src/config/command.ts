@@ -3,6 +3,7 @@ export * as ConfigCommand from "./command"
 import * as Log from "@opencode-ai/core/util/log"
 import { Cause, Exit, Schema } from "effect"
 import { Glob } from "@opencode-ai/core/util/glob"
+import path from "path"
 import { configEntryNameFromPath } from "./entry-name"
 import { InvalidError } from "./error"
 import * as ConfigMarkdown from "./markdown"
@@ -36,15 +37,9 @@ export async function load(dir: string) {
     })
     if (!md) continue
 
-    const patterns = [
-      "/.wiscode/command/",
-      "/.wiscode/commands/",
-      "/.opencode/command/",
-      "/.opencode/commands/",
-      "/command/",
-      "/commands/",
-    ]
-    const name = configEntryNameFromPath(item, patterns)
+    const relativePath = path.relative(dir, item)
+    const patterns = ["command/", "commands/"]
+    const name = configEntryNameFromPath(relativePath, patterns)
 
     const config = {
       name,

@@ -1,6 +1,7 @@
 export * as ConfigAgent from "./agent"
 
 import { Exit, Schema, SchemaGetter } from "effect"
+import path from "path"
 import { PositiveInt } from "@opencode-ai/core/schema"
 import * as Log from "@opencode-ai/core/util/log"
 import { Glob } from "@opencode-ai/core/util/glob"
@@ -116,8 +117,9 @@ export async function load(dir: string) {
     })
     if (!md) continue
 
-    const patterns = ["/.wiscode/agent/", "/.wiscode/agents/", "/.opencode/agent/", "/.opencode/agents/", "/agent/", "/agents/"]
-    const name = configEntryNameFromPath(item, patterns)
+    const relativePath = path.relative(dir, item)
+    const patterns = ["agent/", "agents/"]
+    const name = configEntryNameFromPath(relativePath, patterns)
 
     const config = {
       name,
@@ -143,8 +145,9 @@ export async function loadMode(dir: string) {
     })
     if (!md) continue
 
+    const relativePath = path.relative(dir, item)
     const config = {
-      name: configEntryNameFromPath(item, []),
+      name: configEntryNameFromPath(relativePath, []),
       ...md.data,
       prompt: md.content.trim(),
     }

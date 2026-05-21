@@ -19,6 +19,14 @@
 - For Solid UI merges, be extra careful with `<Show>` render-function children, keyed vs non-keyed control flow, leaked accessors, and non-null assertions over dynamic values.
 - Do not conclude an upstream merge until package-level typecheck, focused tests, and a desktop smoke test have completed.
 
+## Commits and PR Titles
+
+Use conventional commit-style messages and PR titles: `type(scope): summary`.
+
+Valid types are `feat`, `fix`, `docs`, `chore`, `refactor`, and `test`. Scopes are optional; use the affected package or area when helpful, e.g. `core`, `opencode`, `tui`, `app`, `desktop`, `sdk`, or `plugin`.
+
+Examples: `fix(tui): simplify thinking toggle styling`, `docs: update contributing guide`, `chore(sdk): regenerate types`.
+
 ## Style Guide
 
 ### General Principles

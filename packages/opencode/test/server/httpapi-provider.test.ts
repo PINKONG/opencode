@@ -5,7 +5,7 @@ import path from "path"
 import { Server } from "../../src/server/server"
 import * as Log from "@opencode-ai/core/util/log"
 import { resetDatabase } from "../fixture/db"
-import { TestInstance } from "../fixture/fixture"
+import { reloadTestInstance, TestInstance } from "../fixture/fixture"
 import { markPluginDependenciesReady } from "../fixture/plugin"
 import { testEffect } from "../lib/effect"
 
@@ -284,11 +284,32 @@ function setEnvScoped(key: string, value: string) {
 }
 
 describe("provider HttpApi", () => {
+  it.instance.skip(
+    "returns public v2 provider not found errors",
+    Effect.gen(function* () {
+      const instance = yield* TestInstance
+      const response = yield* Effect.promise(() =>
+        Promise.resolve(
+          app().request("/api/provider/missing", { headers: { "x-opencode-directory": instance.directory } }),
+        ),
+      )
+
+      expect(response.status).toBe(404)
+      expect(yield* Effect.promise(() => response.json())).toEqual({
+        _tag: "ProviderNotFoundError",
+        providerID: "missing",
+        message: "Provider not found: missing",
+      })
+    }),
+    projectOptions,
+  )
+
   it.instance(
     "serves OAuth authorize response shapes",
     Effect.gen(function* () {
       const instance = yield* TestInstance
       yield* writeProviderAuthPlugin(instance.directory)
+      yield* Effect.promise(() => reloadTestInstance({ directory: instance.directory }))
       const headers = { "x-opencode-directory": instance.directory, "content-type": "application/json" }
       const server = app()
 
@@ -321,6 +342,7 @@ describe("provider HttpApi", () => {
     Effect.gen(function* () {
       const instance = yield* TestInstance
       yield* writeProviderAuthValidationPlugin(instance.directory)
+      yield* Effect.promise(() => reloadTestInstance({ directory: instance.directory }))
       const response = yield* requestAuthorize({
         app: app(),
         providerID: "test-oauth-validation",
@@ -365,6 +387,7 @@ describe("provider HttpApi", () => {
     Effect.gen(function* () {
       const instance = yield* TestInstance
       yield* writeFunctionOptionsPlugin(instance.directory)
+      yield* Effect.promise(() => reloadTestInstance({ directory: instance.directory }))
       yield* setEnvScoped(
         "OPENCODE_AUTH_CONTENT",
         JSON.stringify({
@@ -396,6 +419,7 @@ describe("provider HttpApi", () => {
     Effect.gen(function* () {
       const instance = yield* TestInstance
       yield* writeProviderModelsMutationPlugin(instance.directory)
+      yield* Effect.promise(() => reloadTestInstance({ directory: instance.directory }))
 
       const headers = { "x-opencode-directory": instance.directory }
       const providerResponse = yield* Effect.promise(() => Promise.resolve(app().request("/provider", { headers })))

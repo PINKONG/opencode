@@ -305,7 +305,6 @@ function wireMenu() {
     checkForUpdates: () => {
       void checkForUpdates(true)
     },
-    reload: () => mainWindow?.reload(),
     relaunch: () => {
       void killSidecar().finally(() => {
         app.relaunch()
