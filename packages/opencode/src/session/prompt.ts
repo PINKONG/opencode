@@ -1600,7 +1600,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const message = yield* createUserMessage(input)
       yield* sessions.touch(input.sessionID)
 
-      const permissions: Permission.Ruleset = []
+      const permissions: Permission.Rule[] = []
       for (const [t, enabled] of Object.entries(input.tools ?? {})) {
         permissions.push({ permission: t, action: enabled ? "allow" : "deny", pattern: "*" })
       }

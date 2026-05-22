@@ -192,6 +192,12 @@ export const SettingsGeneral: Component = () => {
     { initialValue: null as DisplayBackend | null },
   )
 
+  const [pinchZoom, { mutate: setPinchZoom }] = createResource(
+    () => (desktop() && platform.getPinchZoomEnabled ? true : false),
+    () => Promise.resolve(platform.getPinchZoomEnabled?.() ?? false).catch(() => false),
+    { initialValue: false },
+  )
+
   onMount(() => {
     void theme.loadThemes()
   })
@@ -236,6 +242,13 @@ export const SettingsGeneral: Component = () => {
     void update.finally(() => {
       void refetchDisplayBackend()
     })
+  }
+
+  const onPinchZoomChange = (checked: boolean) => {
+    setPinchZoom(checked)
+    const update = platform.setPinchZoomEnabled?.(checked)
+    if (!update) return
+    void update.catch(() => setPinchZoom(!checked))
   }
 
   const colorSchemeOptions = createMemo((): { value: ColorScheme; label: string }[] => [
@@ -946,6 +959,44 @@ export const SettingsGeneral: Component = () => {
     </Show>
   )
 
+  const DisplaySection = () => (
+    <Show when={desktop()}>
+      <div class="flex flex-col gap-1">
+        <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.display")}</h3>
+
+        <SettingsList>
+          <SettingsRow
+            title={language.t("settings.general.row.pinchZoom.title")}
+            description={language.t("settings.general.row.pinchZoom.description")}
+          >
+            <div data-action="settings-pinch-zoom">
+              <Switch checked={pinchZoom.latest} onChange={onPinchZoomChange} />
+            </div>
+          </SettingsRow>
+
+          <Show when={linux()}>
+            <SettingsRow
+              title={
+                <div class="flex items-center gap-2">
+                  <span>{language.t("settings.general.row.wayland.title")}</span>
+                  <Tooltip value={language.t("settings.general.row.wayland.tooltip")} placement="top">
+                    <span class="text-text-weak">
+                      <Icon name="help" size="small" />
+                    </span>
+                  </Tooltip>
+                </div>
+              }
+              description={language.t("settings.general.row.wayland.description")}
+            >
+              <div data-action="settings-wayland">
+                <Switch checked={displayBackend.latest === "wayland"} onChange={onDisplayBackendChange} />
+              </div>
+            </SettingsRow>
+          </Show>
+        </SettingsList>
+      </div>
+    </Show>
+  )
   return (
     <div class="flex flex-col h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10">
       <div class="sticky top-0 z-10 bg-[linear-gradient(to_bottom,var(--surface-stronger-non-alpha)_calc(100%_-_24px),transparent)]">
@@ -966,32 +1017,7 @@ export const SettingsGeneral: Component = () => {
         <UpdatesSection />
 
         <SidecarLanSection />
-
-        <Show when={linux()}>
-          <div class="flex flex-col gap-1">
-            <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.general.section.display")}</h3>
-
-            <SettingsList>
-              <SettingsRow
-                title={
-                  <div class="flex items-center gap-2">
-                    <span>{language.t("settings.general.row.wayland.title")}</span>
-                    <Tooltip value={language.t("settings.general.row.wayland.tooltip")} placement="top">
-                      <span class="text-text-weak">
-                        <Icon name="help" size="small" />
-                      </span>
-                    </Tooltip>
-                  </div>
-                }
-                description={language.t("settings.general.row.wayland.description")}
-              >
-                <div data-action="settings-wayland">
-                  <Switch checked={displayBackend.latest === "wayland"} onChange={onDisplayBackendChange} />
-                </div>
-              </SettingsRow>
-            </SettingsList>
-          </div>
-        </Show>
+        <DisplaySection />
 
         <Show when={desktop() && import.meta.env.VITE_OPENCODE_CHANNEL === "beta"}>
           <AdvancedSection />

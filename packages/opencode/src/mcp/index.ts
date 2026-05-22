@@ -1,5 +1,6 @@
 import { dynamicTool, type Tool, jsonSchema, type JSONSchema7 } from "ai"
 import fs from "node:fs"
+import { serviceUse } from "@/effect/service-use"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
@@ -271,6 +272,8 @@ export interface Interface {
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/MCP") {}
+
+export const use = serviceUse(Service)
 
 export const layer = Layer.effect(
   Service,

@@ -15,13 +15,7 @@ import { usePermission } from "@/context/permission"
 import { messageAgentColor } from "@/utils/agent"
 import { sessionTitle } from "@/utils/session-title"
 import { sessionPermissionRequest } from "../session/composer/session-request-tree"
-import { childSessionOnPath, hasProjectPermissions } from "./helpers"
-
-export function getProjectAvatarSource(id?: string, icon?: { color?: string; url?: string; override?: string }) {
-  if (icon?.override) return icon?.override
-  if (icon?.color) return undefined
-  return icon?.url
-}
+import { childSessionOnPath, getProjectAvatarSource, hasProjectPermissions } from "./helpers"
 
 export const ProjectIcon = (props: {
   project: LocalProject
