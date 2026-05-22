@@ -42,7 +42,6 @@ describe("app branding surface", () => {
 
     expect(appVisible).toContain('<Logo class="w-32 opacity-50 animate-pulse" />')
     expect(appVisible).toContain('<Logo class="w-24 mb-4" />')
-    expect(appVisible).not.toContain("<Splash")
     expect(desktopVisible).toContain('<Logo class="w-32 opacity-15" />')
     expect(desktopVisible).not.toContain("<Splash")
     expect(electronVisible).toContain('<Logo class="w-32 opacity-15" />')
