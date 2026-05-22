@@ -71,8 +71,6 @@ const APP_IDS: Record<string, string> = {
 const TEST_ONBOARDING = process.env.OPENCODE_TEST_ONBOARDING === "1"
 const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
 
-process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"
-
 const appId = app.isPackaged ? APP_IDS[CHANNEL] : "ai.wiscode.desktop.dev"
 const onboardingTestRoot = setupOnboardingTestEnv()
 app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : "WisCode Dev")

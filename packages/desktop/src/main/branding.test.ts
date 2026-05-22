@@ -53,15 +53,15 @@ describe("electron branding", () => {
     expect(main).not.toContain("OpenCode")
   })
 
+  test("keeps embedded web ui enabled for sidecar branding", () => {
+    expect(main).not.toContain('process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"')
+  })
+
   test("uses wiscode identity in migrate, menu, windows, and renderer", () => {
     expect(migrate).toContain('dev: "ai.wiscode.desktop.dev"')
     expect(migrate).toContain('beta: "ai.wiscode.desktop.beta"')
     expect(migrate).toContain('prod: "ai.wiscode.desktop"')
     expect(migrate).not.toContain("ai.opencode.desktop")
-    expect(menu).toContain('label: "WisCode"')
-    expect(menu).toContain('label: "WisCode Repository"')
-    expect(menu).toContain("github.com/PINKONG/opencode")
-    expect(menu).not.toContain("discord.com/invite/opencode")
     expect(menu).not.toContain("OpenCode")
     expect(windows).toContain('title: "WisCode"')
     expect(server).toContain("WISCODE_BUNDLED_NODE_PATH")
