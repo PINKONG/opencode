@@ -7,13 +7,13 @@ let params: { dir?: string } = {}
 let projectReady = true
 
 const globalProvider = {
-  all: [{ id: "openai", models: { "gpt-4.1": {} } }],
+  all: new Map([["openai", { id: "openai", models: { "gpt-4.1": {} } }]]),
   connected: ["openai"],
   default: { openai: "gpt-4.1" },
 }
 
 const projectProvider = {
-  all: [{ id: "anthropic", models: { "claude-3-7-sonnet": {} } }],
+  all: new Map([["anthropic", { id: "anthropic", models: { "claude-3-7-sonnet": {} } }]]),
   connected: ["anthropic"],
   default: { anthropic: "claude-3-7-sonnet" },
 }
@@ -47,7 +47,7 @@ describe("useProviders", () => {
   test("uses project providers when project store is ready", () => {
     const ids = createRoot((dispose) => {
       const providers = useProviders()
-      const value = providers.all().map((item) => item.id)
+      const value = [...providers.all().values()].map((item) => item.id)
       dispose()
       return value
     })
@@ -59,7 +59,7 @@ describe("useProviders", () => {
     projectReady = false
     const ids = createRoot((dispose) => {
       const providers = useProviders()
-      const value = providers.all().map((item) => item.id)
+      const value = [...providers.all().values()].map((item) => item.id)
       dispose()
       return value
     })
@@ -71,7 +71,7 @@ describe("useProviders", () => {
     params = {}
     const ids = createRoot((dispose) => {
       const providers = useProviders()
-      const value = providers.all().map((item) => item.id)
+      const value = [...providers.all().values()].map((item) => item.id)
       dispose()
       return value
     })

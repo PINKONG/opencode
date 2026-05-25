@@ -50,7 +50,6 @@ import { TaskTool, type TaskPromptOps } from "@/tool/task"
 import { SessionRunState } from "./run-state"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EffectBridge } from "@/effect/bridge"
-import { EventV2 } from "@opencode-ai/core/event"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { SessionEvent } from "@opencode-ai/core/session-event"
 import { ModelV2 } from "@opencode-ai/core/model"
@@ -1067,7 +1066,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         .findMessage(sessionID, (m) => m.info.role === "user" && !!m.info.model)
         .pipe(Effect.orDie)
       if (Option.isSome(match) && match.value.info.role === "user") return match.value.info.model
-      return yield* provider.defaultModel()
+      return yield* provider.defaultModel().pipe(Effect.orDie)
     })
 
     const createUserMessage = Effect.fn("SessionPrompt.createUserMessage")(function* (input: PromptInput) {

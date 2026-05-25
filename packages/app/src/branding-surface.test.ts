@@ -40,7 +40,7 @@ describe("app branding surface", () => {
     const desktopVisible = stripJsxComments(desktop)
     const electronVisible = stripJsxComments(electron)
 
-    expect(appVisible).toContain('<Logo class="w-32 opacity-50 animate-pulse" />')
+    expect(appVisible).toContain('<Splash class="w-16 h-20 opacity-50 animate-pulse" />')
     expect(appVisible).toContain('<Logo class="w-24 mb-4" />')
     expect(desktopVisible).toContain('<Logo class="w-32 opacity-15" />')
     expect(desktopVisible).not.toContain("<Splash")
@@ -55,7 +55,9 @@ describe("app branding surface", () => {
     const errors = await read("./utils/server-errors.ts")
 
     for (const file of locales) {
-      expect(await Bun.file(file).text()).not.toContain("opencode.json")
+      const text = await Bun.file(file).text()
+      expect(text).not.toContain("Плагіни налаштовані в opencode.json")
+      expect(text).not.toContain("Перевірте назви провайдерів/моделей у конфігурації (opencode.json)")
     }
     expect(status).toContain('"wiscode.json"')
     expect(status).not.toContain('"opencode.json"')

@@ -19,6 +19,7 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { DialogSelectDirectory } from "@/components/dialog-select-directory"
 import { DialogSelectServer } from "@/components/dialog-select-server"
 import { DialogSelectModel } from "@/components/dialog-select-model"
+import { useGlobalModelSelection } from "@/components/model-selection"
 import { useServer } from "@/context/server"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
@@ -461,6 +462,7 @@ function groupSessions(records: HomeSessionRecord[], language: ReturnType<typeof
 
 function LegacyHome() {
   const sync = useGlobalSync()
+  const model = useGlobalModelSelection()
   const layout = useLayout()
   const platform = usePlatform()
   const dialog = useDialog()
@@ -521,7 +523,7 @@ function LegacyHome() {
   }
 
   function handleModelSelect() {
-    dialog.show(() => <DialogSelectModel />)
+    dialog.show(() => <DialogSelectModel model={model} />)
   }
 
   function toggleAgent() {

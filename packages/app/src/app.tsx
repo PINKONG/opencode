@@ -53,21 +53,19 @@ const loadSession = () => import("@/pages/session")
 const Session = lazy(loadSession)
 const Loading = () => <div class="size-full" />
 
-if (typeof location === "object" && /\/session(?:\/|$)/.test(location.pathname)) {
-  void loadSession()
-}
-
-const SessionRoute = () => (
-  <SessionProviders>
-    <Session />
-  </SessionProviders>
+const SessionRoute = Object.assign(
+  () => (
+    <SessionProviders>
+      <Session />
+    </SessionProviders>
+  ),
+  { preload: Session.preload },
 )
 
 const SessionIndexRoute = () => <Navigate href="session" />
 const KnowledgeIndexRoute = () => <Knowledge />
 const KnowledgeDatasetRoute = () => <Knowledge />
 const KnowledgeDocumentRoute = () => <Knowledge />
-
 function UiI18nBridge(props: ParentProps) {
   const language = useLanguage()
   return <I18nProvider value={{ locale: language.intl, t: language.t }}>{props.children}</I18nProvider>

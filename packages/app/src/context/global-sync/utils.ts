@@ -1,4 +1,5 @@
 import type { Agent, Project, ProviderListResponse } from "@opencode-ai/sdk/v2/client"
+import { NormalizedProviderListResponse } from "@opencode-ai/ui/context"
 export { pathKey as directoryKey, type PathKey as DirectoryKey } from "@/utils/path-key"
 
 export const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
@@ -27,7 +28,7 @@ export function normalizeAgentList(input: unknown): Agent[] {
   return Object.values(input).filter(isAgent)
 }
 
-export function normalizeProviderList(input: unknown): ProviderListResponse {
+export function normalizeProviderList(input: unknown): NormalizedProviderListResponse {
   const item =
     input && typeof input === "object" && !Array.isArray(input)
       ? (input as {
@@ -36,7 +37,7 @@ export function normalizeProviderList(input: unknown): ProviderListResponse {
           default?: unknown
         })
       : undefined
-  return {
+  const normalized: ProviderListResponse = {
     all: normalizeList<ProviderListResponse["all"][number]>(item?.all)
       .filter(isProvider)
       .map((provider) => ({
@@ -48,6 +49,10 @@ export function normalizeProviderList(input: unknown): ProviderListResponse {
       item?.default && typeof item.default === "object" && !Array.isArray(item.default)
         ? (item.default as ProviderListResponse["default"])
         : {},
+  }
+  return {
+    ...normalized,
+    all: new Map(normalized.all.map((provider) => [provider.id, provider] as const)),
   }
 }
 
