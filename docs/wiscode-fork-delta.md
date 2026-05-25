@@ -258,6 +258,35 @@
 - [packages/app/src/util/server-access-url.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/util/server-access-url.ts)
 - [packages/app/src/util/embed-session.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/util/embed-session.ts)
 - [packages/app/src/context/server.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/context/server.tsx)
+
+## 12. Home 页模型选择崩溃补丁
+
+### 当前状态
+
+- WisCode 目前有一个 fork 侧兼容补丁，用来规避上游 `v1.15.9` 暴露出的 home 页模型选择崩溃
+- 根因是 `/` 根路由中的 home 页面直接打开模型选择对话框，而该对话框默认依赖 `LocalProvider`
+- `LocalProvider` 只在目录路由中存在，因此会触发 `must be used within a context provider` 运行时错误
+
+### 当前落点
+
+- [packages/app/src/pages/home.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/home.tsx)
+- [packages/app/src/components/dialog-select-model.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/dialog-select-model.tsx)
+- [packages/app/src/components/model-selection.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/model-selection.ts)
+- [packages/app/src/components/model-selection.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/model-selection.test.ts)
+- [packages/app/src/pages/home.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/home.test.ts)
+
+### 合并时注意
+
+- 这不是长期必须保留的品牌/配置分叉语义，而是一个当前阶段的兼容补丁
+- 如果上游后续官方修复该问题，应该以上游最终修复为准，而不是机械保留 WisCode 现有 `useGlobalModelSelection()` 实现
+- 合并时需要重新比较两边语义：
+  - 上游是否把 home 模型入口移入正确 provider
+  - 上游是否给模型对话框补了无 provider 安全路径
+  - 上游是否改了 home 页模型交互本身
+- 判断标准不是“保住我们的补丁”，而是保住正确行为：
+  - home 页点击 `Model` 不崩
+  - session 页继续使用 `local.model`
+  - 最终行为与上游正式设计一致
 - [packages/app/src/utils/server.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/utils/server.ts)
 - [packages/opencode/src/server/middleware.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/middleware.ts)
 - [packages/opencode/src/server/embed-session.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/embed-session.ts)

@@ -101,6 +101,11 @@
 ### 4. Solid 响应式代码要额外谨慎
 
 这次 `v1.4.8` 合并的启动回归来自 Solid 组件写法变化。
+这次 `v1.15.9` 合并还暴露过一个 home 路由 provider 边界回归：
+- `packages/app/src/pages/home.tsx` 在 `/` 根路由直接弹出模型选择对话框
+- `packages/app/src/components/dialog-select-model.tsx` 默认依赖 `useLocal().model`
+- `LocalProvider` 只在目录路由中存在
+- 结果是点击 home 页 `Model` 按钮直接因缺少 provider 崩溃
 
 合并 Solid 前端代码时，重点检查：
 - `<Show>{(value) => ...}</Show>` 的 render-function 子节点
@@ -108,11 +113,14 @@
 - `project()!`、`session()!` 这类非空断言
 - 把动态 accessor 直接传给依赖稳定对象的子组件
 - keyed / non-keyed 控制流是否被改掉
+- home / 根路由里弹出的 dialog、popover、selector 是否偷偷依赖了只在目录或 session 路由存在的 context/provider
 
 经验规则：
 - 如果子树依赖“当前对象实例”稳定存在，优先用 `keyed`
 - 如果只是条件显示，不要把 `<Show>` 提供的 accessor 泄露到组件外部
 - 不要为了“过 typecheck”用 `!` 硬顶运行时空值
+- 如果某个 UI 在 home 根路由可触发，不要默认它一定跑在 `LocalProvider` / `SDKProvider` / `Session` 相关 provider 内
+- 合并后要人工点一遍 home 页的 `Model`、目录选择、server 选择等入口，确认不会出现 “must be used within a context provider” 这类运行时崩溃
 
 ### 5. 全局配置目录与内置知识库 MCP 不能回退
 
