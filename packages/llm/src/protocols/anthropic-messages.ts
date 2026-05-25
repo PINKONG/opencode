@@ -335,7 +335,8 @@ const lowerToolResultContent = Effect.fn("AnthropicMessages.lowerToolResultConte
   // Text / json / error results stay as a string for backward compatibility
   // with existing cassettes and provider expectations.
   if (part.result.type !== "content") return ProviderShared.toolResultText(part)
-  const content = part.result.value as ToolResultContentPart[]
+  // Preserve the narrowed array element type when compiled through a consumer package.
+  const content: ReadonlyArray<ToolResultContentPart> = part.result.value
   return yield* Effect.forEach(content, lowerToolResultContentItem)
 })
 

@@ -263,22 +263,21 @@
 
 ### 当前状态
 
-- WisCode 目前有一个 fork 侧兼容补丁，用来规避上游 `v1.15.9` 暴露出的 home 页模型选择崩溃
+- 这个问题最初由上游 `v1.15.9` 的 home 路由 provider 边界缺陷暴露出来
 - 根因是 `/` 根路由中的 home 页面直接打开模型选择对话框，而该对话框默认依赖 `LocalProvider`
 - `LocalProvider` 只在目录路由中存在，因此会触发 `must be used within a context provider` 运行时错误
+- WisCode 曾短期引入 `useGlobalModelSelection()` 作为兼容补丁
+- 到上游 `v1.15.10` 时，home 页面交互已重构，相关临时补丁已回收，不再作为当前代码落点保留
 
 ### 当前落点
 
 - [packages/app/src/pages/home.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/home.tsx)
 - [packages/app/src/components/dialog-select-model.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/dialog-select-model.tsx)
-- [packages/app/src/components/model-selection.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/model-selection.ts)
-- [packages/app/src/components/model-selection.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/model-selection.test.ts)
-- [packages/app/src/pages/home.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/pages/home.test.ts)
 
 ### 合并时注意
 
 - 这不是长期必须保留的品牌/配置分叉语义，而是一个当前阶段的兼容补丁
-- 如果上游后续官方修复该问题，应该以上游最终修复为准，而不是机械保留 WisCode 现有 `useGlobalModelSelection()` 实现
+- 这个问题在 `v1.15.10` 已经按“以上游最终修复为准”的原则处理，WisCode 不再保留 `useGlobalModelSelection()` 落地实现
 - 合并时需要重新比较两边语义：
   - 上游是否把 home 模型入口移入正确 provider
   - 上游是否给模型对话框补了无 provider 安全路径
