@@ -11,6 +11,8 @@ import { decode64 } from "@/utils/base64"
 import { formatServerError } from "@/utils/server-errors"
 import { safeSessionSync } from "@/utils/session-sync"
 
+export const decodeDirectory = (dir: string) => decode64(dir) ?? ""
+
 function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -58,7 +60,7 @@ export default function Layout(props: ParentProps) {
 
   const resolved = createMemo(() => {
     if (!params.dir) return ""
-    return decode64(params.dir) ?? ""
+    return decodeDirectory(params.dir)
   })
 
   createEffect(() => {

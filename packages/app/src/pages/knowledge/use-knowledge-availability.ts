@@ -1,10 +1,10 @@
 import { createQuery } from "@tanstack/solid-query"
 import { createMemo } from "solid-js"
-import { useGlobalSDK } from "@/context/global-sdk"
+import { useServerSDK } from "@/context/server-sdk"
 import { knowledgeAvailabilityKey, loadKnowledgeAvailability } from "./helpers"
 
 export function useKnowledgeAvailability(dir: () => string | undefined) {
-  const sdk = useGlobalSDK()
+  const sdk = useServerSDK()
   const path = createMemo(() => dir()?.trim())
   const retry = (count: number) => count < 1
 

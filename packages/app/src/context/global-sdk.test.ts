@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { shouldUsePlatformEventFetch } from "./global-sdk"
+import { shouldUsePlatformEventFetch } from "./server-sdk"
 
 describe("shouldUsePlatformEventFetch", () => {
   test("does not use platform fetch for loopback sidecar event streams", () => {
@@ -8,6 +8,7 @@ describe("shouldUsePlatformEventFetch", () => {
         platformFetch: fetch,
         server: {
           type: "sidecar",
+          variant: "base",
           http: {
             url: "http://127.0.0.1:53796",
           },

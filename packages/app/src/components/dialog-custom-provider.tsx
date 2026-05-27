@@ -8,8 +8,9 @@ import { TextField } from "@opencode-ai/ui/text-field"
 import { showToast } from "@opencode-ai/ui/toast"
 import { batch, For } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { useGlobalSDK } from "@/context/global-sdk"
-import { useGlobalSync } from "@/context/global-sync"
+import { Link } from "@/components/link"
+import { useServerSDK } from "@/context/server-sdk"
+import { useServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
 import { type FormState, headerRow, modelRow, validateCustomProvider } from "./dialog-custom-provider-form"
 import { DialogSelectProvider } from "./dialog-select-provider"
@@ -20,8 +21,8 @@ type Props = {
 
 export function DialogCustomProvider(props: Props) {
   const dialog = useDialog()
-  const globalSync = useGlobalSync()
-  const globalSDK = useGlobalSDK()
+  const serverSync = useServerSync()
+  const serverSDK = useServerSDK()
   const language = useLanguage()
 
   const [form, setForm] = createStore<FormState>({
@@ -104,8 +105,8 @@ export function DialogCustomProvider(props: Props) {
     const output = validateCustomProvider({
       form,
       t: language.t,
-      disabledProviders: globalSync.data.config.disabled_providers ?? [],
-      existingProviderIDs: new Set(globalSync.data.provider.all.keys()),
+      disabledProviders: serverSync.data.config.disabled_providers ?? [],
+      existingProviderIDs: new Set(serverSync.data.provider.all.keys()),
     })
     batch(() => {
       setForm("err", output.err)
@@ -117,11 +118,11 @@ export function DialogCustomProvider(props: Props) {
 
   const saveMutation = useMutation(() => ({
     mutationFn: async (result: NonNullable<ReturnType<typeof validate>>) => {
-      const disabledProviders = globalSync.data.config.disabled_providers ?? []
+      const disabledProviders = serverSync.data.config.disabled_providers ?? []
       const nextDisabled = disabledProviders.filter((id) => id !== result.providerID)
 
       if (result.key) {
-        await globalSDK.client.auth.set({
+        await serverSDK.client.auth.set({
           providerID: result.providerID,
           auth: {
             type: "api",
@@ -130,7 +131,7 @@ export function DialogCustomProvider(props: Props) {
         })
       }
 
-      await globalSync.updateConfig({
+      await serverSync.updateConfig({
         provider: { [result.providerID]: result.config },
         disabled_providers: nextDisabled,
       })
@@ -180,6 +181,14 @@ export function DialogCustomProvider(props: Props) {
         </div>
 
         <form onSubmit={save} class="px-2.5 pb-6 flex flex-col gap-6">
+          <p class="text-14-regular text-text-base">
+            {language.t("provider.custom.description.prefix")}
+            <Link href="https://opencode.ai/docs/providers/#custom-provider" tabIndex={-1}>
+              {language.t("provider.custom.description.link")}
+            </Link>
+            {language.t("provider.custom.description.suffix")}
+          </p>
+
           <div class="flex flex-col gap-4">
             <TextField
               autofocus

@@ -6,7 +6,7 @@ import { FileComponentProvider } from "@opencode-ai/ui/context/file"
 import { MarkedProvider } from "@opencode-ai/ui/context/marked"
 import { File } from "@opencode-ai/ui/file"
 import { Font } from "@opencode-ai/ui/font"
-import { Logo, Splash } from "@opencode-ai/ui/logo"
+import { Splash } from "@opencode-ai/ui/logo"
 import { ThemeProvider } from "@opencode-ai/ui/theme/context"
 import { MetaProvider } from "@solidjs/meta"
 import { type BaseRouterProps, Navigate, Route, Router } from "@solidjs/router"
@@ -30,8 +30,8 @@ import { Dynamic } from "solid-js/web"
 import { CommandProvider } from "@/context/command"
 import { CommentsProvider } from "@/context/comments"
 import { FileProvider } from "@/context/file"
-import { GlobalSDKProvider } from "@/context/global-sdk"
-import { GlobalSyncProvider } from "@/context/global-sync"
+import { ServerSDKProvider } from "@/context/server-sdk"
+import { ServerSyncProvider } from "@/context/server-sync"
 import { HighlightsProvider } from "@/context/highlights"
 import { LanguageProvider, type Locale, useLanguage } from "@/context/language"
 import { LayoutProvider } from "@/context/layout"
@@ -46,12 +46,16 @@ import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
+import { ServersProvider } from "./context/servers"
+
+if (import.meta.env.VITE_OPENCODE_CHANNEL !== "prod") {
+  document.body.classList.remove("text-12-regular")
+  document.body.classList.add("font-(family-name:--font-family-text)", "text-[13px]", "font-[440]")
+}
 
 const HomeRoute = lazy(() => import("@/pages/home"))
 const Knowledge = lazy(() => import("@/pages/knowledge"))
-const loadSession = () => import("@/pages/session")
-const Session = lazy(loadSession)
-const Loading = () => <div class="size-full" />
+const Session = lazy(() => import("@/pages/session"))
 
 const SessionRoute = Object.assign(
   () => (
@@ -62,10 +66,10 @@ const SessionRoute = Object.assign(
   { preload: Session.preload },
 )
 
-const SessionIndexRoute = () => <Navigate href="session" />
 const KnowledgeIndexRoute = () => <Knowledge />
 const KnowledgeDatasetRoute = () => <Knowledge />
 const KnowledgeDocumentRoute = () => <Knowledge />
+
 function UiI18nBridge(props: ParentProps) {
   const language = useLanguage()
   return <I18nProvider value={{ locale: language.intl, t: language.t }}>{props.children}</I18nProvider>
@@ -253,7 +257,7 @@ function ConnectionError(props: { onRetry?: () => void; onServerSelected?: (key:
   return (
     <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base gap-6 p-6">
       <div class="flex flex-col items-center max-w-md text-center">
-        <Logo class="w-24 mb-4" />
+        <Splash class="w-12 h-15 mb-4" />
         <p class="text-14-regular text-text-base">
           {unreachable()[0]}
           <span class="text-text-strong font-medium">{name()}</span>
@@ -303,34 +307,32 @@ export function AppInterface(props: {
   disableHealthCheck?: boolean
 }) {
   return (
-    <ServerProvider
-      defaultServer={props.defaultServer}
-      disableHealthCheck={props.disableHealthCheck}
-      servers={props.servers}
-    >
-      <ConnectionGate disableHealthCheck={props.disableHealthCheck}>
-        <ServerKey>
-          <QueryProvider>
-            <GlobalSDKProvider>
-              <GlobalSyncProvider>
-                <Dynamic
-                  component={props.router ?? Router}
-                  root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
-                >
-                  <Route path="/" component={HomeRoute} />
-                  <Route path="/:dir" component={DirectoryLayout}>
-                    <Route path="/" component={SessionIndexRoute} />
-                    <Route path="/knowledge" component={KnowledgeIndexRoute} />
-                    <Route path="/knowledge/:dataset" component={KnowledgeDatasetRoute} />
-                    <Route path="/knowledge/:dataset/:document" component={KnowledgeDocumentRoute} />
-                    <Route path="/session/:id?" component={SessionRoute} />
-                  </Route>
-                </Dynamic>
-              </GlobalSyncProvider>
-            </GlobalSDKProvider>
-          </QueryProvider>
-        </ServerKey>
-      </ConnectionGate>
+    <ServerProvider defaultServer={props.defaultServer} servers={props.servers}>
+      <ServersProvider>
+        <ConnectionGate disableHealthCheck={props.disableHealthCheck}>
+          <ServerKey>
+            <QueryProvider>
+              <ServerSDKProvider>
+                <ServerSyncProvider>
+                  <Dynamic
+                    component={props.router ?? Router}
+                    root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
+                  >
+                    <Route path="/" component={HomeRoute} />
+                    <Route path="/:dir" component={DirectoryLayout}>
+                      <Route path="/" component={() => <Navigate href="session" />} />
+                      <Route path="/knowledge" component={KnowledgeIndexRoute} />
+                      <Route path="/knowledge/:dataset" component={KnowledgeDatasetRoute} />
+                      <Route path="/knowledge/:dataset/:document" component={KnowledgeDocumentRoute} />
+                      <Route path="/session/:id?" component={SessionRoute} />
+                    </Route>
+                  </Dynamic>
+                </ServerSyncProvider>
+              </ServerSDKProvider>
+            </QueryProvider>
+          </ServerKey>
+        </ConnectionGate>
+      </ServersProvider>
     </ServerProvider>
   )
 }
