@@ -58,10 +58,7 @@ export const displayName = (project: { name?: string; worktree: string }) =>
 export const hasSidebarProject = (project: { worktree: string } | undefined): project is { worktree: string } =>
   typeof project?.worktree === "string" && project.worktree.length > 0
 
-const OPENCODE_PROJECT_ID = "4b0ea68d7af9a6031a7ffda7ad66e0cb83315750"
-
 export function getProjectAvatarSource(id?: string, icon?: { color?: string; url?: string; override?: string }) {
-  if (id === OPENCODE_PROJECT_ID) return "https://opencode.ai/favicon.svg"
   if (icon?.override) return icon.override
   if (icon?.color) return undefined
   return icon?.url

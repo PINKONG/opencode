@@ -82,6 +82,22 @@ describe("public surface branding", () => {
     expect(ext).not.toContain('cmd = "./opencode.exe"')
   })
 
+  test("vscode extension metadata and docs use WisCode branding", async () => {
+    const pkg = await Bun.file(join(root, "sdks/vscode/package.json")).text()
+    const readme = await Bun.file(join(root, "sdks/vscode/README.md")).text()
+
+    expect(pkg).toContain('"displayName": "WisCode"')
+    expect(pkg).toContain('"description": "WisCode for VS Code"')
+    expect(pkg).not.toContain('"displayName": "opencode"')
+    expect(pkg).not.toContain('"description": "opencode for VS Code"')
+    expect(pkg).not.toContain('"title": "Open opencode"')
+    expect(pkg).not.toContain('"title": "Open opencode in new tab"')
+    expect(pkg).not.toContain('"title": "Run opencode"')
+    expect(pkg).not.toContain('"title": "opencode: Insert At-Mentioned"')
+    expect(readme).not.toContain("https://opencode.ai")
+    expect(readme).not.toContain("Visit [opencode.ai]")
+  })
+
   test("install script pulls WisCode CLI releases instead of upstream OpenCode", async () => {
     const script = await Bun.file(join(root, "install")).text()
 

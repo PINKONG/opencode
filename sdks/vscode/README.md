@@ -1,10 +1,10 @@
 # WisCode VS Code Extension
 
-A Visual Studio Code extension that integrates [WisCode](https://opencode.ai) directly into your development workflow.
+A Visual Studio Code extension that integrates WisCode directly into your development workflow.
 
 ## Prerequisites
 
-This extension requires the [WisCode CLI](https://opencode.ai) to be installed on your system. Visit [opencode.ai](https://opencode.ai) for installation instructions.
+This extension requires the WisCode CLI to be installed on your system. Use the WisCode release and install channels for setup.
 
 ## Features
 
