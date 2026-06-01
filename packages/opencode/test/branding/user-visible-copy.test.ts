@@ -8,7 +8,6 @@ const root = resolve(dir, "../../src")
 const branded = [
   "acp/agent.ts",
   "mcp/oauth-callback.ts",
-  "plugin/codex.ts",
   "cli/cmd/mcp.ts",
   "cli/cmd/pr.ts",
   "cli/cmd/providers.ts",
@@ -47,6 +46,7 @@ describe("user visible branding copy", () => {
     const pr = await Bun.file(join(root, "cli/cmd/pr.ts")).text()
     const github = await Bun.file(join(root, "cli/cmd/github.ts")).text()
     const index = await Bun.file(join(root, "index.ts")).text()
+    const temporary = await Bun.file(join(root, "temporary.ts")).text()
     const providers = await Bun.file(join(root, "cli/cmd/providers.ts")).text()
     const retry = await Bun.file(join(root, "session/retry.ts")).text()
     const run = await Bun.file(join(root, "cli/cmd/run.ts")).text()
@@ -62,7 +62,7 @@ describe("user visible branding copy", () => {
     const mdns = await Bun.file(join(root, "server/mdns.ts")).text()
     const status = await Bun.file(join(root, "cli/cmd/tui/component/dialog-status.tsx")).text()
     const session = await Bun.file(join(root, "cli/cmd/tui/routes/session/index.tsx")).text()
-    const acp = await Bun.file(join(root, "acp/agent.ts")).text()
+    const acp = await Bun.file(join(root, "acp/service.ts")).text()
     const provider = await Bun.file(join(root, "provider/error.ts")).text()
     const tips = await Bun.file(join(root, "cli/cmd/tui/feature-plugins/home/tips-view.tsx")).text()
 
@@ -144,6 +144,9 @@ describe("user visible branding copy", () => {
     expect(index).toContain('.scriptName("wiscode")')
     expect(index).not.toContain('if (!text.startsWith("opencode "))')
     expect(index).not.toContain('.scriptName("opencode")')
+
+    expect(temporary).toContain('.scriptName("wiscode")')
+    expect(temporary).not.toContain('.scriptName("opencode")')
 
     expect(network).toContain("custom domain name for mDNS service (default: wiscode.local)")
     expect(network).toContain('default: "wiscode.local"')
