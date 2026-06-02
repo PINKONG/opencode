@@ -48,11 +48,31 @@ if [[ ! -x "${bin}" ]]; then
   exit 1
 fi
 
+rg_archive_dir="${root}/third_party/ripgrep/v15.1.0"
+if [[ "${arch}" == "x86_64" ]]; then
+  rg_archive="${rg_archive_dir}/ripgrep-15.1.0-x86_64-apple-darwin.tar.gz"
+else
+  rg_archive="${rg_archive_dir}/ripgrep-15.1.0-aarch64-apple-darwin.tar.gz"
+fi
+if [[ ! -f "${rg_archive}" ]]; then
+  echo "Missing ripgrep archive: ${rg_archive}" >&2
+  exit 1
+fi
+rg_tmp="$(mktemp -d)"
+tar -xzf "${rg_archive}" -C "${rg_tmp}"
+rg="$(find "${rg_tmp}" -type f -name rg | head -n 1)"
+if [[ -z "${rg}" || ! -x "${rg}" ]]; then
+  echo "Missing ripgrep binary in archive: ${rg_archive}" >&2
+  exit 1
+fi
+
 cd "${root}/packages/desktop"
 echo "==> copy sidecar"
 mkdir -p resources
 cp "${bin}" "resources/wiscode-cli"
 chmod +x "resources/wiscode-cli"
+cp "${rg}" "resources/rg"
+chmod +x "resources/rg"
 mkdir -p native
 
 # Force known-good mirror endpoints to avoid inherited env pollution.

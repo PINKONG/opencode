@@ -73,7 +73,7 @@ const getBase = (): Configuration => ({
     {
       from: "resources/",
       to: ".",
-      filter: ["wiscode-cli", "wiscode-cli.exe", "wiscode-node", "wiscode-node.exe"],
+      filter: ["wiscode-cli", "wiscode-cli.exe", "wiscode-node", "wiscode-node.exe", "rg", "rg.exe"],
     },
   ],
   mac: {

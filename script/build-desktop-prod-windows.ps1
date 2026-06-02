@@ -85,11 +85,30 @@ if (-not (Test-Path $bin)) {
   throw "Missing sidecar binary: $bin"
 }
 
+$rgArchiveDir = Join-Path $Root "third_party\\ripgrep\\v15.1.0"
+if ($arch -eq "X64") {
+  $rgArchive = Join-Path $rgArchiveDir "ripgrep-15.1.0-x86_64-pc-windows-msvc.zip"
+}
+else {
+  $rgArchive = Join-Path $rgArchiveDir "ripgrep-15.1.0-aarch64-pc-windows-msvc.zip"
+}
+if (-not (Test-Path $rgArchive)) {
+  throw "Missing ripgrep archive: $rgArchive"
+}
+$rgTemp = Join-Path ([System.IO.Path]::GetTempPath()) ("wiscode-rg-" + [guid]::NewGuid().ToString())
+New-Item -ItemType Directory -Force $rgTemp | Out-Null
+Expand-Archive -LiteralPath $rgArchive -DestinationPath $rgTemp -Force
+$rg = Get-ChildItem $rgTemp -Recurse -Filter rg.exe | Select-Object -First 1 -ExpandProperty FullName
+if (-not $rg) {
+  throw "Missing ripgrep binary in archive: $rgArchive"
+}
+
 Set-Location (Join-Path $Root "packages\desktop")
 Write-Host "==> copy sidecar"
 $resources = Join-Path $Root "packages\desktop\resources"
 New-Item -ItemType Directory -Force $resources | Out-Null
 Copy-Item $bin (Join-Path $resources "wiscode-cli.exe") -Force
+Copy-Item $rg (Join-Path $resources "rg.exe") -Force
 New-Item -ItemType Directory -Force (Join-Path $Root "packages\desktop\native") | Out-Null
 
 # Force known-good mirror endpoints to avoid inherited env pollution.

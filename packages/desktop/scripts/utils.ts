@@ -11,14 +11,23 @@ export function resolveChannel(): Channel {
 }
 
 const NODE_VERSION = "24.14.0"
+const RIPGREP_VERSION = "15.1.0"
 
-export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; assetExt: string }> = [
+export const SIDECAR_BINARIES: Array<{
+  rustTarget: string
+  ocBinary: string
+  assetExt: string
+  nodeDist: string
+  nodeArchive: string
+  ripgrepArchive: string
+}> = [
   {
     rustTarget: "aarch64-apple-darwin",
     ocBinary: "wiscode-cli-darwin-arm64",
     assetExt: "zip",
     nodeDist: `node-v${NODE_VERSION}-darwin-arm64`,
     nodeArchive: `node-v${NODE_VERSION}-darwin-arm64.tar.gz`,
+    ripgrepArchive: `ripgrep-${RIPGREP_VERSION}-aarch64-apple-darwin.tar.gz`,
   },
   {
     rustTarget: "x86_64-apple-darwin",
@@ -26,6 +35,7 @@ export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; ass
     assetExt: "zip",
     nodeDist: `node-v${NODE_VERSION}-darwin-x64`,
     nodeArchive: `node-v${NODE_VERSION}-darwin-x64.tar.gz`,
+    ripgrepArchive: `ripgrep-${RIPGREP_VERSION}-x86_64-apple-darwin.tar.gz`,
   },
   {
     rustTarget: "aarch64-pc-windows-msvc",
@@ -33,6 +43,7 @@ export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; ass
     assetExt: "zip",
     nodeDist: `node-v${NODE_VERSION}-win-arm64`,
     nodeArchive: `node-v${NODE_VERSION}-win-arm64.zip`,
+    ripgrepArchive: `ripgrep-${RIPGREP_VERSION}-aarch64-pc-windows-msvc.zip`,
   },
   {
     rustTarget: "x86_64-pc-windows-msvc",
@@ -40,6 +51,7 @@ export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; ass
     assetExt: "zip",
     nodeDist: `node-v${NODE_VERSION}-win-x64`,
     nodeArchive: `node-v${NODE_VERSION}-win-x64.zip`,
+    ripgrepArchive: `ripgrep-${RIPGREP_VERSION}-x86_64-pc-windows-msvc.zip`,
   },
   {
     rustTarget: "x86_64-unknown-linux-gnu",
@@ -47,6 +59,7 @@ export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; ass
     assetExt: "tar.gz",
     nodeDist: `node-v${NODE_VERSION}-linux-x64`,
     nodeArchive: `node-v${NODE_VERSION}-linux-x64.tar.xz`,
+    ripgrepArchive: `ripgrep-${RIPGREP_VERSION}-x86_64-unknown-linux-musl.tar.gz`,
   },
   {
     rustTarget: "aarch64-unknown-linux-gnu",
@@ -54,6 +67,7 @@ export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; ass
     assetExt: "tar.gz",
     nodeDist: `node-v${NODE_VERSION}-linux-arm64`,
     nodeArchive: `node-v${NODE_VERSION}-linux-arm64.tar.xz`,
+    ripgrepArchive: `ripgrep-${RIPGREP_VERSION}-aarch64-unknown-linux-gnu.tar.gz`,
   },
 ]
 
@@ -159,6 +173,44 @@ export async function copyBundledNodeToResources(source: string) {
   const dir = `resources`
   await $`mkdir -p ${dir}`
   const dest = windowsify(`${dir}/wiscode-node`)
+  await $`cp ${source} ${dest}`
+  if (process.platform === "win32" && process.env.GITHUB_ACTIONS === "true") {
+    await $`pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ../../script/sign-windows.ps1 ${dest}`
+  }
+  if (process.platform === "darwin") {
+    await $`codesign --remove-signature ${dest}`.nothrow()
+    await $`codesign --force --sign - ${dest}`
+  }
+  console.log(`Copied ${source} to ${dest}`)
+}
+
+export async function ensureBundledRipgrepBinary(target?: string) {
+  const resolvedTarget = target ?? RUST_TARGET ?? nativeTarget()
+  const binaryConfig = getCurrentSidecar(resolvedTarget)
+  const archiveName = binaryConfig.ripgrepArchive
+  const distName = archiveName.replace(/(\.tar\.gz|\.zip)$/, "")
+  const dir = path.join("resources", "ripgrep-cache")
+  const vendor = path.join("..", "..", "third_party", "ripgrep", `v${RIPGREP_VERSION}`)
+  const archive = path.join(dir, archiveName)
+  const vendoredArchive = path.join(vendor, archiveName)
+  const extracted = path.join(dir, distName)
+  await $`mkdir -p ${dir}`
+  if (!existsSync(archive) && existsSync(vendoredArchive)) await $`cp ${vendoredArchive} ${archive}`
+  if (!existsSync(archive)) {
+    const url = `https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/${archiveName}`
+    await $`curl -fL ${url} -o ${archive}`
+  }
+  if (!existsSync(extracted)) {
+    if (archiveName.endsWith(".zip")) await extractZip(archive, dir)
+    else await $`tar -xzf ${archive} -C ${dir}`
+  }
+  return resolvedTarget.includes("windows") ? path.join(extracted, "rg.exe") : path.join(extracted, "rg")
+}
+
+export async function copyBundledRipgrepToResources(source: string) {
+  const dir = `resources`
+  await $`mkdir -p ${dir}`
+  const dest = windowsify(`${dir}/rg`)
   await $`cp ${source} ${dest}`
   if (process.platform === "win32" && process.env.GITHUB_ACTIONS === "true") {
     await $`pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ../../script/sign-windows.ps1 ${dest}`

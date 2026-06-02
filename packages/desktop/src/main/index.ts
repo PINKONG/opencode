@@ -21,7 +21,7 @@ import type {
   WslConfig,
 } from "../preload/types"
 import { checkAppExists, resolveAppPath, wslPath } from "./apps"
-import { installCli, syncCli } from "./cli"
+import { installCli, syncCli, syncRipgrep } from "./cli"
 import { CHANNEL, SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD, UPDATER_ENABLED } from "./constants"
 import { registerIpcHandlers, sendDeepLinks, sendMenuCommand, sendSqliteMigrationProgress } from "./ipc"
 import { resolveSidecarHosts } from "./lan"
@@ -235,6 +235,7 @@ function setupApp() {
       logger.warn("failed to start net log", error)
     })
     await syncCli()
+    await syncRipgrep()
     await initialize()
   })
 }

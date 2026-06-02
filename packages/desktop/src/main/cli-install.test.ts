@@ -24,8 +24,11 @@ describe("electron cli install path", () => {
   test("exposes install-cli over ipc and syncs cli on startup", () => {
     expect(ipc).toContain('ipcMain.handle("install-cli"')
     expect(main).toContain("syncCli()")
+    expect(main).toContain("syncRipgrep()")
     expect(cli).toContain('execFile(cliPath, ["--version"], { windowsHide: true }')
     expect(cli).toContain("app.getVersion()")
+    expect(cli).toContain("getBundledRipgrepPath")
+    expect(cli).toContain('path.join(process.env.XDG_CACHE_HOME, "wiscode", "bin")')
     expect(cli).not.toContain("cliSyncDone")
   })
 

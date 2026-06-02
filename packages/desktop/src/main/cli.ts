@@ -36,6 +36,19 @@ function bundledCliName() {
   return process.platform === "win32" ? "wiscode-cli.exe" : "wiscode-cli"
 }
 
+function bundledRipgrepName() {
+  return process.platform === "win32" ? "rg.exe" : "rg"
+}
+
+function wiscodeCacheBinDir() {
+  if (process.env.XDG_CACHE_HOME) return path.join(process.env.XDG_CACHE_HOME, "wiscode", "bin")
+  if (process.platform === "darwin") return path.join(os.homedir(), "Library", "Caches", "wiscode", "bin")
+  if (process.platform === "win32") {
+    return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "wiscode", "bin")
+  }
+  return path.join(os.homedir(), ".cache", "wiscode", "bin")
+}
+
 export function getCliInstallPath() {
   return path.join(os.homedir(), CLI_INSTALL_DIR, cliExecutableName())
 }
@@ -47,6 +60,17 @@ function getBundledCliPath() {
     path.join(app.getAppPath(), "..", "resources", bundledCliName()),
     path.join(app.getAppPath(), "..", "..", "resources", bundledCliName()),
     path.join(process.cwd(), "resources", bundledCliName()),
+  ]
+  return candidates.find((item) => existsSync(item)) ?? candidates[0]
+}
+
+function getBundledRipgrepPath() {
+  if (app.isPackaged) return path.join(process.resourcesPath, bundledRipgrepName())
+  const candidates = [
+    path.join(app.getAppPath(), "resources", bundledRipgrepName()),
+    path.join(app.getAppPath(), "..", "resources", bundledRipgrepName()),
+    path.join(app.getAppPath(), "..", "..", "resources", bundledRipgrepName()),
+    path.join(process.cwd(), "resources", bundledRipgrepName()),
   ]
   return candidates.find((item) => existsSync(item)) ?? candidates[0]
 }
@@ -127,4 +151,26 @@ export async function syncCli() {
   if (!app.isPackaged) return
   if ((await cliVersion(getCliInstallPath())) === app.getVersion()) return
   await installCli()
+}
+
+export async function syncRipgrep() {
+  if (!app.isPackaged) return
+  const source = getBundledRipgrepPath()
+  if (!existsSync(source)) throw new Error(`Bundled ripgrep not found: ${source}`)
+  const binDir = wiscodeCacheBinDir()
+  mkdirSync(binDir, { recursive: true })
+  const target = path.join(binDir, bundledRipgrepName())
+  const temp = `${target}.tmp`
+  if (existsSync(temp)) unlinkSync(temp)
+  copyFileSync(source, temp)
+  if (process.platform === "darwin") {
+    const verify = spawnSync("codesign", ["--verify", "--verbose=2", temp], { encoding: "utf8" })
+    if (verify.status !== 0) {
+      const remove = spawnSync("codesign", ["--remove-signature", temp], { encoding: "utf8" })
+      if (remove.status !== 0) throw new Error(`codesign remove failed: ${(remove.stderr || remove.stdout || "").trim()}`)
+      const sign = spawnSync("codesign", ["--force", "--sign", "-", temp], { encoding: "utf8" })
+      if (sign.status !== 0) throw new Error(`codesign ad-hoc sign failed: ${(sign.stderr || sign.stdout || "").trim()}`)
+    }
+  }
+  renameSync(temp, target)
 }

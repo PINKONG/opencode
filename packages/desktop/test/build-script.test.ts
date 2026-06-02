@@ -13,6 +13,8 @@ describe("mac desktop build script", () => {
     expect(macScript).toContain('mkdir -p resources')
     expect(macScript).toContain('cp "${bin}" "resources/wiscode-cli"')
     expect(macScript).toContain('chmod +x "resources/wiscode-cli"')
+    expect(macScript).toContain('cp "${rg}" "resources/rg"')
+    expect(windowsScript).toContain('Copy-Item $rg (Join-Path $resources "rg.exe") -Force')
   })
 
   test("packages with electron-builder in prod channel", () => {
