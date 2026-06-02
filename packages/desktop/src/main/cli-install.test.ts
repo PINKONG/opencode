@@ -29,6 +29,8 @@ describe("electron cli install path", () => {
     expect(cli).toContain("app.getVersion()")
     expect(cli).toContain("getBundledRipgrepPath")
     expect(cli).toContain('path.join(process.env.XDG_CACHE_HOME, "wiscode", "bin")')
+    expect(cli).toContain('path.join(os.homedir(), ".cache", "wiscode", "bin")')
+    expect(cli).not.toContain('path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "wiscode", "bin")')
     expect(cli).not.toContain("cliSyncDone")
   })
 

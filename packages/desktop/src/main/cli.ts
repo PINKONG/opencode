@@ -43,9 +43,6 @@ function bundledRipgrepName() {
 function wiscodeCacheBinDir() {
   if (process.env.XDG_CACHE_HOME) return path.join(process.env.XDG_CACHE_HOME, "wiscode", "bin")
   if (process.platform === "darwin") return path.join(os.homedir(), "Library", "Caches", "wiscode", "bin")
-  if (process.platform === "win32") {
-    return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "wiscode", "bin")
-  }
   return path.join(os.homedir(), ".cache", "wiscode", "bin")
 }
 
