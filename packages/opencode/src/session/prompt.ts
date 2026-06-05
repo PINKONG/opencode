@@ -1,18 +1,18 @@
+import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import path from "path"
+import { SessionV1 } from "@opencode-ai/core/v1/session"
 import os from "os"
 import { SessionID, MessageID, PartID } from "./schema"
 import { MessageV2 } from "./message-v2"
-import * as Log from "@opencode-ai/core/util/log"
+import { Log } from "@opencode-ai/core/util/log"
 import { SessionRevert } from "./revert"
-import * as Session from "./session"
+import { Session } from "./session"
 import { Agent } from "../agent/agent"
 import { Provider } from "@/provider/provider"
 import { ProviderTransform } from "@/provider/transform"
-import { ModelID, ProviderID } from "../provider/schema"
 import { type Tool as AITool, tool, jsonSchema, type ToolExecutionOptions, asSchema } from "ai"
 import type { JSONSchema7 } from "@ai-sdk/provider"
 import { SessionCompaction } from "./compaction"
-import { Bus } from "../bus"
 import { SystemPrompt } from "./system"
 import { Instruction } from "./instruction"
 import { Plugin } from "../plugin"
@@ -38,7 +38,7 @@ import { SessionStatus } from "./status"
 import { LLM } from "./llm"
 import { Shell } from "@/shell/shell"
 import { ShellID } from "@/tool/shell/id"
-import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Truncate } from "@/tool/truncate"
 import { Image } from "@/image/image"
 import { decodeDataUrl } from "@/util/data-url"
@@ -51,15 +51,16 @@ import { SessionRunState } from "./run-state"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EffectBridge } from "@/effect/bridge"
 import { EventV2Bridge } from "@/event-v2-bridge"
-import { SessionEvent } from "@opencode-ai/core/session-event"
+import { Database } from "@opencode-ai/core/database/database"
+import { SessionEvent } from "@opencode-ai/core/session/event"
+import { SessionMessage } from "@opencode-ai/core/session/message"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { ProviderV2 } from "@opencode-ai/core/provider"
-import { AgentAttachment, FileAttachment, ReferenceAttachment, Source } from "@opencode-ai/core/session-prompt"
+import { AgentAttachment, FileAttachment, Prompt, ReferenceAttachment, Source } from "@opencode-ai/core/session/prompt"
 import { Reference } from "@/reference/reference"
 import * as DateTime from "effect/DateTime"
-import { eq } from "@/storage/db"
-import * as Database from "@/storage/db"
-import { SessionTable } from "./session.sql"
+import { eq } from "drizzle-orm"
+import { SessionTable } from "@opencode-ai/core/session/sql"
 import { referencePromptMetadata, referenceTextPart } from "./prompt/reference"
 import PROMPT_PLAN from "./prompt/plan.txt"
 import BUILD_SWITCH from "./prompt/build-switch.txt"
@@ -70,8 +71,8 @@ import { LLMEvent } from "@opencode-ai/llm"
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
 
-const decodeMessageInfo = Schema.decodeUnknownExit(MessageV2.Info)
-const decodeMessagePart = Schema.decodeUnknownExit(MessageV2.Part)
+const decodeMessageInfo = Schema.decodeUnknownExit(SessionV1.Info)
+const decodeMessagePart = Schema.decodeUnknownExit(SessionV1.Part)
 
 const STRUCTURED_OUTPUT_DESCRIPTION = `Use this tool to return your final response in the requested structured format.
 
@@ -138,7 +139,7 @@ function kbError(result: unknown, key: string) {
 const log = Log.create({ service: "session.prompt" })
 const elog = EffectLogger.create({ service: "session.prompt" })
 
-function isOrphanedInterruptedTool(part: MessageV2.ToolPart) {
+function isOrphanedInterruptedTool(part: SessionV1.ToolPart) {
   // cleanup() marks abandoned tool_use blocks this way after retries/aborts.
   // They are not pending work and must not trigger an assistant-prefill request.
   return part.state.status === "error" && part.state.metadata?.interrupted === true
@@ -146,10 +147,10 @@ function isOrphanedInterruptedTool(part: MessageV2.ToolPart) {
 
 export interface Interface {
   readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
-  readonly prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Image.Error>
-  readonly loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts>
-  readonly shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError>
-  readonly command: (input: CommandInput) => Effect.Effect<MessageV2.WithParts, Image.Error>
+  readonly prompt: (input: PromptInput) => Effect.Effect<SessionV1.WithParts, Image.Error>
+  readonly loop: (input: LoopInput) => Effect.Effect<SessionV1.WithParts>
+  readonly shell: (input: ShellInput) => Effect.Effect<SessionV1.WithParts, Session.BusyError>
+  readonly command: (input: CommandInput) => Effect.Effect<SessionV1.WithParts, Image.Error>
   readonly resolvePromptParts: (template: string) => Effect.Effect<PromptInput["parts"]>
 }
 
@@ -158,7 +159,6 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Se
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    const bus = yield* Bus.Service
     const status = yield* SessionStatus.Service
     const sessions = yield* Session.Service
     const agents = yield* Agent.Service
@@ -169,7 +169,7 @@ export const layer = Layer.effect(
     const commands = yield* Command.Service
     const config = yield* Config.Service
     const permission = yield* Permission.Service
-    const fsys = yield* AppFileSystem.Service
+    const fsys = yield* FSUtil.Service
     const mcp = yield* MCP.Service
     const lsp = yield* LSP.Service
     const registry = yield* ToolRegistry.Service
@@ -186,6 +186,8 @@ export const layer = Layer.effect(
     const references = yield* Reference.Service
     const events = yield* EventV2Bridge.Service
     const flags = yield* RuntimeFlags.Service
+    const database = yield* Database.Service
+    const { db } = database
     const ops = Effect.fn("SessionPrompt.ops")(function* () {
       return {
         cancel: (sessionID: SessionID) => cancel(sessionID),
@@ -204,10 +206,6 @@ export const layer = Layer.effect(
       const parts: Types.DeepMutable<PromptInput["parts"]> = [{ type: "text", text: template }]
       const files = ConfigMarkdown.files(template)
       const seen = new Set<string>()
-      const mentionSource = (match: RegExpMatchArray) => {
-        const start = match.index ?? 0
-        return { value: match[0], start, end: start + match[0].length }
-      }
       yield* Effect.forEach(
         files,
         Effect.fnUntraced(function* (match) {
@@ -220,7 +218,8 @@ export const layer = Layer.effect(
           const alias = slash === -1 ? name : name.slice(0, slash)
           const reference = yield* references.get(alias)
           if (reference) {
-            const source = mentionSource(match)
+            const start = match.index ?? 0
+            const source = { value: match[0], start, end: start + match[0].length }
             if (reference.kind === "invalid") {
               parts.push(
                 referenceTextPart({ reference, source, target: slash === -1 ? undefined : name.slice(slash + 1) }),
@@ -236,7 +235,7 @@ export const layer = Layer.effect(
 
             const target = name.slice(slash + 1)
             const targetPath = path.resolve(reference.path, target)
-            if (!AppFileSystem.contains(reference.path, targetPath)) {
+            if (!FSUtil.contains(reference.path, targetPath)) {
               parts.push(
                 referenceTextPart({
                   reference,
@@ -297,14 +296,14 @@ export const layer = Layer.effect(
 
     const title = Effect.fn("SessionPrompt.ensureTitle")(function* (input: {
       session: Session.Info
-      history: MessageV2.WithParts[]
-      providerID: ProviderID
-      modelID: ModelID
+      history: SessionV1.WithParts[]
+      providerID: ProviderV2.ID
+      modelID: ModelV2.ID
     }) {
       if (input.session.parentID) return
       if (!Session.isDefaultTitle(input.session.title)) return
 
-      const real = (m: MessageV2.WithParts) =>
+      const real = (m: SessionV1.WithParts) =>
         m.info.role === "user" && !m.parts.every((p) => "synthetic" in p && p.synthetic)
       const idx = input.history.findIndex(real)
       if (idx === -1) return
@@ -315,7 +314,7 @@ export const layer = Layer.effect(
       if (!firstUser || firstUser.info.role !== "user") return
       const firstInfo = firstUser.info
 
-      const subtasks = firstUser.parts.filter((p): p is MessageV2.SubtaskPart => p.type === "subtask")
+      const subtasks = firstUser.parts.filter((p): p is SessionV1.SubtaskPart => p.type === "subtask")
       const onlySubtasks = subtasks.length > 0 && firstUser.parts.every((p) => p.type === "subtask")
 
       const ag = yield* agents.get("title")
@@ -358,7 +357,7 @@ export const layer = Layer.effect(
     })
 
     const insertReminders = Effect.fn("SessionPrompt.insertReminders")(function* (input: {
-      messages: MessageV2.WithParts[]
+      messages: SessionV1.WithParts[]
       agent: Agent.Info
       session: Session.Info
     }) {
@@ -501,7 +500,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       tools?: Record<string, boolean>
       processor: Pick<SessionProcessor.Handle, "message" | "updateToolCall" | "completeToolCall">
       bypassAgentCheck: boolean
-      messages: MessageV2.WithParts[]
+      messages: SessionV1.WithParts[]
     }) {
       using _ = log.time("resolveTools")
       const tools: Record<string, AITool> = {}
@@ -542,7 +541,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       })
 
       for (const item of yield* registry.tools({
-        modelID: ModelID.make(input.model.api.id),
+        modelID: ModelV2.ID.make(input.model.api.id),
         providerID: input.model.providerID,
         agent: input.agent,
       })) {
@@ -631,7 +630,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               )
 
                 const textParts: string[] = []
-                const attachments: Omit<MessageV2.FilePart, "id" | "sessionID" | "messageID">[] = []
+              const attachments: Omit<SessionV1.FilePart, "id" | "sessionID" | "messageID">[] = []
                 for (const contentItem of result.content) {
                   if (contentItem.type === "text") textParts.push(contentItem.text)
                   else if (contentItem.type === "image") {
@@ -661,22 +660,22 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   ...(truncated.truncated && { outputPath: truncated.outputPath }),
                 }
 
-                const output = {
-                  title: "",
-                  metadata,
-                  output: truncated.content,
-                  attachments: attachments.map((attachment) => ({
-                    ...attachment,
-                    id: PartID.ascending(),
-                    sessionID: ctx.sessionID,
-                    messageID: input.processor.message.id,
-                  })),
-                  content: result.content,
-                }
-                if (opts.abortSignal?.aborted) {
-                  yield* input.processor.completeToolCall(opts.toolCallId, output)
-                }
-                return output
+              const output = {
+                title: "",
+                metadata,
+                output: truncated.content,
+                attachments: attachments.map((attachment) => ({
+                  ...attachment,
+                  id: PartID.ascending(),
+                  sessionID: ctx.sessionID,
+                  messageID: input.processor.message.id,
+                })),
+                content: result.content,
+              }
+              if (opts.abortSignal?.aborted) {
+                yield* input.processor.completeToolCall(opts.toolCallId, output)
+              }
+              return output
             }),
           )
         tools[key] = item
@@ -685,19 +684,19 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return tools
     })
     const handleSubtask = Effect.fn("SessionPrompt.handleSubtask")(function* (input: {
-      task: MessageV2.SubtaskPart
+      task: SessionV1.SubtaskPart
       model: Provider.Model
-      lastUser: MessageV2.User
+      lastUser: SessionV1.User
       sessionID: SessionID
       session: Session.Info
-      msgs: MessageV2.WithParts[]
+      msgs: SessionV1.WithParts[]
     }) {
       const { task, model, lastUser, sessionID, session, msgs } = input
       const ctx = yield* InstanceState.context
       const promptOps = yield* ops()
       const { task: taskTool } = yield* registry.named()
       const taskModel = task.model ? yield* getModel(task.model.providerID, task.model.modelID, sessionID) : model
-      const assistantMessage: MessageV2.Assistant = yield* sessions.updateMessage({
+      const assistantMessage: SessionV1.Assistant = yield* sessions.updateMessage({
         id: MessageID.ascending(),
         role: "assistant",
         parentID: lastUser.id,
@@ -712,7 +711,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         providerID: taskModel.providerID,
         time: { created: Date.now() },
       })
-      let part: MessageV2.ToolPart = yield* sessions.updatePart({
+      let part: SessionV1.ToolPart = yield* sessions.updatePart({
         id: PartID.ascending(),
         messageID: assistantMessage.id,
         sessionID: assistantMessage.sessionID,
@@ -747,7 +746,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
         const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
         const error = new NamedError.Unknown({ message: `Agent not found: "${task.agent}".${hint}` })
-        yield* bus.publish(Session.Event.Error, { sessionID, error: error.toObject() })
+        yield* events.publish(Session.Event.Error, { sessionID, error: error.toObject() })
         throw error
       }
 
@@ -768,7 +767,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 ...part,
                 type: "tool",
                 state: { ...part.state, ...val },
-              } satisfies MessageV2.ToolPart)
+              } satisfies SessionV1.ToolPart)
             }),
           ask: (req: any) =>
             permission
@@ -802,7 +801,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                     metadata: part.state.metadata,
                     input: part.state.input,
                   },
-                } satisfies MessageV2.ToolPart)
+                } satisfies SessionV1.ToolPart)
               }
             }),
           ),
@@ -837,7 +836,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             attachments,
             time: { ...part.state.time, end: Date.now() },
           },
-        } satisfies MessageV2.ToolPart)
+        } satisfies SessionV1.ToolPart)
       }
 
       if (!result) {
@@ -853,12 +852,12 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             metadata: part.state.status === "pending" ? undefined : part.state.metadata,
             input: part.state.input,
           },
-        } satisfies MessageV2.ToolPart)
+        } satisfies SessionV1.ToolPart)
       }
 
       if (!task.command) return
 
-      const summaryUserMsg: MessageV2.User = {
+      const summaryUserMsg: SessionV1.User = {
         id: MessageID.ascending(),
         sessionID,
         role: "user",
@@ -874,7 +873,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         type: "text",
         text: "Summarize the task tool output above and continue with your task.",
         synthetic: true,
-      } satisfies MessageV2.TextPart)
+      } satisfies SessionV1.TextPart)
     })
 
     const shellImpl = Effect.fn("SessionPrompt.shellImpl")(function* (input: ShellInput, ready?: Latch.Latch) {
@@ -892,11 +891,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
               const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
               const error = new NamedError.Unknown({ message: `Agent not found: "${input.agent}".${hint}` })
-              yield* bus.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
+              yield* events.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
               throw error
             }
             const model = input.model ?? agent.model ?? (yield* currentModel(input.sessionID))
-            const userMsg: MessageV2.User = {
+            const userMsg: SessionV1.User = {
               id: input.messageID ?? MessageID.ascending(),
               sessionID: input.sessionID,
               time: { created: Date.now() },
@@ -905,7 +904,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               model: { providerID: model.providerID, modelID: model.modelID },
             }
             yield* sessions.updateMessage(userMsg)
-            const userPart: MessageV2.Part = {
+            const userPart: SessionV1.Part = {
               type: "text",
               id: PartID.ascending(),
               messageID: userMsg.id,
@@ -915,7 +914,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             }
             yield* sessions.updatePart(userPart)
 
-            const msg: MessageV2.Assistant = {
+            const msg: SessionV1.Assistant = {
               id: MessageID.ascending(),
               sessionID: input.sessionID,
               parentID: userMsg.id,
@@ -931,7 +930,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             }
             yield* sessions.updateMessage(msg)
             const started = Date.now()
-            const part: MessageV2.ToolPart = {
+            const part: SessionV1.ToolPart = {
               type: "tool",
               id: PartID.ascending(),
               messageID: msg.id,
@@ -948,6 +947,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             if (flags.experimentalEventSystem) {
               yield* events.publish(SessionEvent.Shell.Started, {
                 sessionID: input.sessionID,
+                messageID: SessionMessage.ID.create(),
                 timestamp: DateTime.makeUnsafe(started),
                 callID: part.callID,
                 command: input.command,
@@ -1037,8 +1037,8 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     })
 
     const getModel = Effect.fn("SessionPrompt.getModel")(function* (
-      providerID: ProviderID,
-      modelID: ModelID,
+      providerID: ProviderV2.ID,
+      modelID: ModelV2.ID,
       sessionID: SessionID,
     ) {
       const exit = yield* provider.getModel(providerID, modelID).pipe(Effect.exit)
@@ -1046,7 +1046,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const err = Cause.squash(exit.cause)
       if (Provider.ModelNotFoundError.isInstance(err)) {
         const hint = err.suggestions?.length ? ` Did you mean: ${err.suggestions.join(", ")}?` : ""
-        yield* bus.publish(Session.Event.Error, {
+        yield* events.publish(Session.Event.Error, {
           sessionID,
           error: new NamedError.Unknown({
             message: `Model not found: ${err.providerID}/${err.modelID}.${hint}`,
@@ -1057,13 +1057,16 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     })
 
     const currentModel = Effect.fnUntraced(function* (sessionID: SessionID) {
-      const current = Database.use((db) =>
-        db.select({ model: SessionTable.model }).from(SessionTable).where(eq(SessionTable.id, sessionID)).get(),
-      )
+      const current = yield* db
+        .select({ model: SessionTable.model })
+        .from(SessionTable)
+        .where(eq(SessionTable.id, sessionID))
+        .get()
+        .pipe(Effect.orDie)
       if (current?.model) {
         return {
-          providerID: ProviderID.make(current.model.providerID),
-          modelID: ModelID.make(current.model.id),
+          providerID: ProviderV2.ID.make(current.model.providerID),
+          modelID: ModelV2.ID.make(current.model.id),
           ...(current.model.variant && current.model.variant !== "default" ? { variant: current.model.variant } : {}),
         }
       }
@@ -1081,17 +1084,16 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
         const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
         const error = new NamedError.Unknown({ message: `Agent not found: "${agentName}".${hint}` })
-        yield* bus.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
+        yield* events.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
         throw error
       }
 
-      const current = Database.use((db) =>
-        db
-          .select({ agent: SessionTable.agent, model: SessionTable.model })
-          .from(SessionTable)
-          .where(eq(SessionTable.id, input.sessionID))
-          .get(),
-      )
+      const current = yield* db
+        .select({ agent: SessionTable.agent, model: SessionTable.model })
+        .from(SessionTable)
+        .where(eq(SessionTable.id, input.sessionID))
+        .get()
+        .pipe(Effect.orDie)
       const model = input.model ?? ag.model ?? (yield* currentModel(input.sessionID))
       const same = ag.model && model.providerID === ag.model.providerID && model.modelID === ag.model.modelID
       const full =
@@ -1102,7 +1104,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           : undefined
       const variant = input.variant ?? (ag.variant && full?.variants?.[ag.variant] ? ag.variant : undefined)
 
-      const info: MessageV2.User = {
+      const info: SessionV1.User = {
         id: input.messageID ?? MessageID.ascending(),
         role: "user",
         sessionID: input.sessionID,
@@ -1121,6 +1123,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       if (current?.agent !== info.agent) {
         yield* events.publish(SessionEvent.AgentSwitched, {
           sessionID: input.sessionID,
+          messageID: SessionMessage.ID.create(),
           timestamp: DateTime.makeUnsafe(info.time.created),
           agent: info.agent,
         })
@@ -1132,6 +1135,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       ) {
         yield* events.publish(SessionEvent.ModelSwitched, {
           sessionID: input.sessionID,
+          messageID: SessionMessage.ID.create(),
           timestamp: DateTime.makeUnsafe(info.time.created),
           model: {
             id: ModelV2.ID.make(info.model.modelID),
@@ -1143,8 +1147,8 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
       yield* Effect.addFinalizer(() => instruction.clear(info.id))
 
-      type Draft<T> = T extends MessageV2.Part ? Omit<T, "id"> & { id?: string } : never
-      const assign = (part: Draft<MessageV2.Part>): MessageV2.Part => ({
+      type Draft<T> = T extends SessionV1.Part ? Omit<T, "id"> & { id?: string } : never
+      const assign = (part: Draft<SessionV1.Part>): SessionV1.Part => ({
         ...part,
         id: part.id ? PartID.make(part.id) : PartID.ascending(),
       })
@@ -1160,7 +1164,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
         const reference = yield* references.get(name.slice(0, slash))
         if (!reference || reference.kind === "invalid") return
-        if (!AppFileSystem.contains(reference.path, filepath)) return
+        if (!FSUtil.contains(reference.path, filepath)) return
 
         const target = path.relative(reference.path, filepath).split(path.sep).join("/")
         if (!target || target.startsWith("../") || target === "..") return
@@ -1173,14 +1177,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         })
       })
 
-      const resolvePart: (part: PromptInput["parts"][number]) => Effect.Effect<Draft<MessageV2.Part>[]> = Effect.fn(
+      const resolvePart: (part: PromptInput["parts"][number]) => Effect.Effect<Draft<SessionV1.Part>[]> = Effect.fn(
         "SessionPrompt.resolveUserPart",
       )(function* (part) {
         if (part.type === "file") {
           if (part.source?.type === "resource") {
             const { clientName, uri } = part.source
             log.info("mcp resource", { clientName, uri, mime: part.mime })
-            const pieces: Draft<MessageV2.Part>[] = [
+            const pieces: Draft<SessionV1.Part>[] = [
               {
                 messageID: info.id,
                 sessionID: input.sessionID,
@@ -1300,7 +1304,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   if (end) limit = end - (offset - 1)
                 }
                 const args = { filePath: filepath, offset, limit }
-                const pieces: Draft<MessageV2.Part>[] = [
+                const pieces: Draft<SessionV1.Part>[] = [
                   ...(referenceContext
                     ? [{ ...referenceContext, messageID: info.id, sessionID: input.sessionID }]
                     : []),
@@ -1342,7 +1346,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   const error = Cause.squash(exit.cause)
                   log.error("failed to read file", { error })
                   const message = error instanceof Error ? error.message : String(error)
-                  yield* bus.publish(Session.Event.Error, {
+                  yield* events.publish(Session.Event.Error, {
                     sessionID: input.sessionID,
                     error: new NamedError.Unknown({ message }).toObject(),
                   })
@@ -1364,7 +1368,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   const error = Cause.squash(exit.cause)
                   log.error("failed to read directory", { error })
                   const message = error instanceof Error ? error.message : String(error)
-                  yield* bus.publish(Session.Event.Error, {
+                  yield* events.publish(Session.Event.Error, {
                     sessionID: input.sessionID,
                     error: new NamedError.Unknown({ message }).toObject(),
                   })
@@ -1573,13 +1577,15 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       if (flags.experimentalEventSystem) {
         yield* events.publish(SessionEvent.Prompted, {
           sessionID: input.sessionID,
+          messageID: SessionMessage.ID.create(),
           timestamp: DateTime.makeUnsafe(info.time.created),
-          prompt: {
+          delivery: "steer",
+          prompt: new Prompt({
             text: nextPrompt.text.join("\n"),
             files: nextPrompt.files,
             agents: nextPrompt.agents,
             references: nextPrompt.references,
-          },
+          }),
         })
       }
       for (const text of nextPrompt.synthetic) {
@@ -1587,6 +1593,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         if (flags.experimentalEventSystem) {
           yield* events.publish(SessionEvent.Synthetic, {
             sessionID: input.sessionID,
+            messageID: SessionMessage.ID.create(),
             timestamp: DateTime.makeUnsafe(info.time.created),
             text,
           })
@@ -1596,7 +1603,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return { info, parts }
     }, Effect.scoped)
 
-    const prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Image.Error> = Effect.fn(
+    const prompt: (input: PromptInput) => Effect.Effect<SessionV1.WithParts, Image.Error> = Effect.fn(
       "SessionPrompt.prompt",
     )(function* (input: PromptInput) {
       const session = yield* sessions.get(input.sessionID).pipe(Effect.orDie)
@@ -1604,7 +1611,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const message = yield* createUserMessage(input)
       yield* sessions.touch(input.sessionID)
 
-      const permissions: Permission.Rule[] = []
+      const permissions: PermissionV1.Rule[] = []
       for (const [t, enabled] of Object.entries(input.tools ?? {})) {
         permissions.push({ permission: t, action: enabled ? "allow" : "deny", pattern: "*" })
       }
@@ -1625,7 +1632,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       throw new Error("Impossible")
     })
 
-    const runLoop: (sessionID: SessionID) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.run")(
+    const runLoop: (sessionID: SessionID) => Effect.Effect<SessionV1.WithParts> = Effect.fn("SessionPrompt.run")(
       function* (sessionID: SessionID) {
         const ctx = yield* InstanceState.context
         const slog = elog.with({ sessionID })
@@ -1637,7 +1644,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           yield* status.set(sessionID, { type: "busy" })
           yield* slog.info("loop", { step })
 
-          let msgs = yield* MessageV2.filterCompactedEffect(sessionID)
+          let msgs = yield* MessageV2.filterCompactedEffect(sessionID).pipe(
+            Effect.provideService(Database.Service, database),
+          )
 
           const { user: lastUser, assistant: lastAssistant, finished: lastFinished, tasks } = MessageV2.latest(msgs)
 
@@ -1661,7 +1670,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             lastUser.id < lastAssistant.id
           ) {
             const orphan = lastAssistantMsg?.parts.find(
-              (part): part is MessageV2.ToolPart => part.type === "tool" && isOrphanedInterruptedTool(part),
+              (part): part is SessionV1.ToolPart => part.type === "tool" && isOrphanedInterruptedTool(part),
             )
             if (orphan) {
               yield* slog.warn("loop exit with orphaned interrupted tool", {
@@ -1717,18 +1726,18 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
             const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
             const error = new NamedError.Unknown({ message: `Agent not found: "${lastUser.agent}".${hint}` })
-            yield* bus.publish(Session.Event.Error, { sessionID, error: error.toObject() })
+            yield* events.publish(Session.Event.Error, { sessionID, error: error.toObject() })
             throw error
           }
           const maxSteps = agent.steps ?? Infinity
           const isLastStep = step >= maxSteps
           msgs = yield* SessionReminders.apply({ messages: msgs, agent, session }).pipe(
             Effect.provideService(RuntimeFlags.Service, flags),
-            Effect.provideService(AppFileSystem.Service, fsys),
+            Effect.provideService(FSUtil.Service, fsys),
             Effect.provideService(Session.Service, sessions),
           )
 
-          const msg: MessageV2.Assistant = {
+          const msg: SessionV1.Assistant = {
             id: MessageID.ascending(),
             parentID: lastUser.id,
             role: "assistant",
@@ -1848,7 +1857,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             const finished = handle.message.finish && !["tool-calls", "unknown"].includes(handle.message.finish)
             if (finished && !handle.message.error) {
               if (format.type === "json_schema") {
-                handle.message.error = new MessageV2.StructuredOutputError({
+                handle.message.error = new SessionV1.StructuredOutputError({
                   message: "Model did not produce structured output",
                   retries: 0,
                 }).toObject()
@@ -1881,13 +1890,13 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       },
     )
 
-    const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
+    const loop: (input: LoopInput) => Effect.Effect<SessionV1.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
       input: LoopInput,
     ) {
       return yield* state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input.sessionID))
     })
 
-    const shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError> = Effect.fn(
+    const shell: (input: ShellInput) => Effect.Effect<SessionV1.WithParts, Session.BusyError> = Effect.fn(
       "SessionPrompt.shell",
     )(function* (input: ShellInput) {
       const ready = yield* Latch.make()
@@ -1901,7 +1910,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         const available = (yield* commands.list()).map((c) => c.name)
         const hint = available.length ? ` Available commands: ${available.join(", ")}` : ""
         const error = new NamedError.Unknown({ message: `Command not found: "${input.command}".${hint}` })
-        yield* bus.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
+        yield* events.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
         throw error
       }
       const agentName = cmd.agent ?? input.agent
@@ -1962,7 +1971,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         const available = (yield* agents.list()).filter((a) => !a.hidden).map((a) => a.name)
         const hint = available.length ? ` Available agents: ${available.join(", ")}` : ""
         const error = new NamedError.Unknown({ message: `Agent not found: "${agentName}".${hint}` })
-        yield* bus.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
+        yield* events.publish(Session.Event.Error, { sessionID: input.sessionID, error: error.toObject() })
         throw error
       }
 
@@ -2002,7 +2011,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         parts,
         variant: input.variant,
       })
-      yield* bus.publish(Command.Event.Executed, {
+      yield* events.publish(Command.Event.Executed, {
         name: input.command,
         sessionID: input.sessionID,
         arguments: input.arguments,
@@ -2037,7 +2046,7 @@ export const defaultLayer = Layer.suspend(() =>
     Layer.provide(Provider.defaultLayer),
     Layer.provide(Config.defaultLayer),
     Layer.provide(Instruction.defaultLayer),
-    Layer.provide(AppFileSystem.defaultLayer),
+    Layer.provide(FSUtil.defaultLayer),
     Layer.provide(Plugin.defaultLayer),
     Layer.provide(Session.defaultLayer),
     Layer.provide(SessionRevert.defaultLayer),
@@ -2045,21 +2054,21 @@ export const defaultLayer = Layer.suspend(() =>
     Layer.provide(Image.defaultLayer),
     Layer.provide(
       Layer.mergeAll(
-        EventV2Bridge.defaultLayer,
         Agent.defaultLayer,
+        Database.defaultLayer,
         SystemPrompt.defaultLayer,
         LLM.defaultLayer,
         Reference.defaultLayer,
-        Bus.layer,
         CrossSpawnSpawner.defaultLayer,
         RuntimeFlags.defaultLayer,
+        EventV2Bridge.defaultLayer,
       ),
     ),
   ),
 )
 const ModelRef = Schema.Struct({
-  providerID: ProviderID,
-  modelID: ModelID,
+  providerID: ProviderV2.ID,
+  modelID: ModelV2.ID,
 })
 
 export const PromptInput = Schema.Struct({
@@ -2072,15 +2081,15 @@ export const PromptInput = Schema.Struct({
     description:
       "@deprecated tools and permissions have been merged, you can set permissions on the session itself now",
   }),
-  format: Schema.optional(MessageV2.Format),
+  format: Schema.optional(SessionV1.Format),
   system: Schema.optional(Schema.String),
   variant: Schema.optional(Schema.String),
   parts: Schema.Array(
     Schema.Union([
-      MessageV2.TextPartInput,
-      MessageV2.FilePartInput,
-      MessageV2.AgentPartInput,
-      MessageV2.SubtaskPartInput,
+      SessionV1.TextPartInput,
+      SessionV1.FilePartInput,
+      SessionV1.AgentPartInput,
+      SessionV1.SubtaskPartInput,
     ]).annotate({ discriminator: "type" }),
   ),
 })
@@ -2119,7 +2128,7 @@ export const CommandInput = Schema.Struct({
           mime: Schema.String,
           filename: Schema.optional(Schema.String),
           url: Schema.String,
-          source: Schema.optional(MessageV2.FilePartSource),
+          source: Schema.optional(SessionV1.FilePartSource),
         }),
       ]).annotate({ discriminator: "type" }),
     ),

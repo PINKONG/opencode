@@ -30,14 +30,9 @@ import { WebCommand } from "./cli/cmd/web"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { DbCommand } from "./cli/cmd/db"
-import path from "path"
-import { Global } from "@opencode-ai/core/global"
-import { JsonMigration } from "@/storage/json-migration"
-import { Database } from "@/storage/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
 import { Heap } from "./cli/heap"
-import { drizzle } from "drizzle-orm/bun-sqlite"
 import { ensureProcessMetadata } from "@opencode-ai/core/util/opencode-process"
 import { isRecord } from "@/util/record"
 
@@ -116,42 +111,6 @@ const cli = yargs(args)
       run_id: processMetadata.runID,
     })
 
-    const marker = path.join(Global.Path.data, "wiscode.db")
-    if (!(await Filesystem.exists(marker))) {
-      const tty = process.stderr.isTTY
-      process.stderr.write("Performing one time database migration, may take a few minutes..." + EOL)
-      const width = 36
-      const orange = "\x1b[38;5;214m"
-      const muted = "\x1b[0;2m"
-      const reset = "\x1b[0m"
-      let last = -1
-      if (tty) process.stderr.write("\x1b[?25l")
-      try {
-        await JsonMigration.run(drizzle({ client: Database.Client().$client }), {
-          progress: (event) => {
-            const percent = Math.floor((event.current / event.total) * 100)
-            if (percent === last && event.current !== event.total) return
-            last = percent
-            if (tty) {
-              const fill = Math.round((percent / 100) * width)
-              const bar = `${"■".repeat(fill)}${"･".repeat(width - fill)}`
-              process.stderr.write(
-                `\r${orange}${bar} ${percent.toString().padStart(3)}%${reset} ${muted}${event.label.padEnd(12)} ${event.current}/${event.total}${reset}`,
-              )
-              if (event.current === event.total) process.stderr.write("\n")
-            } else {
-              process.stderr.write(`sqlite-migration:${percent}${EOL}`)
-            }
-          },
-        })
-      } finally {
-        if (tty) process.stderr.write("\x1b[?25h")
-        else {
-          process.stderr.write(`sqlite-migration:done${EOL}`)
-        }
-      }
-      process.stderr.write("Database migration complete." + EOL)
-    }
   })
   .usage("")
   .completion("completion", "generate shell completion script")
@@ -223,17 +182,6 @@ try {
     }
   }
 
-  if (e instanceof ResolveMessage) {
-    Object.assign(data, {
-      name: e.name,
-      message: e.message,
-      code: e.code,
-      specifier: e.specifier,
-      referrer: e.referrer,
-      position: e.position,
-      importKind: e.importKind,
-    })
-  }
   Log.Default.error("fatal", data)
   const formatted = FormatError(e)
   if (formatted) UI.error(formatted)

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { app, utilityProcess } from "electron"
 import type { Details } from "electron"
 import { randomUUID } from "node:crypto"
-import type { SidecarLanConfig, SqliteMigrationProgress } from "../preload/types"
+import type { SidecarLanConfig } from "../preload/types"
 import {
   DEFAULT_SERVER_URL_KEY,
   SIDECAR_EXPOSE_LAN_KEY,
@@ -20,7 +20,6 @@ export type WslConfig = { enabled: boolean }
 export type HealthCheck = { wait: Promise<void> }
 
 type SidecarMessage =
-  | { type: "sqlite"; progress: SqliteMigrationProgress }
   | { type: "ready" }
   | { type: "stopped" }
   | { type: "error"; error: { message: string; stack?: string } }
@@ -35,7 +34,6 @@ type SpawnLocalServerOptions = {
   needsMigration: boolean
   userDataPath: string
   healthHost?: string
-  onSqliteProgress?: (progress: SqliteMigrationProgress) => void
   onStdout?: (message: string) => void
   onStderr?: (message: string) => void
   onExit?: (code: number) => void
@@ -165,11 +163,6 @@ export async function spawnLocalServer(
     }
 
     const onMessage = (message: SidecarMessage) => {
-      if (message.type === "sqlite") {
-        refreshTimeout()
-        options.onSqliteProgress?.(message.progress)
-        return
-      }
       if (message.type === "ready") {
         if (done) return
         done = true
@@ -199,7 +192,6 @@ export async function spawnLocalServer(
       port,
       password,
       userDataPath: options.userDataPath,
-      needsMigration: options.needsMigration,
     })
   }).catch((error) => {
     if (!exited) child.kill()

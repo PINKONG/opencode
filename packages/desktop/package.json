@@ -1,13 +1,13 @@
 {
   "name": "@opencode-ai/desktop",
   "private": true,
-  "version": "1.1.13",
+  "version": "1.2.0",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
+  "homepage": "https://github.com/PINKONG/opencode",
   "author": {
-    "name": "OpenCode",
-    "email": "hello@opencode.ai"
+    "name": "WisCode",
+    "email": "support@pinkong.com"
   },
   "scripts": {
     "typecheck": "tsgo -b",
@@ -31,7 +31,6 @@
     "electron-store": "^10",
     "electron-updater": "^6",
     "electron-window-state": "^5.0.3",
-    "drizzle-orm": "catalog:",
     "marked": "^15"
   },
   "devDependencies": {

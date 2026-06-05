@@ -25,11 +25,6 @@ function app() {
 type TestApp = ReturnType<typeof app>
 type TestHandler = ReturnType<typeof HttpApiApp.webHandler>
 
-const handlerScoped = Effect.acquireRelease(
-  Effect.sync(() => HttpApiApp.webHandler()),
-  (handler) => Effect.promise(() => handler.dispose()).pipe(Effect.ignore),
-)
-
 const request = Effect.fnUntraced(function* (
   handler: TestHandler,
   route: string,
@@ -69,7 +64,7 @@ describe("mcp HttpApi", () => {
     () =>
       Effect.gen(function* () {
         const tmp = yield* TestInstance
-        const handler = yield* handlerScoped
+        const handler = HttpApiApp.webHandler()
         const response = yield* request(handler, McpPaths.status, tmp.directory)
 
         expect(response.status).toBe(200)
@@ -99,7 +94,7 @@ describe("mcp HttpApi", () => {
     () =>
       Effect.gen(function* () {
         const tmp = yield* TestInstance
-        const handler = yield* handlerScoped
+        const handler = HttpApiApp.webHandler()
         const added = yield* request(handler, McpPaths.status, tmp.directory, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -148,7 +143,7 @@ describe("mcp HttpApi", () => {
     () =>
       Effect.gen(function* () {
         const tmp = yield* TestInstance
-        const handler = yield* handlerScoped
+        const handler = HttpApiApp.webHandler()
         const start = yield* request(handler, "/mcp/demo/auth", tmp.directory, { method: "POST" })
         expect(start.status).toBe(400)
 
@@ -217,7 +212,7 @@ describe("mcp HttpApi", () => {
     () =>
       Effect.gen(function* () {
         const tmp = yield* TestInstance
-        const handler = yield* handlerScoped
+        const handler = HttpApiApp.webHandler()
 
         for (const input of [
           { method: "POST", route: "/mcp/missing/auth" },

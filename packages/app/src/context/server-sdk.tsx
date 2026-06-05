@@ -8,6 +8,7 @@ import { useLanguage } from "./language"
 import { usePlatform } from "./platform"
 import { ServerConnection, useServer } from "./server"
 import { createRefCountMap } from "@/utils/refcount"
+import { useGlobal } from "./global"
 
 const isAbortError = (error: unknown) =>
   error !== null && typeof error === "object" && "name" in error && error.name === "AbortError"
@@ -26,7 +27,7 @@ export function shouldUsePlatformEventFetch(input: {
   }
 }
 
-function createServerSdkContext(server: ServerConnection.Any) {
+export function createServerSdkContext(server: ServerConnection.Any) {
   const platform = usePlatform()
   const abort = new AbortController()
 
@@ -254,18 +255,22 @@ function createServerSdkContext(server: ServerConnection.Any) {
   }
 }
 
+export type ServerSDK = ReturnType<typeof createServerSdkContext>
+
 export const { use: useServerSDK, provider: ServerSDKProvider } = createSimpleContext({
   name: "ServerSDK",
-  init: () => {
+  init: (props: { server?: ServerConnection.Any }) => {
+    const global = useGlobal()
     const language = useLanguage()
     const server = useServer()
 
-    if (!server.current) throw new Error(language.t("error.serverSDK.noServerAvailable"))
-    const sdk = createServerSdkContext(server.current)
-    return {
-      ...sdk,
-      createDirSdkContext: createRefCountMap((dir) => createDirSdkContext(dir, sdk)),
-    }
+    const conn = props.server ?? server.current
+    if (!conn) throw new Error(language.t("error.serverSDK.noServerAvailable"))
+
+    const ctx = global.createServerCtx(conn)
+    return Object.assign(ctx.sdk, {
+      createDirSdkContext: createRefCountMap((dir) => createDirSdkContext(dir, ctx.sdk)),
+    })
   },
 })
 
@@ -273,7 +278,7 @@ type SDKEventMap = {
   [key in Event["type"]]: Extract<Event, { type: key }>
 }
 
-function createDirSdkContext(directory: string, serverSDK: ReturnType<typeof createServerSdkContext>) {
+function createDirSdkContext(directory: string, serverSDK: ServerSDK) {
   const client = serverSDK.createClient({
     directory,
     throwOnError: true,

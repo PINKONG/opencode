@@ -61,7 +61,6 @@ const migrations = await Promise.all(
   }),
 )
 console.log(`Loaded ${migrations.length} migrations`)
-
 const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
@@ -232,12 +231,12 @@ for (const item of targets) {
     entrypoints: ["./src/index.ts", parserWorker, workerPath, ...(embeddedFileMap ? ["opencode-web-ui.gen.ts"] : [])],
     define: {
       OPENCODE_VERSION: `'${Script.version}'`,
-      OPENCODE_MIGRATIONS: JSON.stringify(migrations),
       OPENCODE_MODELS_DEV: generated.modelsData,
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
       OPENCODE_WORKER_PATH: workerPath,
       OPENCODE_CHANNEL: `'${Script.channel}'`,
       OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+      ...(item.os === "linux" ? { "process.env.OPENTUI_LIBC": JSON.stringify(item.abi ?? "glibc") } : {}),
     },
   })
 
@@ -269,6 +268,7 @@ for (const item of targets) {
         preferUnplugged: true,
         os: [item.os],
         cpu: [item.arch],
+        ...(item.abi ? { libc: [item.abi] } : {}),
       },
       null,
       2,

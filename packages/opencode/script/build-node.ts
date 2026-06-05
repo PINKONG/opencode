@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 
 import { Script } from "@opencode-ai/script"
-import fs from "fs"
 import path from "path"
+import fs from "fs"
 import { fileURLToPath } from "url"
 import { $ } from "bun"
 
@@ -51,7 +51,7 @@ const migrationDirs = (
   .sort()
 
 const migrations = await Promise.all(
-  migrationDirs.map(async (name) => {
+  migrationDirs.map(async (name: string) => {
     const file = path.join(dir, "migration", name, "migration.sql")
     const sql = await Bun.file(file).text()
     const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(name)
@@ -69,7 +69,6 @@ const migrations = await Promise.all(
   }),
 )
 console.log(`Loaded ${migrations.length} migrations`)
-
 await Bun.build({
   target: "node",
   entrypoints: ["./src/node.ts"],
@@ -78,7 +77,6 @@ await Bun.build({
   sourcemap: "linked",
   external: ["jsonc-parser", "@lydell/node-pty"],
   define: {
-    OPENCODE_MIGRATIONS: JSON.stringify(migrations),
     OPENCODE_MODELS_DEV: generated.modelsData,
     OPENCODE_CHANNEL: `'${Script.channel}'`,
   },

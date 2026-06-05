@@ -9,6 +9,8 @@
     "edit": {
       "packages/opencode/migration/*": "ask",
     },
+  "reference": {
+    "effect": "github.com/Effect-TS/effect-smol",
   },
   "mcp": {},
   "tools": {

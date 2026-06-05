@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import fs from "fs/promises"
 import path from "path"
 import { parse as parseJsonc } from "jsonc-parser"
-import { ConfigMCP } from "../../src/config/mcp"
+import { ConfigMCPV1 } from "@opencode-ai/core/v1/config/mcp"
 import * as mcp from "../../src/cli/cmd/mcp"
 import { tmpdir } from "../fixture/fixture"
 
@@ -177,7 +177,7 @@ describe("mcp config isolation", () => {
   })
 
   test("accepts remote maxkb hmac auth config", () => {
-    const out = ConfigMCP.Info.zod.parse({
+    const out = ConfigMCPV1.Info.zod.parse({
       type: "remote",
       url: "http://127.0.0.1:8081/mcp/",
       oauth: false,
@@ -201,7 +201,7 @@ describe("mcp config isolation", () => {
   })
 
   test("rejects maxkb hmac auth when oauth object is also configured", () => {
-    const out = ConfigMCP.Info.zod.safeParse({
+    const out = ConfigMCPV1.Info.zod.safeParse({
       type: "remote",
       url: "http://127.0.0.1:8081/mcp/",
       oauth: {
@@ -218,7 +218,7 @@ describe("mcp config isolation", () => {
   })
 
   test("rejects maxkb hmac auth when oauth is omitted", () => {
-    const out = ConfigMCP.Info.zod.safeParse({
+    const out = ConfigMCPV1.Info.zod.safeParse({
       type: "remote",
       url: "http://127.0.0.1:8081/mcp/",
       auth: {

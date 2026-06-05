@@ -34,7 +34,8 @@ import { createStore, produce, reconcile } from "solid-js/store"
 import { DragDropProvider, DragDropSensors, DragOverlay, SortableProvider, closestCenter } from "@thisbeyond/solid-dnd"
 import type { DragEvent } from "@thisbeyond/solid-dnd"
 import { useProviders } from "@/hooks/use-providers"
-import { showToast, Toast, toaster } from "@opencode-ai/ui/toast"
+import { toaster } from "@opencode-ai/ui/toast"
+import { setV2Toast, showToast, ToastRegion } from "@/utils/toast"
 import { useServerSDK } from "@/context/server-sdk"
 import { clearWorkspaceTerminals, getTerminalServerScope } from "@/context/terminal"
 import { dropSessionCaches, pickSessionCacheEvictions } from "@/context/global-sync/session-cache"
@@ -91,6 +92,7 @@ import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from 
 import { SidebarContent } from "./layout/sidebar-shell"
 import { knowledgeActive, knowledgeHref, knowledgeVisible } from "@/pages/knowledge/route"
 import { useKnowledgeAvailability } from "@/pages/knowledge/use-knowledge-availability"
+import { runUpdateAndRestart } from "./layout/update"
 
 export default function Layout(props: ParentProps) {
   const [store, setStore, , ready] = persisted(
@@ -131,6 +133,7 @@ export default function Layout(props: ParentProps) {
   const theme = useTheme()
   const language = useLanguage()
   const newDesign = createMemo(() => settings.general.newLayoutDesigns())
+  createEffect(() => setV2Toast(newDesign()))
   const initialDirectory = decode64(params.dir)
   const location = useLocation()
   const route = createMemo(() => {
@@ -210,11 +213,7 @@ export default function Layout(props: ParentProps) {
     return updateQuery.data.version ?? ""
   }
   const installUpdate = () => {
-    if (!platform.updateAndRestart) return
-    setUpdate("installing", true)
-    void platform.updateAndRestart().catch(() => {
-      setUpdate("installing", false)
-    })
+    runUpdateAndRestart(platform.updateAndRestart, (installing) => setUpdate("installing", installing))
   }
   const titlebarUpdate: TitlebarUpdate = {
     version: updateVersion,
@@ -1256,7 +1255,10 @@ export default function Layout(props: ParentProps) {
 
   function openSettings() {
     const run = ++dialogRun
-    void import("@/components/dialog-settings").then((x) => {
+    const module = settings.general.newLayoutDesigns()
+      ? import("@/components/settings-v2")
+      : import("@/components/dialog-settings")
+    void module.then((x) => {
       if (dialogDead || dialogRun !== run) return
       dialog.show(() => <x.DialogSettings />)
     })
@@ -1492,6 +1494,8 @@ export default function Layout(props: ParentProps) {
   }
 
   async function chooseProject() {
+    const conn = server.current
+    if (!conn) return
     function resolve(result: string | string[] | null) {
       if (Array.isArray(result)) {
         for (const directory of result) {
@@ -1514,7 +1518,7 @@ export default function Layout(props: ParentProps) {
       void import("@/components/dialog-select-directory").then((x) => {
         if (dialogDead || dialogRun !== run) return
         dialog.show(
-          () => <x.DialogSelectDirectory multiple={true} onSelect={resolve} />,
+          () => <x.DialogSelectDirectory multiple={true} onSelect={resolve} server={conn} />,
           () => resolve(null),
         )
       })
@@ -1668,7 +1672,7 @@ export default function Layout(props: ParentProps) {
     })
 
     onMount(() => {
-      serverSDK.client.file
+      serverSDK.client.vcs
         .status({ directory: props.directory })
         .then((x) => {
           const files = x.data ?? []
@@ -1736,7 +1740,7 @@ export default function Layout(props: ParentProps) {
     }
 
     onMount(() => {
-      serverSDK.client.file
+      serverSDK.client.vcs
         .status({ directory: props.directory })
         .then((x) => {
           const files = x.data ?? []
@@ -2403,18 +2407,13 @@ export default function Layout(props: ParentProps) {
         <div class="relative bg-v2-background-bg-deep flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text">
           {autoselecting() ?? ""}
           <Titlebar update={titlebarUpdate} />
-          <main
-            class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict bg-v2-background-bg-base"
-            classList={{
-              "m-2 mt-0 rounded-[10px] shadow-[var(--v2-elevation-raised)] overflow-hidden": !!params.id || !params.dir,
-            }}
-          >
+          <main class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict">
             <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>
               {props.children}
             </Show>
           </main>
           {import.meta.env.DEV && <DebugBar />}
-          <Toast.Region />
+          <ToastRegion v2={newDesign()} />
         </div>
       }
     >
@@ -2567,7 +2566,7 @@ export default function Layout(props: ParentProps) {
           </div>
           {import.meta.env.DEV && <DebugBar />}
         </div>
-        <Toast.Region />
+        <ToastRegion v2={newDesign()} />
       </div>
     </Show>
   )

@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto"
-import { EventEmitter } from "node:events"
 import { existsSync, mkdirSync, rmSync } from "node:fs"
 import * as http from "node:http"
 import { createServer } from "node:net"
@@ -12,18 +11,16 @@ import { app, BrowserWindow } from "electron"
 import contextMenu from "electron-context-menu"
 
 import type {
-  InitStep,
   FatalRendererError,
   ServerReadyData,
   SidecarLanConfig,
   SidecarLanStatus,
-  SqliteMigrationProgress,
   WslConfig,
 } from "../preload/types"
 import { checkAppExists, resolveAppPath, wslPath } from "./apps"
 import { installCli, syncCli, syncRipgrep } from "./cli"
 import { CHANNEL, SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD, UPDATER_ENABLED } from "./constants"
-import { registerIpcHandlers, sendDeepLinks, sendMenuCommand, sendSqliteMigrationProgress } from "./ipc"
+import { registerIpcHandlers, sendDeepLinks, sendMenuCommand } from "./ipc"
 import { resolveSidecarHosts } from "./lan"
 import { exportDebugLogs, initCrashReporter, initLogging, startNetLog, write as writeLog } from "./logging"
 import { parseMarkdown } from "./markdown"
@@ -43,7 +40,6 @@ import {
 } from "./server"
 import { checkUpdate, checkForUpdates, installUpdate, setupAutoUpdater } from "./updater"
 import {
-  createLoadingWindow,
   createMainWindow,
   registerRendererProtocol,
   setBackgroundColor,
@@ -81,13 +77,8 @@ if (onboardingTestRoot) app.setPath("sessionData", join(onboardingTestRoot, "ses
 const logger = initLogging()
 initCrashReporter()
 
-const initEmitter = new EventEmitter()
-let initStep: InitStep = { phase: "server_waiting" }
-
 let mainWindow: BrowserWindow | null = null
 let server: SidecarListener | null = null
-const loadingComplete = defer<void>()
-
 const pendingDeepLinks: string[] = []
 
 const serverReady = defer<ServerReadyData>()
@@ -187,18 +178,11 @@ function setupApp() {
   registerIpcHandlers({
     killSidecar: () => killSidecar(),
     installCli: () => installCli(),
-    awaitInitialization: async (sendStep) => {
-      sendStep(initStep)
-      const listener = (step: InitStep) => sendStep(step)
-      initEmitter.on("step", listener)
-      try {
-        logger.log("awaiting server ready")
-        const res = await serverReady.promise
-        logger.log("server ready", { url: res.url })
-        return res
-      } finally {
-        initEmitter.off("step", listener)
-      }
+    awaitInitialization: async () => {
+      logger.log("awaiting server ready")
+      const res = await serverReady.promise
+      logger.log("server ready", { url: res.url })
+      return res
     },
     getWindowConfig: () => ({ updaterEnabled: UPDATER_ENABLED }),
     consumeInitialDeepLinks: () => pendingDeepLinks.splice(0),
@@ -215,7 +199,6 @@ function setupApp() {
     checkAppExists: async (appName) => checkAppExists(appName),
     wslPath: async (path, mode) => wslPath(path, mode),
     resolveAppPath: async (appName) => resolveAppPath(appName),
-    loadingWindowComplete: () => loadingComplete.resolve(),
     runUpdater: async (alertOnFail) => checkForUpdates(alertOnFail, killSidecar),
     checkUpdate: async () => checkUpdate(),
     installUpdate: async () => installUpdate(killSidecar),
@@ -269,15 +252,8 @@ function focusMainWindow() {
   mainWindow.focus()
 }
 
-function setInitStep(step: InitStep) {
-  initStep = step
-  logger.log("init step", { step })
-  initEmitter.emit("step", step)
-}
-
 async function initialize() {
   const needsMigration = !sqliteFileExists()
-  let overlay: BrowserWindow | null = null
 
   const config = getSidecarLanConfig()
   const port = await getSidecarPort(config)
@@ -298,13 +274,6 @@ async function initialize() {
 
   const loadingTask = (async () => {
     logger.log("sidecar connection started", { url, advertiseUrl, healthHost: hosts.healthHost })
-
-    initEmitter.on("sqlite", (progress: SqliteMigrationProgress) => {
-      setInitStep({ phase: "sqlite_waiting" })
-      if (overlay) sendSqliteMigrationProgress(overlay, progress)
-      if (mainWindow) sendSqliteMigrationProgress(mainWindow, progress)
-    })
-
     logger.log("spawning sidecar", { url, advertiseUrl, bindHost: hosts.bindHost })
     const { listener, health } = await spawnLocalServer(
       hosts.bindHost,
@@ -318,7 +287,6 @@ async function initialize() {
         needsMigration,
         userDataPath: app.getPath("userData"),
         healthHost: hosts.healthHost,
-        onSqliteProgress: (progress) => initEmitter.emit("sqlite", progress),
         onStdout: (message) => writeLog("server", "stdout", { message }),
         onStderr: (message) => writeLog("server", "stderr", { message }, "warn"),
         onExit: (code) => writeLog("utility", "sidecar exited", { code }, "warn"),
@@ -344,25 +312,9 @@ async function initialize() {
     logger.log("loading task finished")
   })()
 
-  if (needsMigration) {
-    const show = await Promise.race([loadingTask.then(() => false), delay(1_000).then(() => true)])
-    if (show) {
-      overlay = createLoadingWindow()
-      await delay(1_000)
-    }
-  }
-
   await loadingTask
-  setInitStep({ phase: "done" })
-
-  if (overlay) {
-    await loadingComplete.promise
-  }
-
   mainWindow = createMainWindow()
   wireMenu()
-
-  overlay?.close()
 }
 
 function wireMenu() {

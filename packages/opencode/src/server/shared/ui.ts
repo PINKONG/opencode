@@ -1,4 +1,4 @@
-import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Effect, Stream } from "effect"
 import { HttpBody, HttpClient, HttpClientRequest, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { createHash } from "node:crypto"
@@ -68,7 +68,7 @@ function resolveEmbeddedAssetPath(file: string) {
 }
 
 function embeddedUIResponse(file: string, body: Uint8Array) {
-  const mime = AppFileSystem.mimeType(file)
+  const mime = FSUtil.mimeType(file)
   const headers = new Headers({ "content-type": mime })
   if (mime.startsWith("text/html")) {
     headers.set("content-security-policy", cspForHtml(new TextDecoder().decode(body)))
@@ -78,17 +78,17 @@ function embeddedUIResponse(file: string, body: Uint8Array) {
 
 export function serveEmbeddedUIEffect(
   requestPath: string,
-  fs: AppFileSystem.Interface,
+  fs: FSUtil.Interface,
   embeddedWebUI: Record<string, string>,
   embedSession?: string,
 ) {
   const file = embeddedWebUI[requestPath.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
   if (!file) return Effect.succeed(notFound())
-  const resolvedPath = resolveEmbeddedAssetPath(file)
+    const resolvedPath = resolveEmbeddedAssetPath(file)
 
   return fs.readFile(resolvedPath).pipe(
     Effect.map((body) => {
-      const mime = AppFileSystem.mimeType(resolvedPath)
+      const mime = FSUtil.mimeType(resolvedPath)
       if (!mime.startsWith("text/html")) return embeddedUIResponse(resolvedPath, body)
       const html = injectEmbedSessionMeta(new TextDecoder().decode(body), embedSession)
       return HttpServerResponse.text(html, {
@@ -104,7 +104,7 @@ export function serveEmbeddedUIEffect(
 
 export function serveUIEffect(
   request: HttpServerRequest.HttpServerRequest,
-  services: { fs: AppFileSystem.Interface; client: HttpClient.HttpClient; disableEmbeddedWebUi: boolean },
+  services: { fs: FSUtil.Interface; client: HttpClient.HttpClient; disableEmbeddedWebUi: boolean },
 ) {
   return Effect.gen(function* () {
     const embeddedWebUI = yield* Effect.promise(() => embeddedUI(services.disableEmbeddedWebUi))

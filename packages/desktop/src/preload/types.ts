@@ -1,15 +1,11 @@
 import type { DesktopMenuAction } from "@opencode-ai/app/desktop-menu"
 
-export type InitStep = { phase: "server_waiting" } | { phase: "sqlite_waiting" } | { phase: "done" }
-
 export type ServerReadyData = {
   url: string
   displayUrl: string | null
   username: string | null
   password: string | null
 }
-
-export type SqliteMigrationProgress = { type: "InProgress"; value: number } | { type: "Done" }
 
 export type WslConfig = { enabled: boolean }
 export type SidecarLanConfig = {
@@ -46,7 +42,7 @@ export type FatalRendererError = {
 export type ElectronAPI = {
   killSidecar: () => Promise<void>
   installCli: () => Promise<string>
-  awaitInitialization: (onStep: (step: InitStep) => void) => Promise<ServerReadyData>
+  awaitInitialization: () => Promise<ServerReadyData>
   getWindowConfig: () => Promise<WindowConfig>
   consumeInitialDeepLinks: () => Promise<string[]>
   getDefaultServerUrl: () => Promise<string | null>
@@ -70,7 +66,6 @@ export type ElectronAPI = {
   storeLength: (name: string) => Promise<number>
 
   getWindowCount: () => Promise<number>
-  onSqliteMigrationProgress: (cb: (progress: SqliteMigrationProgress) => void) => () => void
   onMenuCommand: (cb: (id: string) => void) => () => void
   onDeepLink: (cb: (urls: string[]) => void) => () => void
 
@@ -103,7 +98,6 @@ export type ElectronAPI = {
   onZoomFactorChanged: (cb: (factor: number) => void) => () => void
   setTitlebar: (theme: TitlebarTheme) => Promise<void>
   runDesktopMenuAction: (action: DesktopMenuAction) => Promise<void>
-  loadingWindowComplete: () => void
   runUpdater: (alertOnFail: boolean) => Promise<void>
   checkUpdate: () => Promise<{ updateAvailable: boolean; version?: string }>
   installUpdate: () => Promise<void>

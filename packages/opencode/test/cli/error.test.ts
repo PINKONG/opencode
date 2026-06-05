@@ -3,7 +3,8 @@ import { AccountTransportError } from "../../src/account/schema"
 import { FormatError } from "../../src/cli/error"
 import * as UI from "../../src/cli/ui"
 import { Provider } from "../../src/provider/provider"
-import { ModelID, ProviderID } from "../../src/provider/schema"
+import { ModelV2 } from "@opencode-ai/core/model"
+import { ProviderV2 } from "@opencode-ai/core/provider"
 
 describe("cli.error", () => {
   test("formats legacy and tagged config errors the same way", () => {
@@ -68,8 +69,8 @@ describe("cli.error", () => {
 
   test("formats missing model guidance with wiscode config naming", () => {
     const error = new Provider.ModelNotFoundError({
-      providerID: ProviderID.make("openai"),
-      modelID: ModelID.make("missing-model"),
+      providerID: ProviderV2.ID.make("openai"),
+      modelID: ModelV2.ID.make("missing-model"),
       suggestions: ["gpt-4.1"],
     })
 
