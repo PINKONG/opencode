@@ -10,8 +10,7 @@ import { useSync } from "@/context/sync"
 import { decode64 } from "@/utils/base64"
 import { formatServerError } from "@/utils/server-errors"
 import { safeSessionSync } from "@/utils/session-sync"
-
-export const decodeDirectory = (dir: string) => decode64(dir) ?? ""
+import { Schema } from "effect"
 
 function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
   const location = useLocation()
@@ -52,6 +51,15 @@ function DirectoryDataProvider(props: ParentProps<{ directory: string }>) {
   )
 }
 
+export const ProjectDirString = Schema.String.pipe(Schema.brand("ProjectDirString"))
+export type ProjectDirString = Schema.Schema.Type<typeof ProjectDirString>
+
+export function decodeDirectory(dir: string): ProjectDirString | undefined {
+  const decoded = decode64(dir)
+  if (!decoded) return
+  return ProjectDirString.make(decoded)
+}
+
 export default function Layout(props: ParentProps) {
   const params = useParams()
   const language = useLanguage()
@@ -60,7 +68,7 @@ export default function Layout(props: ParentProps) {
 
   const resolved = createMemo(() => {
     if (!params.dir) return ""
-    return decodeDirectory(params.dir)
+    return decodeDirectory(params.dir) ?? ""
   })
 
   createEffect(() => {

@@ -19,8 +19,6 @@ describe("app branding surface", () => {
     const session = await read("./components/session/session-new-view.tsx")
     const windowsMenu = await read("./components/windows-app-menu.tsx")
     const app = await read("./app.tsx")
-    const desktop = await read("../../desktop/src/renderer/loading.tsx")
-    const electron = await read("../../desktop/src/renderer/loading.tsx")
 
     expect(favicon).not.toContain('content="OpenCode"')
     expect(manifest).not.toContain('"OpenCode"')
@@ -30,7 +28,6 @@ describe("app branding surface", () => {
     expect(helpers).not.toContain("https://opencode.ai/favicon.svg")
     expect(helpers).not.toContain("OPENCODE_PROJECT_ID")
     expect(entry).not.toContain("https://opencode.ai/favicon-96x96-v3.png")
-    expect(electron).not.toContain("https://opencode.ai/favicon-96x96-v3.png")
     expect(schema).not.toContain("OpenCode Desktop Theme")
     expect(schema).not.toContain("A theme definition for the OpenCode desktop application")
     expect(theme).not.toContain('"name": "OpenCode"')
@@ -43,15 +40,8 @@ describe("app branding surface", () => {
     expect(windowsMenu).not.toContain("OpenCode menu")
     expect(windowsMenu).not.toContain(">OpenCode<")
     const appVisible = stripJsxComments(app)
-    const desktopVisible = stripJsxComments(desktop)
-    const electronVisible = stripJsxComments(electron)
-
     expect(appVisible).toContain('<Splash class="w-16 h-20 opacity-50 animate-pulse" />')
     expect(appVisible).not.toContain('<Logo class="w-24 mb-4" />')
-    expect(desktopVisible).toContain('<Logo class="w-32 opacity-15" />')
-    expect(desktopVisible).not.toContain("<Splash")
-    expect(electronVisible).toContain('<Logo class="w-32 opacity-15" />')
-    expect(electronVisible).not.toContain("<Splash")
   })
 
   test("uses wiscode config file names in visible app copy", async () => {

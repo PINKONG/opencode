@@ -122,10 +122,10 @@ const mcp = Layer.succeed(
     resources: () => Effect.succeed({}),
     add: () => Effect.succeed({ status: { status: "disabled" as const } }),
     connect: () => Effect.void,
+    callTool: () => Effect.succeed(undefined),
     disconnect: () => Effect.void,
     getPrompt: () => Effect.succeed(undefined),
     readResource: () => Effect.succeed(undefined),
-    callTool: () => Effect.succeed(undefined),
     startAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
     authenticate: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
     finishAuth: () => Effect.die("unexpected MCP auth in prompt-effect tests"),
@@ -168,7 +168,7 @@ const blockingProcessor = Layer.succeed(
   }),
 )
 
-function makeHttp(input?: { processor?: "blocking" }) {
+function makePrompt(input?: { processor?: "blocking" }) {
   const deps = Layer.mergeAll(
     Session.defaultLayer,
     Snapshot.defaultLayer,
@@ -219,29 +219,37 @@ function makeHttp(input?: { processor?: "blocking" }) {
     Layer.provideMerge(proc),
     Layer.provideMerge(deps),
   )
-  return Layer.mergeAll(
-    TestLLMServer.layer,
-    SessionPrompt.layer.pipe(
-      Layer.provide(SessionRevert.defaultLayer),
-      Layer.provide(Image.defaultLayer),
-      Layer.provide(Reference.defaultLayer),
-      Layer.provide(summary),
-      Layer.provideMerge(run),
-      Layer.provideMerge(compact),
-      Layer.provideMerge(proc),
-      Layer.provideMerge(registry),
-      Layer.provideMerge(trunc),
-      Layer.provide(Instruction.defaultLayer),
-      Layer.provide(SystemPrompt.defaultLayer),
-      Layer.provide(RuntimeFlags.layer({ experimentalEventSystem: true })),
-      Layer.provideMerge(deps),
-    ),
-  ).pipe(Layer.provide(summary))
+  return SessionPrompt.layer.pipe(
+    Layer.provide(SessionRevert.defaultLayer),
+    Layer.provide(Image.defaultLayer),
+    Layer.provide(Reference.defaultLayer),
+    Layer.provide(summary),
+    Layer.provideMerge(run),
+    Layer.provideMerge(compact),
+    Layer.provideMerge(proc),
+    Layer.provideMerge(registry),
+    Layer.provideMerge(trunc),
+    Layer.provide(Instruction.defaultLayer),
+    Layer.provide(SystemPrompt.defaultLayer),
+    Layer.provide(RuntimeFlags.layer({ experimentalEventSystem: true })),
+    Layer.provideMerge(deps),
+    Layer.provide(summary),
+  )
+}
+
+function makeHttp(input?: { processor?: "blocking" }) {
+  return Layer.mergeAll(TestLLMServer.layer, makePrompt(input))
+}
+
+function makeHttpNoLLMServer(input?: { processor?: "blocking" }) {
+  return makePrompt(input)
 }
 
 const it = testEffect(makeHttp())
-const race = testEffect(makeHttp({ processor: "blocking" }))
+const noLLMServer = testEffect(makeHttpNoLLMServer())
+const raceNoLLMServer = testEffect(makeHttpNoLLMServer({ processor: "blocking" }))
 const unix = process.platform !== "win32" ? it.instance : it.instance.skip
+const unixNoLLMServer = process.platform !== "win32" ? noLLMServer.instance : noLLMServer.instance.skip
 
 // Config that registers a custom "test" provider with a "test-model" model
 // so provider model lookup succeeds inside the loop.
@@ -436,19 +444,20 @@ const boot = Effect.fn("test.boot")(function* (input?: { title?: string }) {
 
 // Loop semantics
 
-it.instance("loop exits immediately when last assistant has stop finish", () =>
-  Effect.gen(function* () {
-    const { llm } = yield* useServerConfig(providerCfg)
-    const prompt = yield* SessionPrompt.Service
-    const sessions = yield* Session.Service
-    const chat = yield* sessions.create({ title: "Pinned" })
-    yield* seed(chat.id, { finish: "stop" })
+noLLMServer.instance(
+  "loop exits immediately when last assistant has stop finish",
+  () =>
+    Effect.gen(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "Pinned" })
+      yield* seed(chat.id, { finish: "stop" })
 
-    const result = yield* prompt.loop({ sessionID: chat.id })
-    expect(result.info.role).toBe("assistant")
-    if (result.info.role === "assistant") expect(result.info.finish).toBe("stop")
-    expect(yield* llm.calls).toBe(0)
-  }),
+      const result = yield* prompt.loop({ sessionID: chat.id })
+      expect(result.info.role).toBe("assistant")
+      if (result.info.role === "assistant") expect(result.info.finish).toBe("stop")
+    }),
+  { config: cfg },
 )
 
 it.instance("loop exits without an LLM request for interrupted orphan tool calls", () =>
@@ -535,7 +544,7 @@ it.instance("loop stops provider overflow instead of auto-compacting when disabl
   }),
 )
 
-it.instance.skip(
+noLLMServer.instance.skip(
   "prompt emits v2 prompted and synthetic events (v2 projector disabled)",
   () =>
     Effect.gen(function* () {
@@ -543,20 +552,20 @@ it.instance.skip(
       const sessions = yield* Session.Service
       const chat = yield* sessions.create({ title: "Pinned" })
 
-    yield* prompt.prompt({
-      sessionID: chat.id,
-      agent: "build",
-      noReply: true,
-      parts: [
-        { type: "text", text: "hello v2" },
-        {
-          type: "file",
-          mime: "text/plain",
-          filename: "note.txt",
-          url: "data:text/plain;base64,bm90ZSBjb250ZW50",
-        },
-      ],
-    })
+      yield* prompt.prompt({
+        sessionID: chat.id,
+        agent: "build",
+        noReply: true,
+        parts: [
+          { type: "text", text: "hello v2" },
+          {
+            type: "file",
+            mime: "text/plain",
+            filename: "note.txt",
+            url: "data:text/plain;base64,bm90ZSBjb250ZW50",
+          },
+        ],
+      })
 
       const messages = yield* SessionV2.Service.use((session) => session.messages({ sessionID: chat.id })).pipe(
         Effect.provide(SessionV2.defaultLayer),
@@ -605,7 +614,6 @@ it.instance("static loop returns assistant text through local provider", () =>
     expect(yield* llm.hits).toHaveLength(1)
     expect(yield* llm.pending).toBe(0)
   }),
-  { git: true },
 )
 
 it.instance("static loop consumes queued replies across turns", () =>
@@ -647,7 +655,6 @@ it.instance("static loop consumes queued replies across turns", () =>
     expect(yield* llm.hits).toHaveLength(2)
     expect(yield* llm.pending).toBe(0)
   }),
-  { git: true },
 )
 
 it.instance("loop continues when finish is tool-calls", () =>
@@ -676,7 +683,6 @@ it.instance("loop continues when finish is tool-calls", () =>
       expect(result.info.finish).toBe("stop")
     }
   }),
-  { git: true },
 )
 
 it.instance("glob tool keeps instance context during prompt runs", () =>
@@ -713,10 +719,9 @@ it.instance("glob tool keeps instance context during prompt runs", () =>
     if (!tool) return
 
     expect(tool.state.output).toContain(file)
-      expect(tool.state.output).not.toContain("No context found for instance")
-      expect(result.parts.some((part) => part.type === "text" && part.text === "done")).toBe(true)
-    }),
-  { git: true },
+    expect(tool.state.output).not.toContain("No context found for instance")
+    expect(result.parts.some((part) => part.type === "text" && part.text === "done")).toBe(true)
+  }),
 )
 
 it.instance("loop continues when finish is stop but assistant has tool parts", () =>
@@ -745,8 +750,6 @@ it.instance("loop continues when finish is stop but assistant has tool parts", (
       expect(result.info.finish).toBe("stop")
     }
   }),
-  { git: true },
-  30000,
 )
 
 it.instance("failed subtask preserves metadata on error tool state", () =>
@@ -791,8 +794,6 @@ it.instance("failed subtask preserves metadata on error tool state", () =>
       modelID: ModelV2.ID.make("missing-model"),
     })
   }),
-  { git: true },
-  30000,
 )
 
 it.instance(
@@ -952,11 +953,10 @@ it.instance(
   3_000,
 )
 
-race.instance(
+raceNoLLMServer.instance(
   "finalizes assistant when cancelled before processor creation completes",
   () =>
     Effect.gen(function* () {
-      yield* useServerConfig(providerCfg)
       processorCreateStarted.length = 0
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
@@ -1038,10 +1038,11 @@ race.instance(
         expect(lastAssistant.info.parentID).toBe(lastUser?.info.id)
       }
     }),
+  { config: cfg },
   3_000,
 )
 
-it.instance(
+noLLMServer.instance(
   "cancel finalizes subtask tool state",
   () =>
     Effect.gen(function* () {
@@ -1153,7 +1154,7 @@ it.instance(
 
 // Queue semantics
 
-it.instance("concurrent loop callers get same result", () =>
+noLLMServer.instance("concurrent loop callers get same result", () =>
   Effect.gen(function* () {
     const { prompt, run, chat } = yield* boot()
     yield* seed(chat.id, { finish: "stop" })
@@ -1286,7 +1287,7 @@ it.instance(
   3_000,
 )
 
-it.instance("assertNotBusy succeeds when idle", () =>
+noLLMServer.instance("assertNotBusy succeeds when idle", () =>
   Effect.gen(function* () {
     const run = yield* SessionRunState.Service
     const sessions = yield* Session.Service
@@ -1326,7 +1327,7 @@ it.instance(
   3_000,
 )
 
-unix(
+unixNoLLMServer(
   "shell captures stdout and stderr in completed tool output",
   () =>
     Effect.gen(function* () {
@@ -1350,7 +1351,7 @@ unix(
   { config: cfg },
 )
 
-unix(
+unixNoLLMServer(
   "shell completes a fast command on the preferred shell",
   () =>
     Effect.gen(function* () {
@@ -1374,7 +1375,7 @@ unix(
   { config: cfg },
 )
 
-unix(
+unixNoLLMServer(
   "shell uses configured shell over env shell",
   () =>
     withSh(() =>
@@ -1397,7 +1398,7 @@ unix(
   30_000,
 )
 
-unix(
+unixNoLLMServer(
   "shell commands can change directory after startup",
   () =>
     withSh(() =>
@@ -1423,7 +1424,7 @@ unix(
   { config: cfg },
 )
 
-unix(
+unixNoLLMServer(
   "shell lists files from the project directory",
   () =>
     Effect.gen(function* () {
@@ -1449,7 +1450,7 @@ unix(
   { config: cfg },
 )
 
-unix(
+unixNoLLMServer(
   "shell captures stderr from a failing command",
   () =>
     Effect.gen(function* () {
@@ -1471,7 +1472,7 @@ unix(
   { config: cfg },
 )
 
-unix(
+unixNoLLMServer(
   "shell updates running metadata before process exit",
   () =>
     withSh(() =>
@@ -1609,7 +1610,7 @@ unix(
   30_000,
 )
 
-unix(
+unixNoLLMServer(
   "cancel interrupts shell and resolves cleanly",
   () =>
     withSh(() =>
@@ -1643,7 +1644,7 @@ unix(
   30_000,
 )
 
-unix(
+unixNoLLMServer(
   "cancel persists aborted shell result when shell ignores TERM",
   () =>
     withSh(() =>
@@ -1744,7 +1745,7 @@ unix(
   30_000,
 )
 
-unix(
+unixNoLLMServer(
   "cancel interrupts loop queued behind shell",
   () =>
     Effect.gen(function* () {
@@ -1771,7 +1772,7 @@ unix(
   30_000,
 )
 
-unix(
+unixNoLLMServer(
   "shell rejects when another shell is already running",
   () =>
     withSh(() =>
@@ -1815,7 +1816,7 @@ function hangUntilAborted(tool: { execute: (...args: any[]) => any }) {
   })
 }
 
-it.instance(
+noLLMServer.instance(
   "interrupt propagates abort signal to read tool via file part (text/plain)",
   () =>
     Effect.gen(function* () {
@@ -1853,7 +1854,7 @@ it.instance(
   30_000,
 )
 
-it.instance(
+noLLMServer.instance(
   "interrupt propagates abort signal to read tool via file part (directory)",
   () =>
     Effect.gen(function* () {
@@ -1890,7 +1891,7 @@ it.instance(
 
 // Missing file handling
 
-it.instance(
+noLLMServer.instance(
   "does not fail the prompt when a file part is missing",
   () =>
     Effect.gen(function* () {
@@ -1926,7 +1927,7 @@ it.instance(
   { config: cfg },
 )
 
-it.instance(
+noLLMServer.instance(
   "keeps stored part order stable when file resolution is async",
   () =>
     Effect.gen(function* () {
@@ -1968,8 +1969,8 @@ it.instance(
   { config: cfg },
 )
 
-it.instance(
-  "resolves configured reference mentions before workspace paths and agents",
+noLLMServer.instance(
+  "resolves configured reference mentions to one root directory attachment",
   () =>
     Effect.gen(function* () {
       const { directory: dir } = yield* TestInstance
@@ -1984,33 +1985,18 @@ it.instance(
       const parts = yield* prompt.resolvePromptParts(
         "Use @docs and @docs/README.md and @docs/guide and @docs/missing.md and @docs/README.md and @build",
       )
-      const references = parts.filter(
-        (part): part is SessionV1.TextPartInput =>
-          part.type === "text" && part.synthetic === true && part.text.startsWith("Referenced configured reference "),
-      )
       const files = parts.filter((part): part is SessionV1.FilePartInput => part.type === "file")
       const agents = parts.filter((part): part is SessionV1.AgentPartInput => part.type === "agent")
-      const bare = references.find((part) => part.text.includes("@docs."))
-      const missing = references.find((part) => part.text.includes("@docs/missing.md"))
-      const guide = files.find((part) => part.filename === "docs/guide")
+      const text = parts.find((part): part is SessionV1.TextPartInput => part.type === "text" && !part.synthetic)
 
-      expect(references.length).toBe(2)
-      expect(bare?.metadata?.reference).toMatchObject({
-        name: "docs",
-        kind: "local",
-        path: docs,
+      expect(text?.text).toContain("@docs")
+      expect(files).toHaveLength(1)
+      expect(files[0]).toMatchObject({
+        filename: "docs",
+        mime: "application/x-directory",
+        source: { type: "file", path: "docs", text: { value: "@docs" } },
       })
-      expect(missing?.text).toContain("Path does not exist inside configured reference @docs")
-      expect(missing?.metadata?.reference).toMatchObject({
-        target: "missing.md",
-        targetPath: path.join(docs, "missing.md"),
-      })
-
-      expect(files.length).toBe(2)
-      expect(files.map((file) => fileURLToPath(file.url)).sort()).toEqual(
-        [path.join(docs, "README.md"), path.join(docs, "guide")].sort(),
-      )
-      expect(guide?.mime).toBe("application/x-directory")
+      expect(fileURLToPath(files[0].url)).toBe(docs)
       expect(agents.map((agent) => agent.name)).toEqual(["build"])
     }),
   {
@@ -2023,8 +2009,8 @@ it.instance(
   },
 )
 
-it.instance(
-  "injects metadata for bare configured reference mentions",
+noLLMServer.instance(
+  "stores raw reference mentions alongside directory attachments",
   () =>
     Effect.gen(function* () {
       const { directory: dir } = yield* TestInstance
@@ -2037,83 +2023,25 @@ it.instance(
       const message = yield* prompt.prompt({
         sessionID: session.id,
         noReply: true,
-        parts: yield* prompt.resolvePromptParts("Use @docs for context"),
+        parts: [{ type: "text", text: "Use @docs for context" }],
       })
 
       const stored = yield* MessageV2.get({ sessionID: session.id, messageID: message.info.id })
       const synthetic = stored.parts.filter(
         (part): part is SessionV1.TextPart => part.type === "text" && part.synthetic === true,
       )
-      const reference = synthetic.find((part) => part.text.startsWith("Referenced configured reference @docs."))
+      const files = stored.parts.filter((part): part is SessionV1.FilePart => part.type === "file")
+      const text = stored.parts.find((part): part is SessionV1.TextPart => part.type === "text" && !part.synthetic)
 
-      expect(reference?.metadata?.reference).toMatchObject({ name: "docs", kind: "local", path: docs })
-      expect(synthetic.some((part) => part.text.includes(`Reference root: ${docs}`))).toBe(true)
-      expect(synthetic.some((part) => part.text.includes("Inspect the configured reference"))).toBe(true)
-
-      yield* sessions.remove(session.id)
-    }),
-  {
-    config: {
-      ...cfg,
-      reference: {
-        docs: "./external-docs",
-      },
-    },
-  },
-)
-
-it.instance(
-  "injects metadata for configured reference file attachments",
-  () =>
-    Effect.gen(function* () {
-      const { directory: dir } = yield* TestInstance
-      const docs = path.join(dir, "external-docs")
-      const readme = path.join(docs, "README.md")
-      yield* ensureDir(docs)
-      yield* writeText(readme, "reference readme")
-
-      const prompt = yield* SessionPrompt.Service
-      const sessions = yield* Session.Service
-      const session = yield* sessions.create({})
-      const message = yield* prompt.prompt({
-        sessionID: session.id,
-        agent: "build",
-        noReply: true,
-        parts: [
-          { type: "text", text: "Read @docs/README.md" },
-          {
-            type: "file",
-            mime: "text/plain",
-            filename: "docs/README.md",
-            url: pathToFileURL(readme).href,
-            source: {
-              type: "file",
-              path: "docs/README.md",
-              text: { value: "@docs/README.md", start: 5, end: 20 },
-            },
-          },
-        ],
+      expect(text?.text).toBe("Use @docs for context")
+      expect(synthetic.some((part) => part.text.includes(JSON.stringify({ filePath: docs })))).toBe(true)
+      expect(files).toHaveLength(1)
+      expect(files[0]).toMatchObject({
+        filename: "docs",
+        mime: "application/x-directory",
+        source: { type: "file", path: "docs", text: { value: "@docs", start: 4, end: 9 } },
       })
-
-      const stored = yield* MessageV2.get({ sessionID: session.id, messageID: message.info.id })
-      const synthetic = stored.parts.filter(
-        (part): part is SessionV1.TextPart => part.type === "text" && part.synthetic === true,
-      )
-      const reference = synthetic.find((part) =>
-        part.text.startsWith("Referenced configured reference @docs/README.md."),
-      )
-
-      expect(reference?.metadata?.reference).toMatchObject({
-        name: "docs",
-        kind: "local",
-        path: docs,
-        target: "README.md",
-        targetPath: readme,
-        source: { value: "@docs/README.md", start: 5, end: 20 },
-      })
-      expect(synthetic.findIndex((part) => part === reference)).toBeLessThan(
-        synthetic.findIndex((part) => part.text.startsWith("Called the Read tool with the following input:")),
-      )
+      expect(fileURLToPath(files[0].url)).toBe(docs)
 
       yield* sessions.remove(session.id)
     }),
@@ -2129,7 +2057,7 @@ it.instance(
 
 // Special characters in filenames
 
-it.instance(
+noLLMServer.instance(
   "handles filenames with # character",
   () =>
     Effect.gen(function* () {
@@ -2233,7 +2161,7 @@ it.instance(
 
 // Agent variant
 
-it.instance(
+noLLMServer.instance(
   "applies agent variant only when using agent model",
   () =>
     Effect.gen(function* () {
@@ -2304,7 +2232,7 @@ it.instance(
 
 // Agent / command resolution errors
 
-it.instance(
+noLLMServer.instance(
   "unknown agent throws typed error",
   () =>
     Effect.gen(function* () {
@@ -2333,7 +2261,7 @@ it.instance(
   30_000,
 )
 
-it.instance(
+noLLMServer.instance(
   "unknown agent error includes available agent names",
   () =>
     Effect.gen(function* () {
@@ -2361,7 +2289,7 @@ it.instance(
   30_000,
 )
 
-it.instance(
+noLLMServer.instance(
   "unknown command throws typed error with available names",
   () =>
     Effect.gen(function* () {
@@ -2383,7 +2311,7 @@ it.instance(
         expect(NamedError.Unknown.isInstance(err)).toBe(true)
         if (NamedError.Unknown.isInstance(err)) {
           expect(err.data.message).toContain('Command not found: "nonexistent-command-xyz"')
-          expect(err.data.message).toContain("review")
+          expect(err.data.message).toContain("customize-opencode")
           expect(err.data.message).not.toContain("init")
         }
       }

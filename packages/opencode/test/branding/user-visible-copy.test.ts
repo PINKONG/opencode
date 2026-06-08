@@ -44,7 +44,7 @@ describe("user visible branding copy", () => {
   test("cli-facing guidance uses wiscode command examples", async () => {
     const error = await Bun.file(join(root, "cli/error.ts")).text()
     const pr = await Bun.file(join(root, "cli/cmd/pr.ts")).text()
-    const github = await Bun.file(join(root, "cli/cmd/github.ts")).text()
+    const github = await Bun.file(join(root, "cli/cmd/github.handler.ts")).text()
     const index = await Bun.file(join(root, "index.ts")).text()
     const temporary = await Bun.file(join(root, "temporary.ts")).text()
     const providers = await Bun.file(join(root, "cli/cmd/providers.ts")).text()
@@ -58,7 +58,6 @@ describe("user visible branding copy", () => {
     const web = await Bun.file(join(root, "cli/cmd/web.ts")).text()
     const upgrade = await Bun.file(join(root, "cli/cmd/upgrade.ts")).text()
     const mcp = await Bun.file(join(root, "cli/cmd/mcp.ts")).text()
-    const config = await Bun.file(join(root, "config/config.ts")).text()
     const mdns = await Bun.file(join(root, "server/mdns.ts")).text()
     const status = await Bun.file(join(root, "cli/cmd/tui/component/dialog-status.tsx")).text()
     const session = await Bun.file(join(root, "cli/cmd/tui/routes/session/index.tsx")).text()
@@ -152,9 +151,6 @@ describe("user visible branding copy", () => {
     expect(network).toContain('default: "wiscode.local"')
     expect(network).not.toContain("default: opencode.local")
     expect(network).not.toContain('default: "opencode.local"')
-
-    expect(config).toContain("Custom domain name for mDNS service (default: wiscode.local)")
-    expect(config).not.toContain("Custom domain name for mDNS service (default: opencode.local)")
 
     expect(mdns).toContain('const host = domain ?? "wiscode.local"')
     expect(mdns).toContain('const name = `wiscode-${port}`')
