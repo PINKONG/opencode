@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=WisCode
+Exec=/opt/WisCode/ai.wiscode.desktop %U
+Terminal=false
+Type=Application
+Icon=ai.wiscode.desktop
+StartupWMClass=ai.wiscode.desktop
+NoDisplay=true
+Comment=AI coding agent
+Categories=Development;

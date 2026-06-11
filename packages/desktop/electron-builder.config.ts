@@ -6,9 +6,15 @@ import { promisify } from "node:util"
 import type { Configuration } from "electron-builder"
 
 const execFileAsync = promisify(execFile)
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
+const packageDir = path.dirname(fileURLToPath(import.meta.url))
+const rootDir = path.resolve(packageDir, "../..")
 const signScript = path.join(rootDir, "script", "sign-windows.ps1")
 const isGitHubActions = process.env.GITHUB_ACTIONS === "true"
+
+// Electron 42 briefly published Linux launchers under "opencode-desktop".
+// Keep that hidden entry so existing desktop pins can keep resolving.
+const legacyDesktopEntry = path.join(packageDir, "resources", "linux", "opencode-desktop.desktop")
+const legacyDesktopEntryFpm = `${legacyDesktopEntry}=/usr/share/applications/opencode-desktop.desktop`
 
 async function signWindows(configuration: { path: string }) {
   if (process.platform !== "win32") return
@@ -53,7 +59,13 @@ const channel = (() => {
   return "dev"
 })()
 
-const getBase = (): Configuration => ({
+const APP_IDS = {
+  dev: "ai.wiscode.desktop.dev",
+  beta: "ai.wiscode.desktop.beta",
+  prod: "ai.wiscode.desktop",
+} as const
+
+const getBase = (appId: string): Configuration => ({
   artifactName: "${productName}_${version}_${arch}.${ext}",
   directories: {
     output: "dist",
@@ -63,6 +75,9 @@ const getBase = (): Configuration => ({
     winCodeSign: "1.1.0",
   },
   afterPack: editWindowsResources,
+  extraMetadata: {
+    desktopName: `${appId}.desktop`,
+  },
   files: ["out/**/*"],
   extraResources: [
     {
@@ -112,19 +127,25 @@ const getBase = (): Configuration => ({
   linux: {
     icon: `resources/icons`,
     category: "Development",
-    executableName: "opencode-desktop",
+    executableName: appId,
+    desktop: {
+      entry: {
+        StartupWMClass: appId,
+      },
+    },
     target: ["AppImage", "deb", "rpm"],
   },
 })
 
 function getConfig() {
-  const base = getBase()
+  const appId = APP_IDS[channel]
+  const base = getBase(appId)
 
   switch (channel) {
     case "dev": {
       return {
         ...base,
-        appId: "ai.wiscode.desktop.dev",
+        appId,
         productName: "WisCode Dev",
         rpm: { packageName: "wiscode-dev" },
       }
@@ -132,7 +153,7 @@ function getConfig() {
     case "beta": {
       return {
         ...base,
-        appId: "ai.wiscode.desktop.beta",
+        appId,
         productName: "WisCode Beta",
         protocols: { name: "WisCode Beta", schemes: ["wiscode"] },
         publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "beta" },
@@ -142,11 +163,12 @@ function getConfig() {
     case "prod": {
       return {
         ...base,
-        appId: "ai.wiscode.desktop",
+        appId,
         productName: "WisCode",
         protocols: { name: "WisCode", schemes: ["wiscode"] },
         publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "latest" },
-        rpm: { packageName: "wiscode" },
+        deb: { fpm: [legacyDesktopEntryFpm] },
+        rpm: { packageName: "wiscode", fpm: [legacyDesktopEntryFpm] },
       }
     }
   }
