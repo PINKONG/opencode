@@ -7,11 +7,12 @@ describe("app i18n branding", () => {
   test("does not reference OpenCode in locale strings", async () => {
     const dir = dirname(fileURLToPath(import.meta.url))
     const bad: string[] = []
+    const allowedProviderBranding = /OpenCode (Zen|Go)/g
 
     for (const path of readdirSync(dir)) {
       if (path === "index.ts" || path === "parity.test.ts" || path === "branding.test.ts") continue
       if (!path.endsWith(".ts")) continue
-      const text = await Bun.file(join(dir, path)).text()
+      const text = (await Bun.file(join(dir, path)).text()).replaceAll(allowedProviderBranding, "")
       if (text.includes("OpenCode")) bad.push(path)
     }
 
