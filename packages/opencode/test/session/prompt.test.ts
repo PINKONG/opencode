@@ -2273,7 +2273,7 @@ noLLMServer.instance(
         expect(NamedError.Unknown.isInstance(err)).toBe(true)
         if (NamedError.Unknown.isInstance(err)) {
           expect(err.data.message).toContain('Command not found: "nonexistent-command-xyz"')
-          expect(err.data.message).toContain("customize-opencode")
+          expect(err.data.message).toContain("customize-wiscode")
           expect(err.data.message).not.toContain("init")
         }
       }

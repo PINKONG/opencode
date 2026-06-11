@@ -5,9 +5,9 @@
   skill's content.
 -->
 
-# Customizing opencode
+# Customizing WisCode
 
-opencode validates its own config strictly and refuses to start when a field
+WisCode validates its own config strictly and refuses to start when a field
 is wrong. The shapes below cover the common surface area, but they are a
 **summary, not the source of truth**.
 
@@ -20,18 +20,18 @@ defaults, and descriptions — lives in the published JSON Schema:
 
 If a field is not documented in this skill, or you need to confirm an exact
 shape before writing config, **fetch that URL and read the schema directly**
-rather than guessing. opencode hard-fails on invalid config, so the cost of a
+rather than guessing. WisCode hard-fails on invalid config, so the cost of a
 wrong shape is a broken startup.
 
-Independently, every `opencode.json` should declare
+Independently, every `wiscode.json` or `wiscode.jsonc` should declare
 `"$schema": "https://opencode.ai/config.json"` so the user's editor catches
 mistakes as they type.
 
 ## Applying changes
 
-Config is loaded once when opencode starts and is not hot-reloaded. After
-saving changes to `opencode.json`, an agent file, a skill, a plugin, or any
-other config-time file, **tell the user to quit and restart opencode** for
+Config is loaded once when WisCode starts and is not hot-reloaded. After
+saving changes to `wiscode.json`, `wiscode.jsonc`, an agent file, a skill, a plugin, or any
+other config-time file, **tell the user to quit and restart WisCode** for
 the changes to take effect. The running session will keep using the
 already-loaded config until then.
 
@@ -39,18 +39,18 @@ already-loaded config until then.
 
 | Scope                         | Path                                                                                                                      |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Project config                | `./opencode.json`, `./opencode.jsonc`, or `.opencode/opencode.json` (opencode walks up from the cwd to the worktree root) |
-| Global config                 | `~/.config/opencode/opencode.json` (NOT `~/.opencode/`)                                                                   |
-| Project agents                | `.opencode/agent/<name>.md` or `.opencode/agents/<name>.md`                                                               |
-| Global agents                 | `~/.config/opencode/agent(s)/<name>.md`                                                                                   |
-| Project skills                | `.opencode/skill(s)/<name>/SKILL.md`                                                                                      |
-| Global skills                 | `~/.config/opencode/skill(s)/<name>/SKILL.md`                                                                             |
+| Project config                | Preferred: `./wiscode.jsonc`, `./wiscode.json`, or `.wiscode/wiscode.jsonc`; legacy fallback: `./opencode.json`, `./opencode.jsonc`, or `.opencode/opencode.jsonc` |
+| Global config                 | Preferred: `~/.config/wiscode/wiscode.json(c)`; legacy fallback: `~/.config/opencode/opencode.json(c)` |
+| Project agents                | Preferred: `.wiscode/agent/<name>.md` or `.wiscode/agents/<name>.md`; legacy fallback: `.opencode/agent(s)/<name>.md` |
+| Global agents                 | Preferred: `~/.config/wiscode/agent(s)/<name>.md`; legacy fallback: `~/.config/opencode/agent(s)/<name>.md` |
+| Project skills                | Preferred: `.wiscode/skill(s)/<name>/SKILL.md`; legacy fallback: `.opencode/skill(s)/<name>/SKILL.md` |
+| Global skills                 | Preferred: `~/.config/wiscode/skill(s)/<name>/SKILL.md`; legacy fallback: `~/.config/opencode/skill(s)/<name>/SKILL.md` |
 | External skills (auto-loaded) | `~/.claude/skills/<name>/SKILL.md`, `~/.agents/skills/<name>/SKILL.md`                                                    |
 
 Configs from each scope are deep-merged. Project overrides global. Unknown
-top-level keys in `opencode.json` are rejected with `ConfigInvalidError`.
+top-level keys in `wiscode.json` are rejected with `ConfigInvalidError`.
 
-## opencode.json
+## wiscode.json
 
 Every field is optional.
 
@@ -69,8 +69,21 @@ Every field is optional.
   "instructions": ["AGENTS.md", "docs/style.md"],
 
   "skills": {
-    "paths": [".opencode/skills", "/abs/path/to/skills"],
+    "paths": [".wiscode/skills", "/abs/path/to/skills"],
     "urls": ["https://example.com/.well-known/skills/"]
+  },
+
+  "references": {
+    "docs": {
+      "path": "../docs",
+      "description": "Use for product behavior and documentation conventions"
+    },
+    "sdk": {
+      "repository": "owner/sdk",
+      "branch": "main",
+      "description": "Use for SDK implementation details",
+      "hidden": true
+    }
   },
 
   "agent": {
@@ -136,6 +149,7 @@ Shape notes worth being explicit about:
 
 - `model` always carries a provider prefix: `"anthropic/claude-sonnet-4-6"`.
 - `skills` is an object with `paths` and/or `urls`, not an array.
+- `references` is an object keyed by alias. Each value is a local path, Git repository, or string shorthand.
 - `agent` is an object keyed by agent name, not an array.
 - `plugin` is an array of strings or `[name, options]` tuples, not an object.
 - `mcp[name].command` is an array of strings, never a single string. `type` is required.
@@ -143,12 +157,12 @@ Shape notes worth being explicit about:
 
 ## Skills
 
-opencode's skill loader scans for `**/SKILL.md` inside skill directories. The
+WisCode's skill loader scans for `**/SKILL.md` inside skill directories. The
 file is named `SKILL.md` exactly, and lives in its own folder named after the
 skill:
 
 ```
-.opencode/skills/my-skill/SKILL.md
+.wiscode/skills/my-skill/SKILL.md
 ```
 
 Frontmatter:
@@ -172,11 +186,43 @@ Register skills from non-default locations via `skills.paths` (scanned
 recursively for `**/SKILL.md`) and `skills.urls` (each URL serves a list of
 skills).
 
+## References
+
+References make local directories and Git repositories outside the active
+project available as supporting context. Configure them under `references`,
+keyed by the alias used in `@` autocomplete:
+
+```json
+{
+  "references": {
+    "docs": {
+      "path": "../product-docs",
+      "description": "Use for product behavior and terminology"
+    },
+    "effect": {
+      "repository": "Effect-TS/effect",
+      "branch": "main",
+      "description": "Use for Effect implementation details"
+    }
+  }
+}
+```
+
+Local `path` values may be relative to the declaring config, absolute, or use
+`~/`. Git `repository` values accept Git URLs, host/path references, and GitHub
+`owner/repo` shorthand; `branch` is optional. Both forms support optional
+`description` and `hidden` fields.
+
+- Only references with a `description` are advertised to agents in system context.
+- `hidden: true` removes a reference from TUI `@` autocomplete only. It remains available to agents and by direct path.
+- Reference directories are automatically allowed through the external-directory boundary; normal read/edit/tool permissions still apply.
+- String shorthand is supported: use `"docs": "../docs"` for local paths or `"effect": "Effect-TS/effect"` for Git repositories.
+
 ## Agents
 
 Two ways to define an agent. Use the file form for anything non-trivial.
 
-### Inline (in `opencode.json`)
+### Inline (in `wiscode.json`)
 
 ```json
 {
@@ -195,7 +241,7 @@ Two ways to define an agent. Use the file form for anything non-trivial.
 ### File
 
 ```
-.opencode/agent/my-reviewer.md      OR     .opencode/agents/my-reviewer.md
+.wiscode/agent/my-reviewer.md      OR     .wiscode/agents/my-reviewer.md
 ```
 
 ```markdown
@@ -227,7 +273,7 @@ file, `disable: true` in frontmatter.
 
 ### Built-in agents
 
-opencode ships with `build`, `plan`, `general`, `explore`. Hidden internal agents:
+WisCode ships with `build`, `plan`, `general`, `explore`. Hidden internal agents:
 `compaction`, `title`, `summary`. To override a built-in's fields, define the
 same key in `agent: { <name>: { ... } }`.
 
@@ -246,7 +292,8 @@ same key in `agent: { <name>: { ... } }`.
 ```
 
 Auto-discovered plugins (no config entry needed): any `*.ts` or `*.js` file in
-`.opencode/plugin/` or `.opencode/plugins/`.
+preferred `.wiscode/plugin/` or `.wiscode/plugins/`. Legacy `.opencode/plugin/`
+and `.opencode/plugins/` paths remain readable for compatibility.
 
 A plugin module exports `default` (or any named export) of type
 `Plugin = (input: PluginInput, options?) => Promise<Hooks>`. The export is a
@@ -329,7 +376,7 @@ Actions: `"allow"`, `"ask"`, `"deny"`.
 
 Per-tool value forms: `"allow"` shorthand (treated as `{"*": "allow"}`), or an
 object `{ pattern: action }`. Within an object, **insertion order matters**.
-opencode evaluates the LAST matching rule, so put broad rules first and narrow
+WisCode evaluates the LAST matching rule, so put broad rules first and narrow
 rules last.
 
 `permission: "allow"` (a string at the top level) is shorthand for "allow
@@ -349,10 +396,10 @@ the `plan` agent's permission ruleset (`edit: deny *`).
 
 ## Escape hatches
 
-When a user's config is broken and opencode won't start, these env vars help:
+When a user's config is broken and WisCode won't start, these env vars help:
 
-- `OPENCODE_DISABLE_PROJECT_CONFIG=1`: skip the project's local `opencode.json`
-  and start from globals only. Run from the project directory, opencode loads,
+- `OPENCODE_DISABLE_PROJECT_CONFIG=1`: skip the project's local `wiscode.json(c)`
+  and start from globals only. Run from the project directory, WisCode loads,
   the user edits the broken file, then they restart without the flag.
 - `OPENCODE_CONFIG=/path/to/file.json`: load an additional explicit config.
 - `OPENCODE_CONFIG_CONTENT='{"$schema":"https://opencode.ai/config.json"}'`:
@@ -370,9 +417,9 @@ When a user's config is broken and opencode won't start, these env vars help:
   `https://opencode.ai/config.json` and read the schema rather than guessing.
 - Preserve `$schema` and any existing fields the user did not ask to change.
 - For agent, skill, and plugin definitions, prefer creating new files in the
-  correct location over inlining everything in `opencode.json`.
+  correct location over inlining everything in `wiscode.json`.
 - If the user's existing config is malformed, point them at the env-var escape
-  hatches above so they can edit from inside opencode without breaking their
+  hatches above so they can edit from inside WisCode without breaking their
   session.
-- After saving any config change, remind the user to quit and restart opencode
+- After saving any config change, remind the user to quit and restart WisCode
   — running sessions keep using the already-loaded config.

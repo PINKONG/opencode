@@ -8,10 +8,13 @@ import { testEffect } from "../lib/effect"
 // Per-client state for controlling mock behavior
 interface MockClientState {
   capabilities: { tools?: object; prompts?: object; resources?: object }
+  capabilitiesShouldThrow: boolean
   tools: Array<{ name: string; description?: string; inputSchema: object; outputSchema?: object }>
   listToolsCalls: number
   listPromptsCalls: number
   listResourcesCalls: number
+  getPromptTimeout?: number
+  readResourceTimeout?: number
   requestCalls: number
   listToolsShouldFail: boolean
   listToolsError: string
@@ -51,6 +54,7 @@ function getOrCreateClientState(name?: string): MockClientState {
   if (!state) {
     state = {
       capabilities: { tools: {}, prompts: {}, resources: {} },
+      capabilitiesShouldThrow: false,
       tools: [{ name: "test_tool", description: "A test tool", inputSchema: { type: "object", properties: {} } }],
       listToolsCalls: 0,
       listPromptsCalls: 0,
@@ -155,6 +159,7 @@ void mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
     }
 
     getServerCapabilities() {
+      if (this._state?.capabilitiesShouldThrow) throw new Error("capability discovery failed")
       return this._state?.capabilities
     }
 
@@ -201,6 +206,16 @@ void mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
       const page = this._state?.resourcePages[params === undefined ? "initial" : (params.cursor ?? "")]
       if (page) return page
       return { resources: this._state?.resources ?? [] }
+    }
+
+    async getPrompt(_params: unknown, options?: { timeout?: number }) {
+      if (this._state) this._state.getPromptTimeout = options?.timeout
+      return { messages: [] }
+    }
+
+    async readResource(params: { uri: string }, options?: { timeout?: number }) {
+      if (this._state) this._state.readResourceTimeout = options?.timeout
+      return { contents: [{ uri: params.uri, text: "test" }] }
     }
 
     async close() {
@@ -309,7 +324,7 @@ it.instance(
         expect(serverState.listResourcesCalls).toBe(2)
       }),
     ),
-  { config: { mcp: {} } },
+  { config: baseConfig },
 )
 
 it.instance(
@@ -333,7 +348,7 @@ it.instance(
         expect(yield* mcp.tools()).toEqual({})
       }),
     ),
-  { config: { mcp: {} } },
+  { config: baseConfig },
 )
 
 it.instance(
@@ -360,7 +375,7 @@ it.instance(
         expect(serverState.listPromptsCalls).toBe(2)
       }),
     ),
-  { config: { mcp: {} } },
+  { config: baseConfig },
 )
 
 // ========================================================================
@@ -576,6 +591,31 @@ it.instance(
 )
 
 it.instance(
+  "returns failed and closes the client when SDK initialization throws",
+  () =>
+    MCP.Service.use((mcp: MCPNS.Interface) =>
+      Effect.gen(function* () {
+        lastCreatedClientName = "defective-server"
+        const serverState = getOrCreateClientState("defective-server")
+        serverState.capabilitiesShouldThrow = true
+
+        const result = yield* mcp.add("defective-server", {
+          type: "local",
+          command: ["echo", "test"],
+        })
+
+        expect(statusName(result.status, "defective-server")).toBe("failed")
+        expect((yield* mcp.status())["defective-server"]).toEqual({
+          status: "failed",
+          error: "capability discovery failed",
+        })
+        expect(serverState.closed).toBe(true)
+      }),
+    ),
+  { config: baseConfig },
+)
+
+it.instance(
   "falls back when MCP output schema refs fail SDK tool discovery",
   () =>
     MCP.Service.use((mcp: MCPNS.Interface) =>
@@ -715,6 +755,29 @@ it.instance(
 )
 
 it.instance(
+  "uses per-server timeouts for prompt and resource requests",
+  () =>
+    MCP.Service.use((mcp: MCPNS.Interface) =>
+      Effect.gen(function* () {
+        lastCreatedClientName = "timeout-server"
+        const serverState = getOrCreateClientState("timeout-server")
+
+        yield* mcp.add("timeout-server", {
+          type: "local",
+          command: ["echo", "test"],
+          timeout: 2500,
+        })
+        yield* mcp.getPrompt("timeout-server", "test")
+        yield* mcp.readResource("timeout-server", "test://resource")
+
+        expect(serverState.getPromptTimeout).toBe(2500)
+        expect(serverState.readResourceTimeout).toBe(2500)
+      }),
+    ),
+  { config: { ...baseConfig, experimental: { mcp_timeout: 5000 } } },
+)
+
+it.instance(
   "resource-only servers connect without listing tools",
   () =>
     MCP.Service.use((mcp: MCPNS.Interface) =>
@@ -737,7 +800,7 @@ it.instance(
         expect(serverState.listPromptsCalls).toBe(0)
       }),
     ),
-  { config: { mcp: {} } },
+  { config: baseConfig },
 )
 
 it.instance(
@@ -763,7 +826,7 @@ it.instance(
         expect(serverState.listResourcesCalls).toBe(0)
       }),
     ),
-  { config: { mcp: {} } },
+  { config: baseConfig },
 )
 
 it.instance(
@@ -789,7 +852,7 @@ it.instance(
         expect(serverState.listResourcesCalls).toBe(0)
       }),
     ),
-  { config: { mcp: {} } },
+  { config: baseConfig },
 )
 
 it.instance(

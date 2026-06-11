@@ -70,7 +70,9 @@ describe("Config", () => {
     Effect.sync(() => {
       expect(ConfigMigrateV1.isV1({ snapshot: false })).toBe(true)
       expect(ConfigMigrateV1.isV1({ snapshot: false, agents: {} })).toBe(true)
+      expect(ConfigMigrateV1.isV1({ reference: {} })).toBe(true)
       expect(ConfigMigrateV1.isV1({ shell: "/bin/zsh", model: "anthropic/claude" })).toBe(false)
+      expect(ConfigMigrateV1.isV1({ references: {} })).toBe(false)
     }),
   )
 
@@ -207,6 +209,76 @@ describe("Config", () => {
                 .map((document) => document.info.$schema),
             ).toEqual(["base", "middle", "last"])
           }).pipe(Effect.provide(testLayer(tmp.path)))
+        }),
+      ),
+    ),
+  )
+
+  it.live("prefers wiscode config files and directories while keeping legacy opencode paths as fallback", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const root = path.join(tmp.path, "repo")
+          const directory = path.join(root, "packages", "app")
+          const global = path.join(tmp.path, "global")
+          yield* Effect.promise(() =>
+            Promise.all([
+              fs.mkdir(path.join(directory, ".wiscode"), { recursive: true }),
+              fs.mkdir(path.join(directory, ".opencode"), { recursive: true }),
+              fs.mkdir(global, { recursive: true }),
+            ]),
+          )
+          yield* Effect.promise(() =>
+            Promise.all([
+              fs.writeFile(path.join(global, "opencode.json"), JSON.stringify({ $schema: "global-legacy" })),
+              fs.writeFile(path.join(global, "wiscode.json"), JSON.stringify({ $schema: "global-wiscode-json" })),
+              fs.writeFile(path.join(global, "wiscode.jsonc"), JSON.stringify({ $schema: "global-wiscode-jsonc" })),
+              fs.writeFile(path.join(root, "opencode.json"), JSON.stringify({ $schema: "root-legacy-json" })),
+              fs.writeFile(path.join(root, "opencode.jsonc"), JSON.stringify({ $schema: "root-legacy-jsonc" })),
+              fs.writeFile(path.join(root, "wiscode.json"), JSON.stringify({ $schema: "root-wiscode-json" })),
+              fs.writeFile(path.join(root, "wiscode.jsonc"), JSON.stringify({ $schema: "root-wiscode-jsonc" })),
+              fs.writeFile(
+                path.join(directory, ".opencode", "opencode.jsonc"),
+                JSON.stringify({ $schema: "dir-legacy-dot-jsonc" }),
+              ),
+              fs.writeFile(
+                path.join(directory, ".wiscode", "wiscode.json"),
+                JSON.stringify({ $schema: "dir-wiscode-dot-json" }),
+              ),
+              fs.writeFile(
+                path.join(directory, ".wiscode", "wiscode.jsonc"),
+                JSON.stringify({ $schema: "dir-wiscode-dot-jsonc" }),
+              ),
+            ]),
+          )
+
+          return yield* Effect.gen(function* () {
+            const config = yield* Config.Service
+            const entries = yield* config.entries()
+            const documents = entries.filter((entry) => entry.type === "document")
+            const directories = entries.filter((entry) => entry.type === "directory")
+
+            expect(documents.map((document) => document.info.$schema)).toEqual([
+              "global-legacy",
+              "global-wiscode-json",
+              "global-wiscode-jsonc",
+              "root-legacy-json",
+              "root-legacy-jsonc",
+              "root-wiscode-json",
+              "root-wiscode-jsonc",
+              "dir-legacy-dot-jsonc",
+              "dir-wiscode-dot-json",
+              "dir-wiscode-dot-jsonc",
+            ])
+            expect(directories.map((item) => item.path)).toEqual([
+              AbsolutePath.make(path.join(global)),
+              AbsolutePath.make(path.join(directory, ".opencode")),
+              AbsolutePath.make(path.join(directory, ".wiscode")),
+            ])
+          }).pipe(Effect.provide(testLayer(directory, global, root)))
         }),
       ),
     ),
@@ -431,6 +503,42 @@ describe("Config", () => {
     ),
   )
 
+  it.live("migrates the deprecated reference key into references", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          yield* Effect.promise(() =>
+            fs.writeFile(
+              path.join(tmp.path, "opencode.json"),
+              JSON.stringify({
+                reference: {
+                  local: { path: "../library" },
+                  sdk: { repository: "github.com/example/sdk", branch: "main" },
+                  shorthand: "github.com/example/docs",
+                },
+              }),
+            ),
+          )
+
+          return yield* Effect.gen(function* () {
+            const config = yield* Config.Service
+            const documents = (yield* config.entries()).filter((entry) => entry.type === "document")
+
+            expect(documents).toHaveLength(1)
+            expect(documents[0]?.info.references).toEqual({
+              local: { path: "../library" },
+              sdk: { repository: "github.com/example/sdk", branch: "main" },
+              shorthand: "github.com/example/docs",
+            })
+          }).pipe(Effect.provide(testLayer(tmp.path)))
+        }),
+      ),
+    ),
+  )
+
   it.live("migrates v1 configuration when a v1-only key is present", () =>
     Effect.acquireRelease(
       Effect.promise(() => tmpdir()),
@@ -464,7 +572,9 @@ describe("Config", () => {
                   ["@my-org/audit-plugin", { endpoint: "https://audit.example.com" }],
                 ],
                 skills: { paths: ["./skills"], urls: ["https://example.com/.well-known/skills/"] },
-                reference: { docs: { path: "../docs" } },
+                references: {
+                  docs: { path: "../docs", description: "Use for product documentation", hidden: true },
+                },
                 attachment: { image: { auto_resize: false, max_width: 1200 } },
                 provider: {
                   custom: {
@@ -540,7 +650,9 @@ describe("Config", () => {
               { package: "@my-org/audit-plugin", options: { endpoint: "https://audit.example.com" } },
             ])
             expect(documents[0]?.info.skills).toEqual(["./skills", "https://example.com/.well-known/skills/"])
-            expect(documents[0]?.info.references).toEqual({ docs: { path: "../docs" } })
+            expect(documents[0]?.info.references).toEqual({
+              docs: { path: "../docs", description: "Use for product documentation", hidden: true },
+            })
             expect(documents[0]?.info.attachments).toEqual({ image: { auto_resize: false, max_width: 1200 } })
             expect(documents[0]?.info.providers?.custom).toMatchObject({
               request: { body: { apiKey: "secret" } },
