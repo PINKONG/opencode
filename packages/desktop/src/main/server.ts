@@ -3,20 +3,13 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { app, utilityProcess } from "electron"
 import type { Details } from "electron"
-import { randomUUID } from "node:crypto"
-import type { SidecarLanConfig } from "../preload/types"
-import {
-  DEFAULT_SERVER_URL_KEY,
-  SIDECAR_EXPOSE_LAN_KEY,
-  SIDECAR_PERSISTENT_PASSWORD_KEY,
-  SIDECAR_PORT_KEY,
-  WSL_ENABLED_KEY,
-} from "./constants"
-import { normalizeSidecarLanConfig } from "./sidecar-config"
+import { SIDECAR_EXPOSE_LAN_KEY, SIDECAR_PORT_KEY } from "./constants"
+import { getLogger } from "./logging"
 import { getUserShell, loadShellEnv, mergeShellEnv } from "./shell-env"
+import { normalizeSidecarLanConfig, type SidecarLanConfig } from "./sidecar-config"
 import { getStore } from "./store"
+import { DEFAULT_SERVER_URL_KEY } from "./store-keys"
 
-export type WslConfig = { enabled: boolean }
 export type HealthCheck = { wait: Promise<void> }
 
 type SidecarMessage =
@@ -31,7 +24,6 @@ const SIDECAR_START_STALL_TIMEOUT = 60_000
 const SIDECAR_STOP_TIMEOUT = 6_000
 
 type SpawnLocalServerOptions = {
-  needsMigration: boolean
   userDataPath: string
   healthHost?: string
   onStdout?: (message: string) => void
@@ -51,15 +43,6 @@ export function setDefaultServerUrl(url: string | null) {
   }
 
   getStore().delete(DEFAULT_SERVER_URL_KEY)
-}
-
-export function getWslConfig(): WslConfig {
-  const value = getStore().get(WSL_ENABLED_KEY)
-  return { enabled: typeof value === "boolean" ? value : false }
-}
-
-export function setWslConfig(config: WslConfig) {
-  getStore().set(WSL_ENABLED_KEY, config.enabled)
 }
 
 export function getSidecarLanConfig(): SidecarLanConfig {
@@ -85,20 +68,12 @@ export function setSidecarLanConfig(config: SidecarLanConfig) {
   getStore().delete(SIDECAR_PORT_KEY)
 }
 
-export function getOrCreatePersistentPassword() {
-  const current = getStore().get(SIDECAR_PERSISTENT_PASSWORD_KEY)
-  if (typeof current === "string" && current.trim()) return current
-  const next = randomUUID()
-  getStore().set(SIDECAR_PERSISTENT_PASSWORD_KEY, next)
-  return next
-}
-
 export function preferAppEnv(userDataPath: string) {
   const shell = process.platform === "win32" ? null : getUserShell()
   const bundledNode = resolveBundledNodePath()
   Object.assign(
     process.env,
-    mergeShellEnv(shell ? loadShellEnv(shell) : null, {
+    mergeShellEnv(shell ? loadShellEnv(shell, getLogger()) : null, {
       ...process.env,
       OPENCODE_EXPERIMENTAL_ICON_DISCOVERY: "true",
       OPENCODE_EXPERIMENTAL_FILEWATCHER: "true",
@@ -113,10 +88,8 @@ export async function spawnLocalServer(
   hostname: string,
   port: number,
   password: string,
-  configureEnv: () => void,
   options: SpawnLocalServerOptions,
 ) {
-  configureEnv()
   const sidecar = join(dirname(fileURLToPath(import.meta.url)), "sidecar.js")
   const child = utilityProcess.fork(sidecar, [], {
     cwd: process.cwd(),
@@ -243,7 +216,6 @@ export async function spawnLocalServer(
 function resolveBundledNodePath() {
   const executable = process.platform === "win32" ? "wiscode-node.exe" : "wiscode-node"
   if (app.isPackaged) return join(process.resourcesPath, executable)
-
   const candidates = [
     join(app.getAppPath(), "resources", executable),
     join(app.getAppPath(), "..", "resources", executable),

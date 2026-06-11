@@ -1,4 +1,20 @@
 import type { DesktopMenuAction } from "@opencode-ai/app/desktop-menu"
+import type { WslServersPlatform } from "@opencode-ai/app/wsl/types"
+import type { UpdaterState } from "@opencode-ai/app/updater"
+
+export type {
+  WslDistroProbe,
+  WslInstalledDistro,
+  WslJob,
+  WslOnlineDistro,
+  WslOpencodeCheck,
+  WslRuntimeCheck,
+  WslServerConfig,
+  WslServerItem,
+  WslServerRuntime,
+  WslServersEvent,
+  WslServersState,
+} from "@opencode-ai/app/wsl/types"
 
 export type ServerReadyData = {
   url: string
@@ -7,7 +23,6 @@ export type ServerReadyData = {
   password: string | null
 }
 
-export type WslConfig = { enabled: boolean }
 export type SidecarLanConfig = {
   enabled: boolean
   addressMode: "lan" | "custom"
@@ -15,6 +30,7 @@ export type SidecarLanConfig = {
   fixedPort?: number
   fixedToken?: boolean
 }
+
 export type SidecarLanStatus = {
   enabled: boolean
   status: "disabled" | "available" | "unavailable" | "custom_unavailable"
@@ -23,14 +39,17 @@ export type SidecarLanStatus = {
   port: number | null
 }
 
+export type WslServersAPI = WslServersPlatform
+export type UpdaterAPI = {
+  subscribe: (cb: (state: UpdaterState) => void) => Promise<() => void>
+  check: () => Promise<UpdaterState>
+  install: () => Promise<void>
+}
+
 export type LinuxDisplayBackend = "wayland" | "auto"
 export type TitlebarTheme = {
   mode: "light" | "dark"
 }
-export type WindowConfig = {
-  updaterEnabled: boolean
-}
-
 export type FatalRendererError = {
   error: string
   url: string
@@ -43,12 +62,11 @@ export type ElectronAPI = {
   killSidecar: () => Promise<void>
   installCli: () => Promise<string>
   awaitInitialization: () => Promise<ServerReadyData>
-  getWindowConfig: () => Promise<WindowConfig>
+  wslServers: WslServersAPI
+  updater: UpdaterAPI
   consumeInitialDeepLinks: () => Promise<string[]>
   getDefaultServerUrl: () => Promise<string | null>
   setDefaultServerUrl: (url: string | null) => Promise<void>
-  getWslConfig: () => Promise<WslConfig>
-  setWslConfig: (config: WslConfig) => Promise<void>
   getSidecarLanConfig: () => Promise<SidecarLanConfig>
   setSidecarLanConfig: (config: SidecarLanConfig) => Promise<void>
   getSidecarLanStatus: () => Promise<SidecarLanStatus>
@@ -56,7 +74,6 @@ export type ElectronAPI = {
   setDisplayBackend: (backend: LinuxDisplayBackend | null) => Promise<void>
   parseMarkdownCommand: (markdown: string) => Promise<string>
   checkAppExists: (appName: string) => Promise<boolean>
-  wslPath: (path: string, mode: "windows" | "linux" | null) => Promise<string>
   resolveAppPath: (appName: string) => Promise<string | null>
   storeGet: (name: string, key: string) => Promise<string | null>
   storeSet: (name: string, key: string, value: string) => Promise<void>
@@ -64,11 +81,9 @@ export type ElectronAPI = {
   storeClear: (name: string) => Promise<void>
   storeKeys: (name: string) => Promise<string[]>
   storeLength: (name: string) => Promise<number>
-
   getWindowCount: () => Promise<number>
   onMenuCommand: (cb: (id: string) => void) => () => void
   onDeepLink: (cb: (urls: string[]) => void) => () => void
-
   openDirectoryPicker: (opts?: {
     multiple?: boolean
     title?: string
@@ -78,9 +93,10 @@ export type ElectronAPI = {
     multiple?: boolean
     title?: string
     defaultPath?: string
-    accept?: string[]
     extensions?: string[]
-  }) => Promise<string | string[] | null>
+  }) => Promise<{ token: string; files: { path: string; name: string; size: number }[] } | null>
+  readPickedFile: (token: string, path: string) => Promise<ArrayBuffer>
+  releasePickedFiles: (token: string) => Promise<void>
   saveFilePicker: (opts?: { title?: string; defaultPath?: string }) => Promise<string | null>
   openLink: (url: string) => void
   openPath: (path: string, app?: string) => Promise<void>
@@ -98,9 +114,6 @@ export type ElectronAPI = {
   onZoomFactorChanged: (cb: (factor: number) => void) => () => void
   setTitlebar: (theme: TitlebarTheme) => Promise<void>
   runDesktopMenuAction: (action: DesktopMenuAction) => Promise<void>
-  runUpdater: (alertOnFail: boolean) => Promise<void>
-  checkUpdate: () => Promise<{ updateAvailable: boolean; version?: string }>
-  installUpdate: () => Promise<void>
   setBackgroundColor: (color: string) => Promise<void>
   exportDebugLogs: () => Promise<string>
   recordFatalRendererError: (error: FatalRendererError) => Promise<void>

@@ -59,8 +59,8 @@ describe("external url config", () => {
   })
 
   test("runtime sources use shared product endpoint config", async () => {
-    const github = await Bun.file(join(root, "packages/opencode/src/cli/cmd/github.ts")).text()
-    const server = await Bun.file(join(root, "packages/opencode/src/server/instance.ts")).text()
+    const github = await Bun.file(join(root, "packages/opencode/src/cli/cmd/github.handler.ts")).text()
+    const server = await Bun.file(join(root, "packages/opencode/src/server/shared/ui.ts")).text()
     const web = await Bun.file(join(root, "packages/web/config.mjs")).text()
 
     expect(github).toContain('from "@/product"')

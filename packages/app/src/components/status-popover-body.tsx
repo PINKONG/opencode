@@ -3,7 +3,6 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { Icon } from "@opencode-ai/ui/icon"
 import { Switch } from "@opencode-ai/ui/switch"
 import { Tabs } from "@opencode-ai/ui/tabs"
-import { useMutation, useQueryClient } from "@tanstack/solid-query"
 import { showToast } from "@/utils/toast"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { useNavigate } from "@solidjs/router"
@@ -12,18 +11,14 @@ import { createStore } from "solid-js/store"
 import { ServerHealthIndicator, ServerRow } from "@/components/server/server-row"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
-import { useSDK } from "@/context/sdk"
-import { normalizeServerUrl, ServerConnection, useServer } from "@/context/server"
+import { ServerConnection, useServer } from "@/context/server"
 import { useSync } from "@/context/sync"
 import { type ServerHealth } from "@/utils/server-health"
-import { useQueryOptions } from "@/context/server-sync"
-import { pathKey } from "@/utils/path-key"
 import { useGlobal } from "@/context/global"
 import { useSettings } from "@/context/settings"
+import { useMcpToggle } from "@/context/mcp"
 import { writeClipboard } from "@/util/clipboard"
 import { buildServerAccessUrl } from "@/util/server-access-url"
-
-const pollMs = 10_000
 
 const pluginEmptyMessage = (value: string, file: string): JSXElement => {
   const parts = value.split(file)
@@ -63,7 +58,7 @@ const useDefaultServerKey = (
   get: (() => string | Promise<string | null | undefined> | null | undefined) | undefined,
 ) => {
   const [state, setState] = createStore({
-    url: undefined as string | undefined,
+    key: undefined as ServerConnection.Key | undefined,
     tick: 0,
   })
 
@@ -72,7 +67,7 @@ const useDefaultServerKey = (
     let dead = false
     const result = get?.()
     if (!result) {
-      setState("url", undefined)
+      setState("key", undefined)
       onCleanup(() => {
         dead = true
       })
@@ -82,7 +77,7 @@ const useDefaultServerKey = (
     if (result instanceof Promise) {
       void result.then((next) => {
         if (dead) return
-        setState("url", next ? normalizeServerUrl(next) : undefined)
+        setState("key", next ?? undefined)
       })
       onCleanup(() => {
         dead = true
@@ -90,7 +85,7 @@ const useDefaultServerKey = (
       return
     }
 
-    setState("url", normalizeServerUrl(result))
+    setState("key", ServerConnection.Key.make(result))
     onCleanup(() => {
       dead = true
     })
@@ -98,43 +93,10 @@ const useDefaultServerKey = (
 
   return {
     key: () => {
-      const u = state.url
-      if (!u) return
-      return ServerConnection.key({ type: "http", http: { url: u } })
+      return state.key
     },
     refresh: () => setState("tick", (value) => value + 1),
   }
-}
-
-const useMcpToggleMutation = () => {
-  const sync = useSync()
-  const sdk = useSDK()
-  const language = useLanguage()
-  const queryClient = useQueryClient()
-  const queryOptions = useQueryOptions()
-
-  return useMutation(() => ({
-    mutationFn: async (name: string) => {
-      const status = sync.data.mcp[name]
-      if (status?.status === "connected") {
-        await sdk.client.mcp.disconnect({ name })
-        return
-      }
-      if (status?.status === "needs_auth") {
-        await sdk.client.mcp.auth.authenticate({ name })
-        return
-      }
-      await sdk.client.mcp.connect({ name })
-    },
-    onSuccess: () => queryClient.refetchQueries(queryOptions.mcp(pathKey(sync.directory))),
-    onError: (err) => {
-      showToast({
-        variant: "error",
-        title: language.t("common.requestFailed"),
-        description: err instanceof Error ? err.message : String(err),
-      })
-    },
-  }))
 }
 
 async function copyServerAccessUrl(language: ReturnType<typeof useLanguage>, conn: ServerConnection.Any) {
@@ -150,7 +112,6 @@ async function copyServerAccessUrl(language: ReturnType<typeof useLanguage>, con
     title: language.t("session.share.copy.copied"),
   })
 }
-
 type ServerStatusState = {
   servers: () => ServerStatusItem[]
   defaultKey: () => ServerConnection.Key | undefined
@@ -177,7 +138,6 @@ export function StatusPopoverServerBody() {
   const dialog = useDialog()
   const language = useLanguage()
   const navigate = useNavigate()
-
   let dialogRun = 0
   let dialogDead = false
   onCleanup(() => {
@@ -349,7 +309,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
     dialogRun += 1
   })
   const sortedServers = createMemo(() => listServersByHealth(global.servers.list(), server.key, global.servers.health))
-  const toggleMcp = useMcpToggleMutation()
+  const toggleMcp = useMcpToggle()
   const defaultServer = useDefaultServerKey(platform.getDefaultServer)
   const mcpNames = createMemo(() => Object.keys(sync.data.mcp ?? {}).sort((a, b) => a.localeCompare(b)))
   const mcpStatus = (name: string) => sync.data.mcp?.[name]?.status

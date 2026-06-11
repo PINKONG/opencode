@@ -2,23 +2,20 @@ import { describe, expect } from "bun:test"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Effect, Layer } from "effect"
 import path from "path"
-import * as Log from "@opencode-ai/core/util/log"
-import { Server } from "../../src/server/server"
 import { resetDatabase } from "../fixture/db"
-import { reloadTestInstance, TestInstance } from "../fixture/fixture"
+import { TestInstance } from "../fixture/fixture"
 import { markPluginDependenciesReady } from "../fixture/plugin"
 import { testEffect } from "../lib/effect"
-
-void Log.init({ print: false })
+import { httpApiLayer, request } from "./httpapi-layer"
 
 const testStateLayer = Layer.effectDiscard(
-  Effect.gen(function* () {
-    yield* Effect.promise(() => resetDatabase())
-    yield* Effect.addFinalizer(() => Effect.promise(() => resetDatabase()).pipe(Effect.ignore))
-  }),
+  Effect.acquireRelease(
+    Effect.promise(() => resetDatabase()),
+    () => Effect.promise(() => resetDatabase()),
+  ),
 )
 
-const it = testEffect(Layer.mergeAll(testStateLayer, FSUtil.defaultLayer))
+const it = testEffect(Layer.mergeAll(testStateLayer, FSUtil.defaultLayer, httpApiLayer))
 const projectOptions = {
   config: {
     formatter: false,
@@ -89,42 +86,30 @@ function requestAuthorize(input: {
   inputs?: Record<string, string>
 }) {
   return Effect.gen(function* () {
-    const response = yield* Effect.promise(() =>
-      Promise.resolve(
-        Server.Default().app.request(`/provider/${input.providerID}/oauth/authorize`, {
-          method: "POST",
-          headers: input.headers,
-          body: JSON.stringify({ method: input.method, ...(input.inputs ? { inputs: input.inputs } : {}) }),
-        }),
-      ),
-    )
+    const response = yield* request(`/provider/${input.providerID}/oauth/authorize`, {
+      method: "POST",
+      headers: input.headers,
+      body: JSON.stringify({ method: input.method, ...(input.inputs ? { inputs: input.inputs } : {}) }),
+    })
     return {
       status: response.status,
-      body: yield* Effect.promise(() => response.text()),
+      body: yield* response.text,
     }
   })
 }
 
 function requestCallback(input: { providerID: string; method: number; headers: HeadersInit; code?: string }) {
   return Effect.gen(function* () {
-    const response = yield* Effect.promise(() =>
-      Promise.resolve(
-        Server.Default().app.request(`/provider/${input.providerID}/oauth/callback`, {
-          method: "POST",
-          headers: input.headers,
-          body: JSON.stringify({ method: input.method, ...(input.code ? { code: input.code } : {}) }),
-        }),
-      ),
-    )
+    const response = yield* request(`/provider/${input.providerID}/oauth/callback`, {
+      method: "POST",
+      headers: input.headers,
+      body: JSON.stringify({ method: input.method, ...(input.code ? { code: input.code } : {}) }),
+    })
     return {
       status: response.status,
-      body: yield* Effect.promise(() => response.text()),
+      body: yield* response.text,
     }
   })
-}
-
-function requestRoute(pathname: string, init?: RequestInit) {
-  return Effect.promise(() => Promise.resolve(Server.Default().app.request(pathname, init)))
 }
 
 function writeProviderAuthPlugin(dir: string) {
@@ -289,12 +274,12 @@ describe("provider HttpApi", () => {
     "returns public v2 provider not found errors",
     Effect.gen(function* () {
       const directory = (yield* TestInstance).directory
-      const response = yield* requestRoute("/api/provider/missing", {
+      const response = yield* request("/api/provider/missing", {
         headers: { "x-opencode-directory": directory },
       })
 
       expect(response.status).toBe(404)
-      expect(yield* Effect.promise(() => response.json())).toEqual({
+      expect(yield* response.json).toEqual({
         _tag: "ProviderNotFoundError",
         providerID: "missing",
         message: "Provider not found: missing",
@@ -374,10 +359,7 @@ describe("provider HttpApi", () => {
   it.instance(
     "serves provider lists when auth loaders add runtime fetch options",
     Effect.gen(function* () {
-      const instance = yield* TestInstance
-      yield* writeFunctionOptionsPlugin(instance.directory)
-      yield* Effect.promise(() => reloadTestInstance({ directory: instance.directory }))
-      const directory = instance.directory
+      const directory = (yield* TestInstance).directory
       yield* setEnvScoped(
         "OPENCODE_AUTH_CONTENT",
         JSON.stringify({
@@ -385,45 +367,40 @@ describe("provider HttpApi", () => {
         }),
       )
       const headers = { "x-opencode-directory": directory }
-      const providerResponse = yield* requestRoute("/provider", { headers })
-      const configResponse = yield* requestRoute("/config/providers", { headers })
+      const providerResponse = yield* request("/provider", { headers })
+      const configResponse = yield* request("/config/providers", { headers })
 
       expect(providerResponse.status).toBe(200)
       expect(configResponse.status).toBe(200)
 
-      const providerBody = yield* Effect.promise(() => providerResponse.json())
-      const configBody = yield* Effect.promise(() => configResponse.json())
+      const providerBody = yield* providerResponse.json
+      const configBody = yield* configResponse.json
       expect(hasProviderWithFetch(providerBody, "all")).toBe(false)
       expect(hasProviderWithFetch(configBody, "providers")).toBe(false)
       expect(hasNonZeroModelCost(providerBody, "all", "google")).toBe(true)
       expect(hasNonZeroModelCost(configBody, "providers", "google")).toBe(true)
     }),
-    projectOptions,
-    30000,
+    { ...projectOptions, init: writeFunctionOptionsPlugin },
   )
 
   it.instance(
     "keeps provider.models hook input mutations out of provider state",
     Effect.gen(function* () {
-      const instance = yield* TestInstance
-      yield* writeProviderModelsMutationPlugin(instance.directory)
-      yield* Effect.promise(() => reloadTestInstance({ directory: instance.directory }))
-      const directory = instance.directory
+      const directory = (yield* TestInstance).directory
 
       const headers = { "x-opencode-directory": directory }
-      const providerResponse = yield* requestRoute("/provider", { headers })
-      const configResponse = yield* requestRoute("/config/providers", { headers })
+      const providerResponse = yield* request("/provider", { headers })
+      const configResponse = yield* request("/config/providers", { headers })
 
       expect(providerResponse.status).toBe(200)
       expect(configResponse.status).toBe(200)
 
-      const providerBody = yield* Effect.promise(() => providerResponse.json())
-      const configBody = yield* Effect.promise(() => configResponse.json())
+      const providerBody = yield* providerResponse.json
+      const configBody = yield* configResponse.json
       expect(hasProviderMutationMarker(providerBody, "all", "google")).toBe(false)
       expect(hasProviderMutationMarker(configBody, "providers", "google")).toBe(false)
       expect(hasNonZeroModelCost(providerBody, "all", "google")).toBe(true)
     }),
-    projectOptions,
-    30000,
+    { ...projectOptions, init: writeProviderModelsMutationPlugin },
   )
 })
