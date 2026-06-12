@@ -19,6 +19,12 @@
 - For Solid UI merges, be extra careful with `<Show>` render-function children, keyed vs non-keyed control flow, leaked accessors, and non-null assertions over dynamic values.
 - Do not conclude an upstream merge until package-level typecheck, focused tests, and a desktop smoke test have completed.
 
+## Branch Names
+
+Use a short branch name of at most three words, separated by hyphens. Do not use slashes or type prefixes such as `feat/` or `fix/`.
+
+Examples: `session-recovery`, `fix-scroll-state`, `regenerate-sdk`.
+
 ## Commits and PR Titles
 
 Use conventional commit-style messages and PR titles: `type(scope): summary`.
