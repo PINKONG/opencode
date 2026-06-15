@@ -16,7 +16,7 @@ export function useKnowledgeAvailability(dir: () => string | undefined) {
       if (!value) return { directory: "", clients: [] }
       return loadKnowledgeAvailability(
         value,
-        sdk.createClient({
+        sdk().createClient({
           directory: value,
           throwOnError: true,
         }),

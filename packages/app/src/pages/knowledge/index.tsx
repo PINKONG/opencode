@@ -21,26 +21,26 @@ export default function KnowledgePage() {
   const navigate = useNavigate()
   const dataset = createMemo(() => params.dataset)
   const document = createMemo(() => params.document)
-  const availability = useKnowledgeAvailability(() => sdk.directory)
+  const availability = useKnowledgeAvailability(() => sdk().directory)
   const clients = createMemo(() => availability.data?.clients ?? [])
   const [selected, setSelected] = createSignal<string>()
   const client = createMemo(() => selectKnowledgeClient(clients(), selected()))
-  const api = createMemo(() => (client() ? createKnowledgeApi(sdk.client, client()!) : undefined))
+  const api = createMemo(() => (client() ? createKnowledgeApi(sdk().client, client()!) : undefined))
   const datasets = createQuery(() => ({
     enabled: !dataset() && !document() && !!client(),
-    queryKey: ["knowledge", "datasets", sdk.directory, client() ?? ""],
+    queryKey: ["knowledge", "datasets", sdk().directory, client() ?? ""],
     queryFn: () => loadDatasets(api()!),
     retry: (count, err) => shouldRetryMaxkb({ count, err }),
   }))
   const datasetMeta = createQuery(() => ({
     enabled: !!client() && !!dataset(),
-    queryKey: ["knowledge", "dataset-meta", sdk.directory, client() ?? "", dataset() ?? ""],
+    queryKey: ["knowledge", "dataset-meta", sdk().directory, client() ?? "", dataset() ?? ""],
     queryFn: () => api()!.categories(dataset()!),
     retry: (count, err) => shouldRetryMaxkb({ count, err }),
   }))
   const documentMeta = createQuery(() => ({
     enabled: !!client() && !!dataset() && !!document(),
-    queryKey: ["knowledge", "document-meta", sdk.directory, client() ?? "", dataset() ?? "", document() ?? ""],
+    queryKey: ["knowledge", "document-meta", sdk().directory, client() ?? "", dataset() ?? "", document() ?? ""],
     queryFn: () => api()!.document(dataset()!, document()!),
     retry: (count, err) => shouldRetryMaxkb({ count, err }),
   }))
@@ -83,7 +83,7 @@ export default function KnowledgePage() {
             onChange={(event) => {
               const value = event.currentTarget.value
               setSelected(value || undefined)
-              navigate(knowledgeRootOnClientChange(sdk.directory))
+              navigate(knowledgeRootOnClientChange(sdk().directory))
             }}
           >
             <option value="">{language.t("knowledge.client.placeholder")}</option>

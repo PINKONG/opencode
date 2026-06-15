@@ -25,19 +25,19 @@ export function ParagraphsPage(props: { client: string; dataset: string; documen
   const language = useLanguage()
   const sdk = useSDK()
   const dialog = useDialog()
-  const api = createMemo(() => createKnowledgeApi(sdk.client, props.client))
+  const api = createMemo(() => createKnowledgeApi(sdk().client, props.client))
   const [term, setTerm] = createSignal("")
   const [list, setList] = createSignal(resetParagraphList())
   const [offset, setOffset] = createSignal(0)
 
   const detail = createQuery(() => ({
-    queryKey: ["knowledge", "document", sdk.directory, props.client, props.dataset, props.document],
+    queryKey: ["knowledge", "document", sdk().directory, props.client, props.dataset, props.document],
     queryFn: () => loadDocument({ document: () => api().document(props.dataset, props.document) }),
     retry,
   }))
 
   const page = createQuery(() => ({
-    queryKey: ["knowledge", "paragraphs", sdk.directory, props.client, props.dataset, props.document, offset()],
+    queryKey: ["knowledge", "paragraphs", sdk().directory, props.client, props.dataset, props.document, offset()],
     queryFn: () =>
       loadParagraphs(
         { paragraphs: (input) => api().paragraphs(input) },

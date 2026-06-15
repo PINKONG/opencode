@@ -28,8 +28,8 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
   const [docs, setDocs] = createSignal(resetDocumentList())
   const [page, setPage] = createSignal(1)
   const data = createQuery(() => ({
-    queryKey: ["knowledge", "categories", sdk.directory, props.client, props.dataset],
-    queryFn: () => createKnowledgeApi(sdk.client, props.client).categories(props.dataset),
+    queryKey: ["knowledge", "categories", sdk().directory, props.client, props.dataset],
+    queryFn: () => createKnowledgeApi(sdk().client, props.client).categories(props.dataset),
     retry,
   }))
 
@@ -46,10 +46,10 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
   const current = createMemo(() => selected())
   const currentLabel = createMemo(() => categoryLabel(tree(), current()))
   const list = createQuery(() => ({
-    queryKey: ["knowledge", "documents", sdk.directory, props.client, props.dataset, current(), term(), page()],
+    queryKey: ["knowledge", "documents", sdk().directory, props.client, props.dataset, current(), term(), page()],
     queryFn: () => {
       const value = current()
-      return createKnowledgeApi(sdk.client, props.client).documents({
+      return createKnowledgeApi(sdk().client, props.client).documents({
         dataset: props.dataset,
         category: value === allValue ? undefined : value,
         page: page(),
@@ -146,7 +146,7 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
           <For each={docs().records}>
             {(item) => (
               <A
-                href={knowledgeHref(sdk.directory, props.dataset, item.id, props.client)}
+                href={knowledgeHref(sdk().directory, props.dataset, item.id, props.client)}
                 class="block rounded-lg border border-border-weak-base px-4 py-3 hover:bg-surface-raised-base-hover transition-colors"
               >
                 <div class="text-14-medium text-text-strong">{item.name}</div>

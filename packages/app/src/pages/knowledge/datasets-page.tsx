@@ -36,7 +36,7 @@ export function DatasetsPage(props: {
           <For each={props.data?.datasets}>
             {(item) => (
               <A
-                href={knowledgeHref(sdk.directory, item.id, undefined, props.client)}
+                href={knowledgeHref(sdk().directory, item.id, undefined, props.client)}
                 class="rounded-xl border border-border-weak-base bg-surface-base p-4 hover:bg-surface-raised-base-hover transition-colors"
               >
                 <div class="flex flex-col gap-2">

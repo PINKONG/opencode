@@ -19,7 +19,7 @@ export function KnowledgeHeader(props: {
       datasetName: props.datasetName,
       document: props.document,
       documentLabel: language.t("knowledge.page.document"),
-      dir: sdk.directory,
+      dir: sdk().directory,
       client: props.client,
     })
 
@@ -28,7 +28,7 @@ export function KnowledgeHeader(props: {
       <div class="flex min-w-0 items-center gap-2 text-13-medium text-text-weak">
         <Show when={props.dataset}>
           <A
-            href={knowledgeParentHref(sdk.directory, props.dataset, props.document, props.client)}
+            href={knowledgeParentHref(sdk().directory, props.dataset, props.document, props.client)}
             class="rounded-md px-2 py-1 -ml-2 hover:bg-surface-raised-base-hover hover:text-text-strong transition-colors"
           >
             {language.t("common.goBack")}
@@ -53,7 +53,7 @@ export function KnowledgeHeader(props: {
         </For>
       </div>
       <A
-        href={knowledgeExitHref(sdk.directory)}
+        href={knowledgeExitHref(sdk().directory)}
         class="shrink-0 rounded-md border border-border-weak-base px-3 py-2 text-13-medium text-text-strong hover:bg-surface-raised-base-hover transition-colors"
       >
         {language.t("knowledge.nav.exit")}
