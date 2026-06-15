@@ -4,6 +4,11 @@ import { fileURLToPath } from "node:url"
 
 const dir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(dir, "../../src")
+const tuiRoot = resolve(dir, "../../../tui/src")
+
+function read(root: string, name: string) {
+  return Bun.file(join(root, name)).text()
+}
 
 const branded = [
   "acp/agent.ts",
@@ -13,28 +18,33 @@ const branded = [
   "cli/cmd/providers.ts",
   "cli/cmd/run.ts",
   "cli/cmd/serve.ts",
-  "cli/cmd/tui/attach.ts",
-  "cli/cmd/tui/component/error-component.tsx",
+  "cli/cmd/attach.ts",
   "cli/cmd/upgrade.ts",
   "cli/cmd/web.ts",
-  "cli/cmd/tui/app.tsx",
-  "cli/cmd/tui/component/dialog-status.tsx",
+  "cli/cmd/tui.ts",
   "cli/cmd/uninstall.ts",
   "cli/network.ts",
-  "cli/cmd/tui/thread.ts",
   "server/mdns.ts",
-  "cli/cmd/tui/routes/session/permission.tsx",
-  "cli/cmd/tui/routes/session/index.tsx",
-  "cli/cmd/tui/feature-plugins/sidebar/footer.tsx",
   "cli/error.ts",
   "provider/error.ts",
   "mcp/oauth-provider.ts",
 ]
 
+const brandedTui = ["component/error-component.tsx", "component/dialog-status.tsx", "util/presentation.ts"]
+
 describe("user visible branding copy", () => {
   for (const name of branded) {
     test(`${name} does not expose old OpenCode branding`, async () => {
-      const txt = await Bun.file(join(root, name)).text()
+      const txt = await read(root, name)
+
+      expect(txt).not.toContain("OpenCode")
+      expect(txt).not.toContain("opencode.ai")
+    })
+  }
+
+  for (const name of brandedTui) {
+    test(`tui/${name} does not expose old OpenCode branding`, async () => {
+      const txt = await read(tuiRoot, name)
 
       expect(txt).not.toContain("OpenCode")
       expect(txt).not.toContain("opencode.ai")
@@ -42,28 +52,28 @@ describe("user visible branding copy", () => {
   }
 
   test("cli-facing guidance uses wiscode command examples", async () => {
-    const error = await Bun.file(join(root, "cli/error.ts")).text()
-    const pr = await Bun.file(join(root, "cli/cmd/pr.ts")).text()
-    const github = await Bun.file(join(root, "cli/cmd/github.handler.ts")).text()
-    const index = await Bun.file(join(root, "index.ts")).text()
-    const temporary = await Bun.file(join(root, "temporary.ts")).text()
-    const providers = await Bun.file(join(root, "cli/cmd/providers.ts")).text()
-    const retry = await Bun.file(join(root, "session/retry.ts")).text()
-    const run = await Bun.file(join(root, "cli/cmd/run.ts")).text()
-    const serve = await Bun.file(join(root, "cli/cmd/serve.ts")).text()
-    const attach = await Bun.file(join(root, "cli/cmd/tui/attach.ts")).text()
-    const errorComponent = await Bun.file(join(root, "cli/cmd/tui/component/error-component.tsx")).text()
-    const network = await Bun.file(join(root, "cli/network.ts")).text()
-    const thread = await Bun.file(join(root, "cli/cmd/tui/thread.ts")).text()
-    const web = await Bun.file(join(root, "cli/cmd/web.ts")).text()
-    const upgrade = await Bun.file(join(root, "cli/cmd/upgrade.ts")).text()
-    const mcp = await Bun.file(join(root, "cli/cmd/mcp.ts")).text()
-    const mdns = await Bun.file(join(root, "server/mdns.ts")).text()
-    const status = await Bun.file(join(root, "cli/cmd/tui/component/dialog-status.tsx")).text()
-    const session = await Bun.file(join(root, "cli/cmd/tui/routes/session/index.tsx")).text()
-    const acp = await Bun.file(join(root, "acp/service.ts")).text()
-    const provider = await Bun.file(join(root, "provider/error.ts")).text()
-    const tips = await Bun.file(join(root, "cli/cmd/tui/feature-plugins/home/tips-view.tsx")).text()
+    const error = await read(root, "cli/error.ts")
+    const pr = await read(root, "cli/cmd/pr.ts")
+    const github = await read(root, "cli/cmd/github.handler.ts")
+    const index = await read(root, "index.ts")
+    const temporary = await read(root, "temporary.ts")
+    const providers = await read(root, "cli/cmd/providers.ts")
+    const retry = await read(root, "session/retry.ts")
+    const run = await read(root, "cli/cmd/run.ts")
+    const serve = await read(root, "cli/cmd/serve.ts")
+    const attach = await read(root, "cli/cmd/attach.ts")
+    const errorComponent = await read(tuiRoot, "component/error-component.tsx")
+    const network = await read(root, "cli/network.ts")
+    const thread = await read(root, "cli/cmd/tui.ts")
+    const web = await read(root, "cli/cmd/web.ts")
+    const upgrade = await read(root, "cli/cmd/upgrade.ts")
+    const mcp = await read(root, "cli/cmd/mcp.ts")
+    const mdns = await read(root, "server/mdns.ts")
+    const status = await read(tuiRoot, "component/dialog-status.tsx")
+    const session = await read(tuiRoot, "util/presentation.ts")
+    const acp = await read(root, "acp/service.ts")
+    const provider = await read(root, "provider/error.ts")
+    const tips = await read(tuiRoot, "feature-plugins/home/tips-view.tsx")
 
     expect(error).toContain("wiscode models")
     expect(error).not.toContain("opencode models")
@@ -119,8 +129,8 @@ describe("user visible branding copy", () => {
     expect(status).toContain("Needs authentication (run: wiscode mcp auth {key})")
     expect(status).not.toContain("Needs authentication (run: opencode mcp auth {key})")
 
-    expect(session).toContain("wiscode -s ${session()?.id}")
-    expect(session).not.toContain("opencode -s ${session()?.id}")
+    expect(session).toContain("wiscode -s ${input.sessionID}")
+    expect(session).not.toContain("opencode -s ${input.sessionID}")
 
     expect(acp).toContain("Run `wiscode auth login` in the terminal")
     expect(acp).toContain('name: "Login with WisCode"')
@@ -185,9 +195,9 @@ describe("user visible branding copy", () => {
   })
 
   test("provider-branded surfaces keep upstream OpenCode Zen/Go names", async () => {
-    const dialogProvider = await Bun.file(join(root, "cli/cmd/tui/component/dialog-provider.tsx")).text()
-    const retry = await Bun.file(join(root, "session/retry.ts")).text()
-    const tips = await Bun.file(join(root, "cli/cmd/tui/feature-plugins/home/tips-view.tsx")).text()
+    const dialogProvider = await read(tuiRoot, "component/dialog-provider.tsx")
+    const retry = await read(root, "session/retry.ts")
+    const tips = await read(tuiRoot, "feature-plugins/home/tips-view.tsx")
 
     expect(dialogProvider).toContain("OpenCode Zen")
     expect(dialogProvider).toContain("OpenCode Go")

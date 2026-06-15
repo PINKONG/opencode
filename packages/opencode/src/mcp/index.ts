@@ -4,7 +4,7 @@ import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { type Tool } from "ai"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import { serviceUse } from "@opencode-ai/core/effect/service-use"
-import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { Client, type ClientOptions } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
@@ -39,6 +39,18 @@ import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { McpCatalog } from "./catalog"
 
 const DEFAULT_TIMEOUT = 30_000
+const CLIENT_OPTIONS = {
+  capabilities: {
+    // https://github.com/anomalyco/opencode/issues/11948
+    // sampling: {},
+    // https://github.com/anomalyco/opencode/issues/23066
+    // elicitation: {},
+    // https://github.com/anomalyco/opencode/issues/2308
+    // roots: {},
+    // https://github.com/anomalyco/opencode/issues/28567
+    // tasks: {},
+  },
+} satisfies ClientOptions
 
 export const Resource = Schema.Struct({
   name: Schema.String,
@@ -195,7 +207,7 @@ export const layer = Layer.effect(
         (t) =>
           Effect.tryPromise({
             try: () => {
-              const client = new Client({ name: "opencode", version: InstallationVersion })
+              const client = new Client({ name: "opencode", version: InstallationVersion }, CLIENT_OPTIONS)
               return withTimeout(client.connect(t), timeout).then(() => client)
             },
             catch: (e) => (e instanceof Error ? e : new Error(String(e))),
@@ -859,7 +871,7 @@ export const layer = Layer.effect(
 
       return yield* Effect.tryPromise({
         try: () => {
-          const client = new Client({ name: "opencode", version: InstallationVersion })
+          const client = new Client({ name: "opencode", version: InstallationVersion }, CLIENT_OPTIONS)
           return client
             .connect(transport)
             .then(() => ({ authorizationUrl: "", oauthState, client }) satisfies AuthResult)
