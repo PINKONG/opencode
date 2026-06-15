@@ -285,8 +285,7 @@ export default function Page() {
     () =>
       isDesktop() &&
       shouldShowFileTree({
-        desktopV2: platform.platform === "desktop" && settings.general.newLayoutDesigns(),
-        showFileTree: settings.general.showFileTree(),
+        visible: settings.visibility.fileTree(),
         opened: layout.fileTree.opened(),
       }),
   )
