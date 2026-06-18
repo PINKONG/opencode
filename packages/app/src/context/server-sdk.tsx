@@ -29,6 +29,39 @@ export function shouldUsePlatformEventFetch(input: {
 }
 
 const isStreamClosed = (error: unknown, signal?: AbortSignal) => isAbortError(error) || signal?.aborted === true
+type QueuedServerEvent = { directory: string; payload: Event }
+
+const deltaKey = (directory: string, messageID: string, partID: string) => `${directory}:${messageID}:${partID}`
+
+export function coalesceServerEvents(events: QueuedServerEvent[], stale?: Set<string>) {
+  const output: QueuedServerEvent[] = []
+  const deltas = new Map<string, number>()
+  events.forEach((event) => {
+    if (stale && event.payload.type === "message.part.delta") {
+      const props = event.payload.properties
+      if (stale.has(deltaKey(event.directory, props.messageID, props.partID))) return
+    }
+    if (event.payload.type !== "message.part.delta") {
+      deltas.clear()
+      output.push(event)
+      return
+    }
+    const props = event.payload.properties
+    const id = `${deltaKey(event.directory, props.messageID, props.partID)}:${props.field}`
+    const index = deltas.get(id)
+    const existing = index === undefined ? undefined : output[index]
+    if (!existing || existing.payload.type !== "message.part.delta") {
+      deltas.set(id, output.length)
+      output.push({
+        directory: event.directory,
+        payload: { ...event.payload, properties: { ...props } },
+      })
+      return
+    }
+    existing.payload.properties.delta += props.delta
+  })
+  return output
+}
 
 export function resumeStreamAfterPageShow(event: PageTransitionEvent, start: () => unknown) {
   if (!event.persisted) return
@@ -55,7 +88,7 @@ function createServerSdkContextBase(server: ServerConnection.Any, scope: ServerS
     [key: string]: Event
   }>()
 
-  type Queued = { directory: string; payload: Event }
+  type Queued = QueuedServerEvent
   const FLUSH_FRAME_MS = 16
   const STREAM_YIELD_MS = 8
   const RECONNECT_DELAY_MS = 250
@@ -66,8 +99,6 @@ function createServerSdkContextBase(server: ServerConnection.Any, scope: ServerS
   const staleDeltas = new Set<string>()
   let timer: ReturnType<typeof setTimeout> | undefined
   let last = 0
-
-  const deltaKey = (directory: string, messageID: string, partID: string) => `${directory}:${messageID}:${partID}`
 
   const key = (directory: string, payload: Event) => {
     if (payload.type === "session.status") return `session.status:${directory}:${payload.properties.sessionID}`
@@ -93,14 +124,9 @@ function createServerSdkContextBase(server: ServerConnection.Any, scope: ServerS
     staleDeltas.clear()
 
     last = Date.now()
+    const output = coalesceServerEvents(events, skip)
     batch(() => {
-      for (const event of events) {
-        if (skip && event.payload.type === "message.part.delta") {
-          const props = event.payload.properties
-          if (skip.has(deltaKey(event.directory, props.messageID, props.partID))) continue
-        }
-        emitter.emit(event.directory, event.payload)
-      }
+      output.forEach((event) => emitter.emit(event.directory, event.payload))
     })
 
     buffer.length = 0
