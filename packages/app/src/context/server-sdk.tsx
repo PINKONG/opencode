@@ -299,13 +299,13 @@ function createServerSdkContextBase(server: ServerConnection.Any, scope: ServerS
 
 type ServerSDKBase = ReturnType<typeof createServerSdkContextBase>
 export type ServerSDK = ServerSDKBase & {
-  createDirSdkContext: (directory: string) => ReturnType<typeof createDirSdkContext>
+  ensureDirSdkContext: (directory: string) => ReturnType<typeof createDirSdkContext>
 }
 
 export function createServerSdkContext(server: ServerConnection.Any, scope: ServerScope): ServerSDK {
   const sdk = createServerSdkContextBase(server, scope)
   return Object.assign(sdk, {
-    createDirSdkContext: createRefCountMap((dir) => createDirSdkContext(dir, sdk)),
+    ensureDirSdkContext: createRefCountMap((dir) => createDirSdkContext(dir, sdk)),
   })
 }
 
@@ -321,7 +321,7 @@ export const { use: useServerSDK, provider: ServerSDKProvider } = createSimpleCo
     return createMemo<ServerSDK>(() => {
       const conn = props.server?.() ?? server.current
       if (!conn) throw new Error(language.t("error.serverSDK.noServerAvailable"))
-      return global.createServerCtx(conn).sdk
+      return global.ensureServerCtx(conn).sdk
     })
   },
 })

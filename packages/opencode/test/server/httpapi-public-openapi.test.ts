@@ -79,6 +79,20 @@ describe("PublicApi OpenAPI v2 errors", () => {
     expect(spec.info?.description).toBe("WisCode API")
   })
 
+  test("includes plugin-facing core schemas", () => {
+    const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
+
+    expect(Object.keys(spec.components.schemas)).toEqual(
+      expect.arrayContaining([
+        "CredentialValue",
+        "IntegrationInputs",
+        "IntegrationMethod",
+        "IntegrationRef",
+        "SkillV2Source",
+      ]),
+    )
+  })
+
   test("documents nested legacy global sync events", () => {
     const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
     const schema = spec.components.schemas.SyncEventSessionCreated
