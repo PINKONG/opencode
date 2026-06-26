@@ -328,12 +328,15 @@
 
 - 桌面首页 logo
 - 启动 logo
+- TUI / `wiscode-cli` 启动页 ASCII logo 必须显示 WisCode，而不是上游 OpenCode
 - 应用图标
 - Windows 安装器 header/sidebar 图
 - Windows 卸载器图
 
 ### 典型落点
 
+- [packages/tui/src/logo.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/tui/src/logo.ts)
+- [packages/tui/test/logo.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/tui/test/logo.test.ts)
 - [packages/desktop/src-tauri/icons/](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src-tauri/icons)
 - [packages/desktop-electron/icons/](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop-electron/icons)
 - [packages/desktop/src-tauri/assets/](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src-tauri/assets)
@@ -341,12 +344,14 @@
 ### 合并时注意
 
 - 上游改资源目录结构时，最容易把这些位图路径冲回去
+- 上游改 TUI 首页或 `packages/tui/src/logo.ts` 时，最容易把 CLI 启动页品牌冲回 `opencode`
 
 ## 14. 品牌回归测试
 
 ### 必须保留
 
 - Web / install / Zed / app visible copy 的品牌测试
+- TUI / `wiscode-cli` 启动页 logo 品牌测试
 - OpenCode Zen / Go 边界测试
 - titlebar Portal 安全测试
 
@@ -354,6 +359,7 @@
 
 - [packages/opencode/test/branding/public-surface-branding.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/test/branding/public-surface-branding.test.ts)
 - [packages/app/src/branding-surface.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/branding-surface.test.ts)
+- [packages/tui/test/logo.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/tui/test/logo.test.ts)
 - [packages/app/src/components/titlebar-portal.test.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/components/titlebar-portal.test.ts)
 
 ## 15. 已知允许保留的 upstream 依赖
