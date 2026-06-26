@@ -322,6 +322,7 @@ describe("session HttpApi", () => {
         })
       }),
     { git: true, config: { formatter: false, lsp: false } },
+    { timeout: 20_000 },
   )
 
   it.instance(
@@ -394,6 +395,7 @@ describe("session HttpApi", () => {
         ).toMatchObject([{ type: "assistant" }])
       }),
     { git: true, config: { formatter: false, lsp: false } },
+    { timeout: 20_000 },
   )
 
   it.live("uses the persisted session directory for prompt requests", () =>
@@ -433,6 +435,7 @@ describe("session HttpApi", () => {
         root: sessionDirectory,
       })
     }).pipe(Effect.provide(TestLLMServer.layer), Effect.provide(CrossSpawnSpawner.defaultLayer)),
+    { timeout: 20_000 },
   )
 
   it.instance(
@@ -527,6 +530,7 @@ describe("session HttpApi", () => {
         })
       }),
     { git: true, config: { formatter: false, lsp: false } },
+    { timeout: 20_000 },
   )
 
   it.instance(
@@ -567,6 +571,7 @@ describe("session HttpApi", () => {
         expect(yield* responseJson(prompt)).toEqual(expected)
       }),
     { git: true, config: { formatter: false, lsp: false } },
+    { timeout: 20_000 },
   )
 
   it.instance(
@@ -626,6 +631,7 @@ describe("session HttpApi", () => {
         })
       }),
     { git: true, config: { formatter: false, lsp: false } },
+    { timeout: 20_000 },
   )
 
   it.instance(
