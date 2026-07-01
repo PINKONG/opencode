@@ -10,6 +10,7 @@ import {
   ServerAuthorization,
   serverAuthorizationLayer,
 } from "../../src/server/routes/instance/httpapi/middleware/authorization"
+import { issueEmbedSession } from "../../src/server/embed-session"
 import { testEffect } from "../lib/effect"
 
 const Api = HttpApi.make("test-authorization").add(
@@ -169,6 +170,28 @@ describe("HttpApi authorization middleware", () => {
       expect(response.status).toBe(401)
       expect(response.headers["www-authenticate"] ?? "").toContain("Basic")
       expect(body).toEqual({ _tag: "UnauthorizedError", message: "Authentication required" })
+    }),
+  )
+
+  itV2Secret.live("accepts embed session header credentials for v2 server routes", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClientRequest.get("/api/probe").pipe(
+        HttpClientRequest.setHeader("x-opencode-embed-session", issueEmbedSession(token("opencode", "secret"))),
+        HttpClient.execute,
+      )
+
+      expect(response.status).toBe(200)
+    }),
+  )
+
+  itV2Secret.live("accepts auth cookie credentials for v2 server routes", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClientRequest.get("/api/probe").pipe(
+        HttpClientRequest.setHeader("cookie", `wiscode_auth_token=${token("opencode", "secret")}`),
+        HttpClient.execute,
+      )
+
+      expect(response.status).toBe(200)
     }),
   )
 })

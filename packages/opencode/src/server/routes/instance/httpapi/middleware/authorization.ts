@@ -5,10 +5,9 @@ import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "e
 import { HttpApiError, HttpApiMiddleware } from "effect/unstable/httpapi"
 import { hasPtyConnectTicketURL } from "@/server/shared/pty-ticket"
 import { isPublicUIPath } from "@/server/shared/public-ui"
-export {
-  Authorization as ServerAuthorization,
-  authorizationLayer as serverAuthorizationLayer,
-} from "@opencode-ai/server/middleware/authorization"
+import { Authorization as ServerAuthorization } from "@opencode-ai/server/middleware/authorization"
+import { UnauthorizedError } from "@opencode-ai/protocol/errors"
+export { ServerAuthorization }
 
 const AUTH_TOKEN_QUERY = "auth_token"
 const AUTH_COOKIE = "wiscode_auth_token"
@@ -214,6 +213,27 @@ export const ptyConnectAuthorizationLayer = Layer.effect(
         return yield* credentialFromURL(url, request).pipe(
           Effect.flatMap((credential) => validateCredential(effect, credential, config)),
         )
+      }),
+    )
+  }),
+)
+
+export const serverAuthorizationLayer = Layer.effect(
+  ServerAuthorization,
+  Effect.gen(function* () {
+    const config = yield* ServerAuth.Config
+    if (!ServerAuth.required(config)) return ServerAuthorization.of((effect) => effect)
+    return ServerAuthorization.of((effect) =>
+      Effect.gen(function* () {
+        const request = yield* HttpServerRequest.HttpServerRequest
+        const url = new URL(request.url, "http://localhost")
+        if (hasPtyConnectTicketURL(url)) return yield* effect
+        const credential = yield* credentialFromURL(url, request)
+        if (ServerAuth.authorized(credential, config)) return yield* effect
+        yield* HttpEffect.appendPreResponseHandler((_request, response) =>
+          Effect.succeed(HttpServerResponse.setHeader(response, "www-authenticate", WWW_AUTHENTICATE)),
+        )
+        return yield* new UnauthorizedError({ message: "Authentication required" })
       }),
     )
   }),
