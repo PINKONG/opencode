@@ -1,4 +1,6 @@
 import { describe, expect } from "bun:test"
+import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Effect, Layer } from "effect"
 import path from "path"
@@ -7,6 +9,27 @@ import { TestInstance } from "../fixture/fixture"
 import { markPluginDependenciesReady } from "../fixture/plugin"
 import { testEffect } from "../lib/effect"
 import { httpApiLayer, request } from "./httpapi-layer"
+import { InstanceBootstrap } from "../../src/project/bootstrap-service"
+import { InstanceStore } from "../../src/project/instance-store"
+import { Config } from "../../src/config/config"
+import { Auth } from "../../src/auth"
+import { Account } from "../../src/account/account"
+import { Env } from "../../src/env"
+import { Npm } from "@opencode-ai/core/npm"
+import { Plugin } from "../../src/plugin"
+import { Provider } from "../../src/provider/provider"
+import { ProviderAuth } from "../../src/provider/auth"
+import { ModelsDev } from "@opencode-ai/core/models-dev"
+import { RuntimeFlags } from "../../src/effect/runtime-flags"
+import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
+import { Project } from "../../src/project/project"
+import { ProjectV2 } from "@opencode-ai/core/project"
+import { ProjectDirectories } from "@opencode-ai/core/project/directories"
+import { EventV2Bridge } from "../../src/event-v2-bridge"
+import { EventV2 } from "@opencode-ai/core/event"
+import { AppProcess } from "@opencode-ai/core/process"
+import { Database } from "@opencode-ai/core/database/database"
+import { Global } from "@opencode-ai/core/global"
 
 const testStateLayer = Layer.effectDiscard(
   Effect.acquireRelease(
@@ -15,7 +38,33 @@ const testStateLayer = Layer.effectDiscard(
   ),
 )
 
-const it = testEffect(Layer.mergeAll(testStateLayer, FSUtil.defaultLayer, httpApiLayer))
+const noopBootstrapLayer = Layer.succeed(InstanceBootstrap.Service, InstanceBootstrap.Service.of({ run: Effect.void }))
+const appLayer = AppNodeBuilder.build(
+  LayerNode.group([
+    FSUtil.node,
+    AppProcess.node,
+    CrossSpawnSpawner.node,
+    Database.node,
+    ProjectV2.node,
+    ProjectDirectories.node,
+    EventV2.node,
+    EventV2Bridge.node,
+    Project.node,
+    InstanceStore.node,
+    Auth.node,
+    Account.node,
+    Env.node,
+    Npm.node,
+    Config.node,
+    Plugin.node,
+    Provider.node,
+    ProviderAuth.node,
+    ModelsDev.node,
+    RuntimeFlags.node,
+  ]),
+  [[InstanceStore.bootstrapNode, noopBootstrapLayer]],
+)
+const it = testEffect(Layer.mergeAll(testStateLayer, appLayer, httpApiLayer))
 const projectOptions = {
   config: {
     formatter: false,
@@ -30,6 +79,15 @@ const projectOptions = {
 const providerID = "test-oauth-parity"
 const oauthURL = "https://example.com/oauth"
 const oauthInstructions = "Finish OAuth"
+
+function markPluginTestDependenciesReady(dir: string) {
+  return Effect.promise(() =>
+    Promise.all([
+      markPluginDependenciesReady(path.join(dir, ".opencode")),
+      markPluginDependenciesReady(Global.Path.config),
+    ]),
+  ).pipe(Effect.asVoid)
+}
 
 function providerListHasFetch(list: unknown) {
   if (!Array.isArray(list)) return false
@@ -115,7 +173,7 @@ function requestCallback(input: { providerID: string; method: number; headers: H
 function writeProviderAuthPlugin(dir: string) {
   return Effect.gen(function* () {
     const fs = yield* FSUtil.Service
-    yield* Effect.promise(() => markPluginDependenciesReady(path.join(dir, ".opencode")))
+    yield* markPluginTestDependenciesReady(dir)
 
     yield* fs.writeWithDirs(
       path.join(dir, ".opencode", "plugin", "provider-oauth-parity.ts"),
@@ -150,7 +208,7 @@ function writeProviderAuthPlugin(dir: string) {
 function writeProviderAuthValidationPlugin(dir: string) {
   return Effect.gen(function* () {
     const fs = yield* FSUtil.Service
-    yield* Effect.promise(() => markPluginDependenciesReady(path.join(dir, ".opencode")))
+    yield* markPluginTestDependenciesReady(dir)
 
     yield* fs.writeWithDirs(
       path.join(dir, ".opencode", "plugin", "provider-oauth-validation.ts"),
@@ -192,7 +250,7 @@ function writeProviderAuthValidationPlugin(dir: string) {
 function writeFunctionOptionsPlugin(dir: string) {
   return Effect.gen(function* () {
     const fs = yield* FSUtil.Service
-    yield* Effect.promise(() => markPluginDependenciesReady(path.join(dir, ".opencode")))
+    yield* markPluginTestDependenciesReady(dir)
 
     yield* fs.writeWithDirs(
       path.join(dir, ".opencode", "plugin", "provider-function-options.ts"),
@@ -224,7 +282,7 @@ function writeFunctionOptionsPlugin(dir: string) {
 function writeProviderModelsMutationPlugin(dir: string) {
   return Effect.gen(function* () {
     const fs = yield* FSUtil.Service
-    yield* Effect.promise(() => markPluginDependenciesReady(path.join(dir, ".opencode")))
+    yield* markPluginTestDependenciesReady(dir)
 
     yield* fs.writeWithDirs(
       path.join(dir, ".opencode", "plugin", "provider-models-mutation.ts"),

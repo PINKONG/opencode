@@ -35,9 +35,9 @@ export function layerFromPath(filename: string) {
   return CoreDatabase.layerFromPath(filename)
 }
 
-export const layer = CoreDatabase.layer
+export const layer = layerFromPath(path())
 
-export const defaultLayer = layerFromPath(path())
+export const defaultLayer = layer
 
 export const Service = CoreDatabase.Service
 

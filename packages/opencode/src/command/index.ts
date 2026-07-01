@@ -1,4 +1,5 @@
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import path from "path"
 import { InstanceState } from "@/effect/instance-state"
 import { EffectBridge } from "@/effect/bridge"
 import type { InstanceContext } from "@/project/instance-context"
@@ -53,7 +54,7 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Command") {}
 
-export const layer = Layer.effect(
+const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
     const config = yield* Config.Service
@@ -122,12 +123,19 @@ export const layer = Layer.effect(
 
       for (const item of yield* skill.all()) {
         if (commands[item.name]) continue
+        const dir = item.location === "<built-in>" ? undefined : path.dirname(item.location)
         commands[item.name] = {
           name: item.name,
           description: item.description,
           source: "skill",
           get template() {
-            return item.content
+            if (!dir) return item.content
+            return [
+              item.content,
+              "",
+              `Base directory for this skill: ${dir}`,
+              "Relative paths in this skill (e.g., scripts/, references/) are relative to this base directory.",
+            ].join("\n")
           },
           hints: [],
         }
@@ -154,12 +162,6 @@ export const layer = Layer.effect(
   }),
 )
 
-export const defaultLayer = layer.pipe(
-  Layer.provide(Config.defaultLayer),
-  Layer.provide(MCP.defaultLayer),
-  Layer.provide(Skill.defaultLayer),
-)
-
-export const node = LayerNode.make(layer, [Config.node, MCP.node, Skill.node])
+export const node = LayerNode.make({ service: Service, layer: layer, deps: [Config.node, MCP.node, Skill.node] })
 
 export * as Command from "."

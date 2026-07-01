@@ -11,7 +11,7 @@ const dirs = [".wiscode", ".opencode"] as const
 
 function readNames(name: string) {
   if (name !== "opencode") return [name]
-  return ["wiscode", "opencode"]
+  return ["opencode", "wiscode"]
 }
 
 function writeNames(name: string) {
@@ -26,7 +26,9 @@ export const files = Effect.fn("ConfigPaths.projectFiles")(function* (
 ) {
   const afs = yield* FSUtil.Service
   return (yield* afs.up({
-    targets: readNames(name).flatMap((item) => [`${item}.jsonc`, `${item}.json`]),
+    targets: readNames(name)
+      .toReversed()
+      .flatMap((item) => [`${item}.jsonc`, `${item}.json`]),
     start: directory,
     stop: worktree,
   })).toReversed()

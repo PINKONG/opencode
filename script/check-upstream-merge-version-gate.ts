@@ -36,10 +36,12 @@ const versionFiles = [
   "packages/console/core/package.json",
   "packages/console/function/package.json",
   "packages/console/mail/package.json",
+  "packages/console/support/package.json",
   "packages/sdk/js/package.json",
   "sdks/vscode/package.json",
   "packages/llm/package.json",
   "packages/http-recorder/package.json",
+  "packages/session-ui/package.json",
 ]
 
 const failures: string[] = []
