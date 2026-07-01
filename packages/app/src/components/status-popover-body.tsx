@@ -99,8 +99,16 @@ const useDefaultServerKey = (
   }
 }
 
-async function copyServerAccessUrl(language: ReturnType<typeof useLanguage>, conn: ServerConnection.Any) {
-  const copied = await writeClipboard(buildServerAccessUrl(conn.http))
+async function copyServerAccessUrl(
+  language: ReturnType<typeof useLanguage>,
+  platform: ReturnType<typeof usePlatform>,
+  conn: ServerConnection.Any,
+) {
+  const url =
+    conn.type === "sidecar" && conn.variant === "base"
+      ? ((await platform.getSidecarLanStatus?.().catch(() => undefined))?.accessUrl ?? buildServerAccessUrl(conn.http))
+      : buildServerAccessUrl(conn.http)
+  const copied = await writeClipboard(url)
   if (!copied) {
     showToast({
       variant: "error",
@@ -212,6 +220,7 @@ function ServerStatusPopoverView(props: { state: ServerStatusState }) {
 
 function ServerStatusList(props: { state: ServerStatusState }) {
   const language = useLanguage()
+  const platform = usePlatform()
 
   return (
     <div class="flex flex-col px-2 pb-2">
@@ -256,7 +265,7 @@ function ServerStatusList(props: { state: ServerStatusState }) {
                       onClick={(event: MouseEvent) => {
                         event.preventDefault()
                         event.stopPropagation()
-                        void copyServerAccessUrl(language, item.conn)
+                        void copyServerAccessUrl(language, platform, item.conn)
                       }}
                     >
                       <Icon name="copy" size="small" />
@@ -400,7 +409,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
                               onClick={(event: MouseEvent) => {
                                 event.preventDefault()
                                 event.stopPropagation()
-                                void copyServerAccessUrl(language, s)
+                                void copyServerAccessUrl(language, platform, s)
                               }}
                             >
                               <Icon name="copy" size="small" />

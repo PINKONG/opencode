@@ -19,5 +19,6 @@ describe("SettingsGeneral", () => {
     const text = await Bun.file(new URL("./settings-general.tsx", import.meta.url)).text()
     expect(text).toContain("buildSidecarLanAccessUrl")
     expect(text).toContain("sidecarLanAccessUrl()")
+    expect(text).toContain("status?.accessUrl")
   })
 })

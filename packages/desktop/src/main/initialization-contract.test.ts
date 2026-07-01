@@ -26,3 +26,12 @@ test("desktop startup uses the single-window initialization contract", () => {
   expect(ipc).not.toContain("SqliteMigrationProgress")
   expect(ipc).not.toContain('event.sender.send("init-step"')
 })
+
+test("desktop sidecar LAN status exposes a tokenized access URL", () => {
+  const main = read("src/main/index.ts")
+  const preloadTypes = read("src/preload/types.ts")
+
+  expect(preloadTypes).toContain("accessUrl: string | null")
+  expect(main).toContain('sidecarLanAccessUrl.searchParams.set("auth_token"')
+  expect(main).toContain("accessUrl: sidecarLanAccessUrl?.toString() ?? null")
+})

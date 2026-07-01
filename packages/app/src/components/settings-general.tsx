@@ -693,7 +693,9 @@ export const SettingsGeneral: Component = () => {
           return String(value)
         })
         const sidecarLanAccessUrl = createMemo(() => {
-          const url = lanStatus.latest?.url
+          const status = lanStatus.latest
+          if (status?.accessUrl) return status.accessUrl
+          const url = status?.url
           if (!url) return
           const conn = server.list.find((conn) => conn.type === "sidecar" && conn.variant === "base")
           if (!conn) return url

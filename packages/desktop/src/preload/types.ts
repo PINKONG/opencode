@@ -36,6 +36,7 @@ export type SidecarLanStatus = {
   status: "disabled" | "available" | "unavailable" | "custom_unavailable"
   address: string | null
   url: string | null
+  accessUrl: string | null
   port: number | null
 }
 

@@ -58,6 +58,7 @@ let sidecarLanStatus: SidecarLanStatus = {
   status: "disabled",
   address: null,
   url: null,
+  accessUrl: null,
   port: null,
 }
 
@@ -313,17 +314,22 @@ const main = Effect.gen(function* () {
   const port = yield* Effect.promise(() => getSidecarPort(config))
   const url = `http://${hosts.clientHost}:${port}`
   const advertiseUrl = `http://${hosts.advertiseHost}:${port}`
+  const password =
+    config.fixedToken === true
+      ? process.env.OPENCODE_SERVER_PASSWORD || SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD
+      : randomUUID()
+  const sidecarLanAccessUrl = hosts.status === "available" ? new URL(advertiseUrl) : null
+  if (sidecarLanAccessUrl) {
+    sidecarLanAccessUrl.searchParams.set("auth_token", Buffer.from(`opencode:${password}`).toString("base64"))
+  }
   sidecarLanStatus = {
     enabled: config.enabled,
     status: hosts.status,
     address: hosts.status === "available" ? hosts.advertiseHost : null,
     url: hosts.status === "available" ? advertiseUrl : null,
+    accessUrl: sidecarLanAccessUrl?.toString() ?? null,
     port,
   }
-  const password =
-    config.fixedToken === true
-      ? process.env.OPENCODE_SERVER_PASSWORD || SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD
-      : randomUUID()
 
   const loadingTask = yield* Effect.gen(function* () {
     logger.log("sidecar connection started", { url, advertiseUrl })
