@@ -11,9 +11,11 @@ import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
 import { usePlatform, type DisplayBackend } from "@/context/platform"
+import { useServer } from "@/context/server"
 import { useServerSync } from "@/context/server-sync"
 import { useServerSDK } from "@/context/server-sdk"
 import { useUpdaterAction } from "./updater-action"
+import { buildSidecarLanAccessUrl } from "@/util/sidecar-lan-access-url"
 import {
   monoDefault,
   monoFontFamily,
@@ -85,6 +87,7 @@ export const SettingsGeneral: Component = () => {
   const language = useLanguage()
   const permission = usePermission()
   const platform = usePlatform()
+  const server = useServer()
   const dialog = useDialog()
   const params = useParams()
   const settings = useSettings()
@@ -689,6 +692,13 @@ export const SettingsGeneral: Component = () => {
           if (typeof value !== "number" || !Number.isInteger(value)) return ""
           return String(value)
         })
+        const sidecarLanAccessUrl = createMemo(() => {
+          const url = lanStatus.latest?.url
+          if (!url) return
+          const conn = server.list.find((conn) => conn.type === "sidecar" && conn.variant === "base")
+          if (!conn) return url
+          return buildSidecarLanAccessUrl(conn.http, url)
+        })
 
         const updateLanConfig = async (next: {
           enabled?: boolean
@@ -721,7 +731,7 @@ export const SettingsGeneral: Component = () => {
           const status = lanStatus.latest
           if (!status || status.status === "disabled") return language.t("settings.desktop.sidecarLan.status.disabled")
           if (status.status === "available" && status.url) {
-            return language.t("settings.desktop.sidecarLan.status.available", { url: status.url })
+            return language.t("settings.desktop.sidecarLan.status.available", { url: sidecarLanAccessUrl() ?? status.url })
           }
           if (status.status === "custom_unavailable") {
             return language.t("settings.desktop.sidecarLan.status.customUnavailable")
@@ -773,7 +783,7 @@ export const SettingsGeneral: Component = () => {
                   description={statusDescription()}
                 >
                   <div class="text-12-regular text-text-muted text-right break-all max-w-[260px]">
-                    {lanStatus.latest?.url ?? language.t("settings.desktop.sidecarLan.status.notAdvertised")}
+                    {sidecarLanAccessUrl() ?? language.t("settings.desktop.sidecarLan.status.notAdvertised")}
                   </div>
                 </SettingsRow>
 
