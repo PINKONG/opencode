@@ -86,19 +86,24 @@ describe("resolveServerList", () => {
 })
 
 test("treats WSL sidecars as remote server connections", () => {
-  expect(
-    ServerConnection.local({
-      type: "sidecar",
-      variant: "wsl",
-      distro: "Debian",
-      http: { url: "http://127.0.0.1:4097" },
-    }),
-  ).toBe(false)
-  expect(ServerConnection.local({ type: "sidecar", variant: "base", http: { url: "http://127.0.0.1:4096" } })).toBe(
-    true,
-  )
-  expect(ServerConnection.local({ type: "http", http: { url: "http://localhost:4096" } })).toBe(true)
-  expect(ServerConnection.local({ type: "http", http: { url: "https://server.example.test" } })).toBe(false)
+  const wsl = {
+    type: "sidecar",
+    variant: "wsl",
+    distro: "Debian",
+    http: { url: "http://127.0.0.1:4097" },
+  } satisfies ServerConnection.Any
+  const base = {
+    type: "sidecar",
+    variant: "base",
+    http: { url: "http://127.0.0.1:4096" },
+  } satisfies ServerConnection.Any
+  const localhost = { type: "http", http: { url: "http://localhost:4096" } } satisfies ServerConnection.Any
+  const remote = { type: "http", http: { url: "https://server.example.test" } } satisfies ServerConnection.Any
+
+  expect(ServerConnection.local(wsl)).toBe(false)
+  expect(ServerConnection.local(base)).toBe(true)
+  expect(ServerConnection.local(localhost)).toBe(true)
+  expect(ServerConnection.local(remote)).toBe(false)
 })
 
 test("active server removal falls back across built-in and persisted servers", () => {
