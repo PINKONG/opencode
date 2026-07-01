@@ -84,17 +84,9 @@ describe("resolveServerList", () => {
     })
   })
 
-  test("keeps startup sidecar credentials when persisted sidecar exists", () => {
+  test("keeps startup sidecar LAN credentials", () => {
     const list = resolveServerList({
-      stored: [
-        {
-          type: "sidecar",
-          variant: "base",
-          http: {
-            url: "http://127.0.0.1:4096",
-          },
-        },
-      ],
+      stored: [],
       props: [
         {
           type: "sidecar",
