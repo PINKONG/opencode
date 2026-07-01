@@ -456,6 +456,53 @@ describe("HttpApi UI fallback", () => {
     }),
   )
 
+  it.live("sets auth cookie for cross-site browser launches with auth_token", () =>
+    Effect.gen(function* () {
+      const token = btoa("opencode:secret")
+      const first = yield* uiApp({
+        password: "secret",
+        username: "opencode",
+        disableEmbeddedWebUi: true,
+        client: httpClient(new Response("<html><head></head><body>ok</body></html>", {
+          headers: { "content-type": "text/html" },
+        })),
+      }).request(`/?auth_token=${encodeURIComponent(token)}`, {
+        headers: {
+          accept: "text/html",
+          "sec-fetch-site": "cross-site",
+        },
+        redirect: "manual",
+      })
+
+      expect(first.status).toBe(302)
+      expect(first.headers.get("set-cookie") ?? "").toContain("wiscode_auth_token=")
+    }),
+  )
+
+  it.live("redirects deep html auth_token requests to embed_session and preserves path", () =>
+    Effect.gen(function* () {
+      const token = btoa("opencode:secret")
+      const first = yield* uiApp({
+        password: "secret",
+        username: "opencode",
+        disableEmbeddedWebUi: true,
+        client: httpClient(new Response("<html><head></head><body>ok</body></html>", {
+          headers: { "content-type": "text/html" },
+        })),
+      }).request(`/QzpcVXNlcnNcc3Vu/session/ses_123?auth_token=${encodeURIComponent(token)}`, {
+        headers: { accept: "text/html" },
+        redirect: "manual",
+      })
+
+      expect(first.status).toBe(302)
+      const location = first.headers.get("location")
+      expect(location).toBeTruthy()
+      expect(location?.startsWith("/QzpcVXNlcnNcc3Vu/session/ses_123?")).toBe(true)
+      expect(location).toContain("embed_session=")
+      expect(location).not.toContain("auth_token=")
+    }),
+  )
+
   it.live("accepts follow-up web UI request via embed_session query and injects embed meta", () =>
     Effect.gen(function* () {
       const token = btoa("opencode:secret")

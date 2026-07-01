@@ -139,7 +139,7 @@ export const authorizationRouterMiddleware = HttpRouter.middleware()(
         const mintedEmbedSession = queryToken ? issueEmbedSession(queryToken) : embedSession
         const mintedEmbedToken = queryToken ?? embedToken
         const redirectURL = shouldRedirectToEmbedSession(url, request) ? embedRedirectURL(url, mintedEmbedSession) : undefined
-        const shouldSetCookie = !!queryToken && request.headers["sec-fetch-site"] !== "cross-site"
+        const shouldSetCookie = !!queryToken
         const withCookie = (next: HttpServerResponse.HttpServerResponse) => {
           if (!shouldSetCookie || !queryToken) return next
           return HttpServerResponse.setHeader(
@@ -175,7 +175,6 @@ function getCookie(cookieHeader: string | undefined, name: string) {
 function shouldRedirectToEmbedSession(url: URL, request: HttpServerRequest.HttpServerRequest) {
   if (!url.searchParams.get(AUTH_TOKEN_QUERY)) return false
   if (request.method !== "GET") return false
-  if (url.pathname !== "/") return false
   return !!request.headers.accept?.includes("text/html")
 }
 
