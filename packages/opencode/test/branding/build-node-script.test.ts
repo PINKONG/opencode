@@ -10,7 +10,8 @@ describe("build-node script", () => {
     const script = await Bun.file(join(root, "packages/opencode/script/build-node.ts")).text()
 
     expect(script).toContain("Building Web UI to embed in the node bundle")
-    expect(script).toContain('await $`OPENCODE_CHANNEL=${Script.channel} bun run --cwd ${appDir} build`')
+    expect(script).toContain('["build", "--configLoader", "runner"]')
+    expect(script).toContain('await $`OPENCODE_CHANNEL=${Script.channel} bun run --cwd ${appDir} ${appBuildArgs}`')
     expect(script).toContain('"opencode-web-ui.gen.ts": embeddedFileMap')
     expect(script).not.toContain('"opencode-web-ui.gen.ts": ""')
   })

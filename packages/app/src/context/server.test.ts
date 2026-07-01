@@ -83,6 +83,41 @@ describe("resolveServerList", () => {
       embedSession: "embed_123",
     })
   })
+
+  test("keeps startup sidecar credentials when persisted sidecar exists", () => {
+    const list = resolveServerList({
+      stored: [
+        {
+          type: "sidecar",
+          variant: "base",
+          http: {
+            url: "http://127.0.0.1:4096",
+          },
+        },
+      ],
+      props: [
+        {
+          type: "sidecar",
+          variant: "base",
+          http: {
+            url: "http://127.0.0.1:59583",
+            displayUrl: "http://190.160.9.212:59583",
+            username: "opencode",
+            password: "secret",
+          },
+        },
+      ],
+    })
+
+    expect(list).toHaveLength(1)
+    expect(list[0]?.type).toBe("sidecar")
+    expect(list[0]?.http).toEqual({
+      url: "http://127.0.0.1:59583",
+      displayUrl: "http://190.160.9.212:59583",
+      username: "opencode",
+      password: "secret",
+    })
+  })
 })
 
 test("treats WSL sidecars as remote server connections", () => {
