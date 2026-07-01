@@ -14,4 +14,10 @@ describe("SettingsGeneral", () => {
     expect(text).toContain('data-action="settings-sidecar-lan"')
     expect(text).toContain("<SidecarLanSection />")
   })
+
+  test("uses sidecar credentials when showing desktop LAN access URL", async () => {
+    const text = await Bun.file(new URL("./settings-general.tsx", import.meta.url)).text()
+    expect(text).toContain("buildSidecarLanAccessUrl")
+    expect(text).toContain("sidecarLanAccessUrl()")
+  })
 })
