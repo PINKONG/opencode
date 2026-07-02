@@ -8,6 +8,9 @@ import { Permission } from "../../src/permission"
 import { SystemPrompt } from "../../src/session/system"
 import { MCP } from "../../src/mcp"
 import { testEffect } from "../lib/effect"
+import { InstanceRef } from "../../src/effect/instance-ref"
+import type { Provider } from "../../src/provider/provider"
+import type { InstanceContext } from "../../src/project/instance-context"
 
 const skills: Skill.Info[] = [
   {
@@ -83,6 +86,28 @@ const it = testEffect(
 )
 
 describe("session.system", () => {
+  it.effect("environment tolerates missing workspace directory when loading references", () =>
+    Effect.gen(function* () {
+      const prompt = yield* SystemPrompt.Service
+      const output = yield* prompt.environment({
+        providerID: "test",
+        api: { id: "test-model" },
+      } as Provider.Model).pipe(
+        Effect.provideService(InstanceRef, {
+          directory: "/tmp/wiscode-missing-workspace",
+          worktree: "/tmp/wiscode-missing-workspace",
+          project: {
+            id: "proj_missing",
+            worktree: "/tmp/wiscode-missing-workspace",
+            vcs: "git",
+          },
+        } as InstanceContext),
+      )
+
+      expect(output.join("\n")).toContain("Working directory: /tmp/wiscode-missing-workspace")
+    }),
+  )
+
   it.effect("skills output is sorted by name and stable across calls", () =>
     Effect.gen(function* () {
       const prompt = yield* SystemPrompt.Service

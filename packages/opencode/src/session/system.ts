@@ -1,5 +1,5 @@
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
-import { Context, Effect, Layer } from "effect"
+import { Cause, Context, Effect, Layer } from "effect"
 
 import { InstanceState } from "@/effect/instance-state"
 
@@ -59,7 +59,12 @@ const layer = Layer.effect(
         const ctx = yield* InstanceState.context
         const references = yield* Effect.gen(function* () {
           return (yield* (yield* Reference.Service).list()).filter((reference) => reference.description !== undefined)
-        }).pipe(Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(ctx.directory) }))))
+        }).pipe(
+          Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(ctx.directory) }))),
+          Effect.catchCause((cause) =>
+            isMissingReferenceDirectory(cause) ? Effect.succeed([]) : Effect.failCause(cause),
+          ),
+        )
         return [
           [
             `You are powered by the model named ${model.api.id}. The exact model ID is ${model.providerID}/${model.api.id}`,
@@ -127,6 +132,19 @@ const layer = Layer.effect(
     })
   }),
 )
+
+function isMissingReferenceDirectory(cause: Cause.Cause<unknown>) {
+  const error = Cause.squash(cause) as {
+    _tag?: string
+    reason?: { _tag?: string; module?: string; method?: string }
+  }
+  return (
+    error._tag === "PlatformError" &&
+    error.reason?._tag === "NotFound" &&
+    error.reason.module === "FileSystem" &&
+    error.reason.method === "realPath"
+  )
+}
 
 const locationServiceMapNode = LayerNode.make({
   service: LocationServiceMap.Service,
