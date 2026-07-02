@@ -15,7 +15,7 @@ const files = [
   "gemini.txt",
   "gpt.txt",
   "kimi.txt",
-  "max-steps.txt",
+  "plan-mode.txt",
   "plan-reminder-anthropic.txt",
   "plan.txt",
   "trinity.txt",

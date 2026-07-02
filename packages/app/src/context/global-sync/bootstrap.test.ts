@@ -31,6 +31,7 @@ describe("bootstrapDirectory", () => {
         return this.session_status[id]?.type !== "idle"
       },
       session_diff: {},
+      session_error: {},
       todo: {},
       permission: {},
       question: {},

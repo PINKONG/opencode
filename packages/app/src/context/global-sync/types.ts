@@ -53,6 +53,9 @@ export type State = {
   session_diff: {
     [sessionID: string]: SnapshotFileDiff[]
   }
+  session_error: {
+    [sessionID: string]: unknown[]
+  }
   todo: {
     [sessionID: string]: Todo[]
   }

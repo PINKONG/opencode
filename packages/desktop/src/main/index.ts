@@ -2,14 +2,15 @@ import { randomUUID } from "node:crypto"
 import { mkdirSync, rmSync } from "node:fs"
 import * as http from "node:http"
 import { createServer } from "node:net"
-import { networkInterfaces } from "node:os"
-import { homedir, tmpdir } from "node:os"
+import { homedir, networkInterfaces, tmpdir } from "node:os"
 import { join } from "node:path"
 import { getCACertificates, setDefaultCACertificates } from "node:tls"
 import type { Event } from "electron"
-import { app, BrowserWindow } from "electron"
+import { app } from "electron"
+
 import { Deferred, Effect, Fiber } from "effect"
 import contextMenu from "electron-context-menu"
+
 import type { FatalRendererError, ServerReadyData, SidecarLanConfig, SidecarLanStatus } from "../preload/types"
 import { checkAppExists, resolveAppPath } from "./apps"
 import { installCli, syncCli, syncRipgrep } from "./cli"
@@ -20,22 +21,31 @@ import { resolveSidecarHosts } from "./lan"
 import { exportDebugLogs, initCrashReporter, initLogging, startNetLog, write as writeLog } from "./logging"
 import { parseMarkdown } from "./markdown"
 import { createMenu } from "./menu"
-import { migrate } from "./migrate"
-import { resolveConfiguredPort } from "./sidecar-config"
 import {
   getDefaultServerUrl,
-  getSidecarLanConfig,
   preferAppEnv,
-  setDefaultServerUrl,
+  getSidecarLanConfig,
   setSidecarLanConfig,
+  setDefaultServerUrl,
   spawnLocalServer,
   type SidecarListener,
 } from "./server"
+import { resolveConfiguredPort } from "./sidecar-config"
 import { setupAutoUpdater, showUpdaterDialog } from "./updater"
-import { createMainWindow, registerRendererProtocol, setBackgroundColor, setDockIcon, setRelaunchHandler } from "./windows"
-import { registerWslIpcHandlers } from "./wsl/ipc"
+import {
+  getLastFocusedWindow,
+  registerRendererProtocol,
+  setRelaunchHandler,
+  setAppQuitting,
+  setBackgroundColor,
+  setDockIcon,
+  restoreMainWindows,
+} from "./windows"
 import { createWslServersController } from "./wsl/servers"
+import { registerWslIpcHandlers } from "./wsl/ipc"
 import { spawnWslSidecar } from "./wsl/sidecar"
+import { migrate } from "./migrate"
+import { cleanupStoreFiles } from "./store-cleanup"
 
 const APP_NAMES: Record<string, string> = {
   dev: "WisCode Dev",
@@ -51,7 +61,6 @@ const TEST_ONBOARDING = process.env.OPENCODE_TEST_ONBOARDING === "1"
 const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
 
 let logger: ReturnType<typeof initLogging>
-let mainWindow: BrowserWindow | null = null
 let server: SidecarListener | null = null
 let sidecarLanStatus: SidecarLanStatus = {
   enabled: false,
@@ -66,6 +75,7 @@ const pendingDeepLinks: string[] = []
 
 function useEnvProxy() {
   try {
+    // Electron 41.2 runs Node 24.14.1; latest @types/node@24 is 24.12.2.
     ;(http as any).setGlobalProxyFromEnv()
   } catch (error) {
     logger.warn("failed to load proxy environment", error)
@@ -75,7 +85,8 @@ function useEnvProxy() {
 function emitDeepLinks(urls: string[]) {
   if (urls.length === 0) return
   pendingDeepLinks.push(...urls)
-  if (mainWindow) sendDeepLinks(mainWindow, urls)
+  const win = getLastFocusedWindow()
+  if (win) sendDeepLinks(win, urls)
 }
 
 async function killSidecar() {
@@ -105,21 +116,16 @@ function ensureLoopbackNoProxy() {
   upsert("no_proxy")
 }
 
-function focusMainWindow() {
-  if (!mainWindow) return
-  mainWindow.show()
-  mainWindow.focus()
-}
-
 const main = Effect.gen(function* () {
   contextMenu({ showSaveImageAs: true, showLookUpSelection: false, showSearchWithGoogle: false })
 
+  // on macOS apps run in `/` which can cause issues with ripgrep
   try {
     process.chdir(homedir())
   } catch {}
 
   const appId = app.isPackaged ? APP_IDS[CHANNEL] : "ai.wiscode.desktop.dev"
-  const onboardingTestRoot = (() => {
+  const onboardingTestRoot = ((): string | undefined => {
     if (!TEST_ONBOARDING) return
 
     const root = join(tmpdir(), `wiscode-onboarding-${randomUUID()}`)
@@ -134,7 +140,6 @@ const main = Effect.gen(function* () {
     process.env.XDG_STATE_HOME = join(root, "state")
     return root
   })()
-
   app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : "WisCode Dev")
   app.setAppUserModelId(appId)
   app.setPath(
@@ -142,7 +147,6 @@ const main = Effect.gen(function* () {
     onboardingTestRoot ? join(onboardingTestRoot, "desktop") : join(app.getPath("appData"), appId),
   )
   if (onboardingTestRoot) app.setPath("sessionData", join(onboardingTestRoot, "session"))
-
   logger = initLogging()
   initCrashReporter()
 
@@ -204,7 +208,11 @@ const main = Effect.gen(function* () {
       logger.log("deep link received via second-instance", { urls })
       emitDeepLinks(urls)
     }
-    focusMainWindow()
+    const win = getLastFocusedWindow()
+    if (win) {
+      win.show()
+      win.focus()
+    }
   })
 
   app.on("open-url", (event: Event, url: string) => {
@@ -214,10 +222,12 @@ const main = Effect.gen(function* () {
   })
 
   app.on("before-quit", () => {
+    setAppQuitting()
     void stopSidecars()
   })
 
   app.on("will-quit", () => {
+    setAppQuitting()
     void stopSidecars()
   })
 
@@ -244,6 +254,19 @@ const main = Effect.gen(function* () {
   yield* Effect.promise(() => app.whenReady())
 
   if (!TEST_ONBOARDING) migrate()
+  yield* Effect.promise(() => cleanupStoreFiles(app.getPath("userData"))).pipe(
+    Effect.tap((result) =>
+      Effect.sync(() => {
+        if (result.deleted.length === 0) return
+        logger.log("cleaned scoped store files", { count: result.deleted.length, scanned: result.scanned })
+      }),
+    ),
+    Effect.catch((error) =>
+      Effect.sync(() => {
+        logger.warn("failed to clean scoped store files", error)
+      }),
+    ),
+  )
   app.setAsDefaultProtocolClient("wiscode")
   registerRendererProtocol()
   setDockIcon()
@@ -275,7 +298,7 @@ const main = Effect.gen(function* () {
         logger.log("server ready", { url: res.url })
         return res
       },
-      (effect) => Effect.runPromise(effect),
+      (e) => Effect.runPromise(e),
     ),
     consumeInitialDeepLinks: () => pendingDeepLinks.splice(0),
     getDefaultServerUrl: () => getDefaultServerUrl(),
@@ -300,7 +323,6 @@ const main = Effect.gen(function* () {
   const updateTimer = setInterval(() => void updater.check(), 10 * 60 * 1000)
   updateTimer.unref()
   app.once("will-quit", () => clearInterval(updateTimer))
-
   yield* Effect.promise(() => startNetLog()).pipe(
     Effect.catch((error) =>
       Effect.sync(() => {
@@ -361,9 +383,9 @@ const main = Effect.gen(function* () {
 
     yield* Effect.promise(() => health.wait).pipe(
       Effect.timeout("30 seconds"),
-      Effect.catch((error) =>
+      Effect.catch((e) =>
         Effect.sync(() => {
-          logger.error("sidecar health check failed", error.toString())
+          logger.error("sidecar health check failed", e.toString())
         }),
       ),
     )
@@ -373,17 +395,19 @@ const main = Effect.gen(function* () {
 
   yield* Fiber.await(loadingTask)
 
-  mainWindow = createMainWindow()
-  if (mainWindow) {
+  const windows = restoreMainWindows()
+  if (windows.length) {
     createMenu({
       trigger: (id) => {
-        const win = BrowserWindow.getFocusedWindow() ?? mainWindow
+        const win = getLastFocusedWindow()
         if (win) sendMenuCommand(win, id)
       },
       checkForUpdates: () => {
         void showUpdaterDialog(updater, true)
       },
-      relaunch,
+      relaunch: () => {
+        relaunch()
+      },
     })
   }
 })

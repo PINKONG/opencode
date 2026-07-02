@@ -10,6 +10,7 @@ export function createTimelineProjection(input: {
   userMessages: Accessor<UserMessage[]>
   parts: (messageID: string) => Part[]
   status: Accessor<SessionStatus>
+  sessionErrors: Accessor<unknown[]>
   showReasoningSummaries: Accessor<boolean>
 }) {
   const messageByID = createMemo(() => new Map(input.messages().map((message) => [message.id, message] as const)))
@@ -52,6 +53,7 @@ export function createTimelineProjection(input: {
             userMessage,
             input.parts,
             assistantMessagesByParent().get(userMessage.id) ?? emptyAssistantMessages,
+            activeMessageID() === userMessage.id ? input.sessionErrors() : [],
             indexAccessor(),
             input.showReasoningSummaries(),
             input.status().type,

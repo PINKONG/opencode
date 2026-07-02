@@ -109,6 +109,7 @@ export namespace Timeline {
     userMessage: UserMessage,
     getMessageParts: (messageID: string) => Part[],
     assistantMessages: AssistantMessage[],
+    sessionErrors: unknown[],
     index: number,
     showReasoning: boolean,
     status: SessionStatus["type"],
@@ -122,7 +123,8 @@ export namespace Timeline {
     const compaction = userParts.some((p) => p.type === "compaction")
     const interruptedMessageIndex = assistantMessages.findIndex((m) => m.error?.name === "MessageAbortedError")
     const interrupted = interruptedMessageIndex !== -1
-    const error = assistantMessages.find((m) => m.error && m.error.name !== "MessageAbortedError")?.error
+    const error =
+      assistantMessages.find((m) => m.error && m.error.name !== "MessageAbortedError")?.error ?? sessionErrors.at(-1)
 
     const assistantPartRefs = assistantMessages.flatMap((message, messageIndex) =>
       getMessageParts(message.id)
@@ -228,7 +230,7 @@ export namespace Timeline {
     }
 
     if (error) {
-      const data = error.data?.message
+      const data = record(error) && record(error.data) ? error.data.message : undefined
       rows.push(
         new TimelineRow.Error({
           userMessageID: userMessage.id,

@@ -19,6 +19,7 @@ import { diffs as list, message as clean } from "@/utils/diffs"
 const SKIP_PARTS = new Set(["patch", "step-start", "step-finish"])
 const SESSION_CONTENT_EVENTS = new Set([
   "session.diff",
+  "session.error",
   "todo.updated",
   "session.status",
   "message.updated",
@@ -190,6 +191,13 @@ export function applyDirectoryEvent(input: {
     case "session.diff": {
       const props = event.properties as { sessionID: string; diff: SnapshotFileDiff[] }
       input.setStore("session_diff", props.sessionID, reconcile(list(props.diff), { key: "file" }))
+      break
+    }
+    case "session.error": {
+      const props = event.properties as { sessionID?: string; error?: unknown }
+      if (!props.sessionID || !props.error) break
+      input.setStore("session_error", props.sessionID, (errors = []) => [...errors, props.error])
+      input.setStore("session_status", props.sessionID, { type: "idle" })
       break
     }
     case "todo.updated": {

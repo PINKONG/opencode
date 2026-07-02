@@ -134,6 +134,7 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
     info: {} as Record<string, Session | undefined>,
     session_status: {} as Record<string, SessionStatus>,
     session_diff: {} as Record<string, SnapshotFileDiff[]>,
+    session_error: {} as Record<string, unknown[]>,
     todo: {} as Record<string, Todo[]>,
     permission: {} as Record<string, PermissionRequest[]>,
     question: {} as Record<string, QuestionRequest[]>,
@@ -691,6 +692,13 @@ export function createServerSession(client: OpencodeClient, options?: { retry?: 
       case "session.diff": {
         const props = event.properties as { sessionID: string; diff: SnapshotFileDiff[] }
         setData("session_diff", props.sessionID, reconcile(cleanDiffs(props.diff), { key: "file" }))
+        return
+      }
+      case "session.error": {
+        const props = event.properties as { sessionID?: string; error?: unknown }
+        if (!props.sessionID || !props.error) return
+        setData("session_error", props.sessionID, (errors = []) => [...errors, props.error])
+        setData("session_status", props.sessionID, { type: "idle" })
         return
       }
       case "todo.updated": {

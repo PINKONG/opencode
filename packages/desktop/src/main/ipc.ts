@@ -4,11 +4,12 @@ import { basename } from "node:path"
 import { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, shell } from "electron"
 import type { IpcMainEvent, IpcMainInvokeEvent } from "electron"
 import type { DesktopMenuAction } from "@opencode-ai/app/desktop-menu"
+
 import type { FatalRendererError, ServerReadyData, SidecarLanConfig, SidecarLanStatus, TitlebarTheme } from "../preload/types"
 import { runDesktopMenuAction } from "./desktop-menu-actions"
 import { assertAttachmentBudget, createPickedFileAuthorizations } from "./attachment-picker"
-import { getStore } from "./store"
-import { getPinchZoomEnabled, setPinchZoomEnabled, setTitlebar, updateTitlebar } from "./windows"
+import { getStore, removeStoreFileIfEmpty } from "./store"
+import { getPinchZoomEnabled, getWindowID, setPinchZoomEnabled, setTitlebar, updateTitlebar } from "./windows"
 import type { UpdaterController } from "./updater-controller"
 import { createUpdaterSubscriptions } from "./updater-subscriptions"
 
@@ -100,9 +101,11 @@ export function registerIpcHandlers(deps: Deps) {
   })
   ipcMain.handle("store-delete", (_event: IpcMainInvokeEvent, name: string, key: string) => {
     getStore(name).delete(key)
+    void removeStoreFileIfEmpty(name)
   })
   ipcMain.handle("store-clear", (_event: IpcMainInvokeEvent, name: string) => {
     getStore(name).clear()
+    void removeStoreFileIfEmpty(name)
   })
   ipcMain.handle("store-keys", (_event: IpcMainInvokeEvent, name: string) => {
     const store = getStore(name)
@@ -112,6 +115,7 @@ export function registerIpcHandlers(deps: Deps) {
     const store = getStore(name)
     return Object.keys(store.store).length
   })
+
   ipcMain.handle(
     "open-directory-picker",
     async (_event: IpcMainInvokeEvent, opts?: { multiple?: boolean; title?: string; defaultPath?: string }) => {
@@ -124,6 +128,7 @@ export function registerIpcHandlers(deps: Deps) {
       return opts?.multiple ? result.filePaths : result.filePaths[0]
     },
   )
+
   ipcMain.handle(
     "open-file-picker",
     async (
@@ -149,12 +154,15 @@ export function registerIpcHandlers(deps: Deps) {
       return { token, files }
     },
   )
+
   ipcMain.handle("read-picked-file", async (event: IpcMainInvokeEvent, token: string, filePath: string) => {
     return pickedFiles.read(event.sender.id, token, filePath)
   })
+
   ipcMain.handle("release-picked-files", (event: IpcMainInvokeEvent, token: string) => {
     pickedFiles.release(event.sender.id, token)
   })
+
   ipcMain.handle(
     "save-file-picker",
     async (_event: IpcMainInvokeEvent, opts?: { title?: string; defaultPath?: string }) => {
@@ -166,9 +174,11 @@ export function registerIpcHandlers(deps: Deps) {
       return result.filePath ?? null
     },
   )
+
   ipcMain.on("open-link", (_event: IpcMainEvent, url: string) => {
     void shell.openExternal(url)
   })
+
   ipcMain.handle("open-path", async (_event: IpcMainInvokeEvent, path: string, app?: string) => {
     if (!app) return shell.openPath(path)
     await new Promise<void>((resolve, reject) => {
@@ -177,6 +187,7 @@ export function registerIpcHandlers(deps: Deps) {
       execFile(cmd, args, (err) => (err ? reject(err) : resolve()))
     })
   })
+
   ipcMain.handle("read-clipboard-image", () => {
     const image = clipboard.readImage()
     if (image.isEmpty()) return null
@@ -184,25 +195,40 @@ export function registerIpcHandlers(deps: Deps) {
     const size = image.getSize()
     return { buffer, width: size.width, height: size.height }
   })
+
   ipcMain.on("show-notification", (_event: IpcMainEvent, title: string, body?: string) => {
     new Notification({ title, body }).show()
   })
+
   ipcMain.handle("get-window-count", () => BrowserWindow.getAllWindows().length)
+
+  ipcMain.handle("get-window-id", (event: IpcMainInvokeEvent) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) throw new Error("Window not found")
+    const id = getWindowID(win)
+    if (!id) throw new Error("Window ID not found")
+    return id
+  })
+
   ipcMain.handle("get-window-focused", (event: IpcMainInvokeEvent) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     return win?.isFocused() ?? false
   })
+
   ipcMain.handle("set-window-focus", (event: IpcMainInvokeEvent) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     win?.focus()
   })
+
   ipcMain.handle("show-window", (event: IpcMainInvokeEvent) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     win?.show()
   })
+
   ipcMain.on("relaunch", () => {
     deps.relaunch()
   })
+
   ipcMain.handle("get-zoom-factor", (event: IpcMainInvokeEvent) => event.sender.getZoomFactor())
   ipcMain.handle("set-zoom-factor", (event: IpcMainInvokeEvent, factor: number) => {
     event.sender.setZoomFactor(factor)

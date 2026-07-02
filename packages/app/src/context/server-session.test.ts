@@ -124,6 +124,22 @@ describe("server session", () => {
     expect(ctx.store.data.message.root).toEqual([])
   })
 
+  test("records asynchronous session errors for active timeline state", () => {
+    const store = createServerSession(messageClient(response()))
+    const error = {
+      name: "UnknownError",
+      data: { message: "Directory does not exist" },
+    }
+
+    store.apply({
+      type: "session.error",
+      properties: { sessionID: "child", error },
+    })
+
+    expect(store.data.session_error.child).toEqual([error])
+    expect(store.data.session_status.child).toEqual({ type: "idle" })
+  })
+
   test("merges live events into the initial page", async () => {
     const pending = deferredResponse()
     const user = userMessage("message-1")
