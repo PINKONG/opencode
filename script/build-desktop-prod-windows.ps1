@@ -10,6 +10,13 @@ function Assert-LastExitCode([string] $Label) {
   }
 }
 
+function Ensure-NodeHeap([string] $SizeMb = "8192") {
+  if ($env:NODE_OPTIONS -match '(^|\s)--max-old-space-size=') {
+    return
+  }
+  $env:NODE_OPTIONS = (($env:NODE_OPTIONS, "--max-old-space-size=$SizeMb") -join " ").Trim()
+}
+
 if (-not $Root) {
   $Root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 }
@@ -142,6 +149,9 @@ Write-Host "==> electron-builder mirror: $env:NPM_CONFIG_ELECTRON_BUILDER_BINARI
 Write-Host "==> electron-builder rcedit: $env:ELECTRON_BUILDER_RCEDIT_PATH"
 Write-Host "==> electron-builder env"
 Get-ChildItem Env: | Where-Object { $_.Name -match 'ELECTRON_BUILDER_BINARIES|ELECTRON_BUILDER_RCEDIT|ELECTRON_MIRROR|npm_config_electron_builder|npm_package_config_electron_builder' } | Sort-Object Name | Format-Table -AutoSize
+
+Ensure-NodeHeap
+Write-Host "==> node options: $env:NODE_OPTIONS"
 
 Write-Host "==> typecheck"
 & $Bun run typecheck

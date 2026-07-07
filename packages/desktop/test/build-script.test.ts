@@ -57,4 +57,12 @@ describe("mac desktop build script", () => {
     expect(windowsScript).toContain('$rceditSource = Join-Path $Root "node_modules\\.bun\\electron-winstaller@5.4.0\\node_modules\\electron-winstaller\\vendor\\rcedit.exe"')
     expect(windowsScript).toContain('$env:ELECTRON_BUILDER_RCEDIT_PATH = $rceditDir')
   })
+
+  test("raises node heap for windows electron-vite builds without overriding user options", () => {
+    expect(windowsScript).toContain("function Ensure-NodeHeap")
+    expect(windowsScript).toContain("if ($env:NODE_OPTIONS -match '(^|\\s)--max-old-space-size=')")
+    expect(windowsScript).toContain('$env:NODE_OPTIONS = (($env:NODE_OPTIONS, "--max-old-space-size=$SizeMb") -join " ").Trim()')
+    expect(windowsScript).toContain("Ensure-NodeHeap")
+    expect(windowsScript.indexOf("Ensure-NodeHeap")).toBeLessThan(windowsScript.indexOf('Write-Host "==> build frontend"'))
+  })
 })
