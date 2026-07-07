@@ -347,7 +347,7 @@ const main = Effect.gen(function* () {
       : randomUUID()
   const sidecarLanAccessUrl = hosts.status === "available" ? new URL(advertiseUrl) : null
   if (sidecarLanAccessUrl) {
-    sidecarLanAccessUrl.searchParams.set("auth_token", Buffer.from(`opencode:${password}`).toString("base64"))
+    sidecarLanAccessUrl.searchParams.set("auth_token", Buffer.from(`wiscode:${password}`).toString("base64"))
   }
   sidecarLanStatus = {
     enabled: config.enabled,
@@ -378,7 +378,7 @@ const main = Effect.gen(function* () {
     yield* Deferred.succeed(serverReady, {
       url,
       displayUrl: hosts.status === "available" ? advertiseUrl : null,
-      username: "opencode",
+      username: "wiscode",
       password,
     })
 

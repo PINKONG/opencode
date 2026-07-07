@@ -697,7 +697,7 @@ export const dict = {
   "settings.desktop.sidecarLan.fixedPort.placeholder": "自动（随机）",
   "settings.desktop.sidecarLan.fixedToken.title": "固定 token 模式",
   "settings.desktop.sidecarLan.fixedToken.description":
-    "让访问 token 在应用重启后保持稳定。密码来源优先级：OPENCODE_SERVER_PASSWORD，其次默认密码 123456。",
+    "让访问 token 在应用重启后保持稳定。用户名默认 wiscode。密码来源优先级：OPENCODE_SERVER_PASSWORD，其次默认密码 123456。",
   "settings.desktop.sidecarLan.fixedToken.risk.title": "安全提示",
   "settings.desktop.sidecarLan.fixedToken.risk.description":
     "固定 token 可能长期有效。若同时开启 LAN 暴露，风险会升高。仅建议在受信网络使用。",

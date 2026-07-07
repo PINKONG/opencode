@@ -896,7 +896,7 @@ export const dict = {
   "settings.desktop.sidecarLan.fixedPort.placeholder": "Auto (random)",
   "settings.desktop.sidecarLan.fixedToken.title": "Fixed token mode",
   "settings.desktop.sidecarLan.fixedToken.description":
-    "Keep access token stable across app restarts. Password source priority: OPENCODE_SERVER_PASSWORD, then default password 123456.",
+    "Keep access token stable across app restarts. Username defaults to wiscode. Password source priority: OPENCODE_SERVER_PASSWORD, then default password 123456.",
   "settings.desktop.sidecarLan.fixedToken.risk.title": "Security notice",
   "settings.desktop.sidecarLan.fixedToken.risk.description":
     "Fixed token can stay valid for a long time. If LAN exposure is enabled, risk increases. Use only on trusted networks.",
