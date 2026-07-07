@@ -7,11 +7,11 @@ describe("buildSidecarLanAccessUrl", () => {
       buildSidecarLanAccessUrl(
         {
           url: "http://127.0.0.1:4096",
-          username: "opencode",
+          username: "wiscode",
           password: "secret",
         },
         "http://190.160.9.212:59583",
       ),
-    ).toBe("http://190.160.9.212:59583/?auth_token=b3BlbmNvZGU6c2VjcmV0")
+    ).toBe("http://190.160.9.212:59583/?auth_token=d2lzY29kZTpzZWNyZXQ%3D")
   })
 })

@@ -20,7 +20,7 @@ describe("resolveServerList", () => {
           authToken: true,
           http: {
             url: "https://server.example.test",
-            username: "opencode",
+            username: "wiscode",
             password: "secret",
           },
         },
@@ -31,7 +31,7 @@ describe("resolveServerList", () => {
     expect(list[0]?.type).toBe("http")
     expect(list[0]?.http).toEqual({
       url: "https://server.example.test",
-      username: "opencode",
+      username: "wiscode",
       password: "secret",
     })
     expect(list[0]?.type === "http" ? list[0].authToken : false).toBe(true)
@@ -94,7 +94,7 @@ describe("resolveServerList", () => {
           http: {
             url: "http://127.0.0.1:59583",
             displayUrl: "http://190.160.9.212:59583",
-            username: "opencode",
+            username: "wiscode",
             password: "secret",
           },
         },
@@ -106,7 +106,7 @@ describe("resolveServerList", () => {
     expect(list[0]?.http).toEqual({
       url: "http://127.0.0.1:59583",
       displayUrl: "http://190.160.9.212:59583",
-      username: "opencode",
+      username: "wiscode",
       password: "secret",
     })
   })

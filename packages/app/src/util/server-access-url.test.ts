@@ -12,10 +12,10 @@ describe("buildServerAccessUrl", () => {
   test("appends auth_token when password exists", () => {
     const result = buildServerAccessUrl({
       url: "http://127.0.0.1:4096",
-      username: "opencode",
+      username: "wiscode",
       password: "secret",
     })
-    expect(result).toBe("http://127.0.0.1:4096/?auth_token=b3BlbmNvZGU6c2VjcmV0")
+    expect(result).toBe("http://127.0.0.1:4096/?auth_token=d2lzY29kZTpzZWNyZXQ%3D")
   })
 
   test("preserves embed_session on base url", () => {
@@ -32,6 +32,6 @@ describe("buildServerAccessUrl", () => {
       password: "secret",
     })
 
-    expect(result).toBe("http://190.160.7.95:4096/?auth_token=b3BlbmNvZGU6c2VjcmV0")
+    expect(result).toBe("http://190.160.7.95:4096/?auth_token=d2lzY29kZTpzZWNyZXQ%3D")
   })
 })
