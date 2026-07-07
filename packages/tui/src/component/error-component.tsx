@@ -1,4 +1,3 @@
-import { release } from "node:os"
 import { TextAttributes, type ScrollBoxRenderable } from "@opentui/core"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { createSignal, For, Show } from "solid-js"
@@ -6,6 +5,7 @@ import { getScrollAcceleration } from "../util/scroll"
 import { useClipboard } from "../context/clipboard"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
 import { useExit } from "../context/exit"
+import { describeOS, describeTerminal } from "../util/system"
 
 export function ErrorComponent(props: { error: Error; reset: () => void; mode?: "dark" | "light" }) {
   const term = useTerminalDimensions()
@@ -206,7 +206,7 @@ function buildIssueURL(message: string, stack: string) {
   // the contributing-guidelines compliance check, which pushes for system info.
   const url = new URL("https://github.com/PINKONG/opencode/issues/new?template=bug-report.yml")
   url.searchParams.set("title", `TUI crash: ${message}`)
-  url.searchParams.set("opencode-version", InstallationVersion)
+  url.searchParams.set("wiscode-version", InstallationVersion)
   url.searchParams.set("os", describeOS())
   url.searchParams.set("terminal", describeTerminal())
   url.searchParams.set(
@@ -237,23 +237,4 @@ function buildIssueURL(message: string, stack: string) {
   }
   setBody(stack.slice(0, lo) + marker)
   return url
-}
-
-function describeOS() {
-  const name =
-    process.platform === "darwin"
-      ? "macOS"
-      : process.platform === "win32"
-        ? "Windows"
-        : process.platform === "linux"
-          ? "Linux"
-          : process.platform
-  return `${name} ${release()} (${process.arch})`
-}
-
-function describeTerminal() {
-  const program = process.env.TERM_PROGRAM || process.env.TERM || "unknown"
-  const version = process.env.TERM_PROGRAM_VERSION ? ` ${process.env.TERM_PROGRAM_VERSION}` : ""
-  const multiplexer = process.env.TMUX ? " in tmux" : process.env.STY ? " in screen" : ""
-  return `${program}${version}${multiplexer}`
 }

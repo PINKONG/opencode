@@ -64,7 +64,7 @@
 必须保留 WisCode 分叉语义：
 - 产品名是 `WisCode`
 - CLI 命令是 `wiscode`
-- TUI / `wiscode-cli` 启动页 logo 显示 WisCode，不能回退为上游 OpenCode
+- TUI / `wiscode-cli` 启动页和 `/exit` 退出页 logo 显示 WisCode，不能回退为上游 OpenCode
 - npm 包名按当前仓库策略保持
 - 更新源、发布源、安装源指向 `PINKONG/opencode`
 - 供应商品牌不要误改，例如 `OpenCode Zen`
@@ -224,10 +224,10 @@ cd packages/app && bun test --preload ./happydom.ts ./src/pages/layout/helpers.t
 
 如果改了知识库、设置、会话页、桌面入口，补跑对应测试。
 
-如果改了 TUI 首页、CLI 启动页或 `packages/tui/src/logo.ts`，必须额外补跑：
+如果改了 TUI 首页、CLI 启动页、`/exit` 退出页或 `packages/tui/src/logo.ts`，必须额外补跑：
 
 ```bash
-cd packages/tui && bun test test/logo.test.ts
+cd packages/tui && bun test test/logo.test.ts test/util/presentation.test.ts
 cd packages/tui && bun run typecheck
 ```
 
@@ -301,6 +301,7 @@ sidecar embed 场景至少确认这 4 点：
 
 CLI / TUI 场景至少确认：
 - `wiscode` / `wiscode-cli` 启动页顶部 ASCII logo 显示 WisCode，而不是上游 OpenCode
+- 使用 `/exit` 退出后的 epilogue ASCII logo 显示 WisCode，`Continue` 命令显示 `wiscode -s ...`
 - `packages/tui/src/logo.ts` 的主 `logo.text` 仍为 `wiscode`
 
 ### 4. 构建物最小验证
