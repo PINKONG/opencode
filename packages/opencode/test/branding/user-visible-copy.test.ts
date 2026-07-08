@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 const dir = dirname(fileURLToPath(import.meta.url))
 const root = resolve(dir, "../../src")
 const tuiRoot = resolve(dir, "../../../tui/src")
+const cliRoot = resolve(dir, "../../../cli/src")
 
 function read(root: string, name: string) {
   return Bun.file(join(root, name)).text()
@@ -53,6 +54,7 @@ describe("user visible branding copy", () => {
 
   test("cli-facing guidance uses wiscode command examples", async () => {
     const error = await read(root, "cli/error.ts")
+    const newCliCommands = await read(cliRoot, "commands/commands.ts")
     const pr = await read(root, "cli/cmd/pr.ts")
     const github = await read(root, "cli/cmd/github.handler.ts")
     const index = await read(root, "index.ts")
@@ -74,9 +76,22 @@ describe("user visible branding copy", () => {
     const acp = await read(root, "acp/service.ts")
     const provider = await read(root, "provider/error.ts")
     const tips = await read(tuiRoot, "feature-plugins/home/tips-view.tsx")
+    const tuiError = await read(tuiRoot, "util/error.ts")
+
+    expect(newCliCommands).toContain("WisCode 2.0 preview command line interface")
+    expect(newCliCommands).not.toContain("OpenCode 2.0 preview command line interface")
 
     expect(error).toContain("wiscode models")
+    expect(error).toContain("wiscode auth login")
     expect(error).not.toContain("opencode models")
+    expect(error).not.toContain("opencode auth login")
+
+    expect(tuiError).toContain("wiscode models")
+    expect(tuiError).toContain("wiscode.json")
+    expect(tuiError).toContain("WisCode does not support MCP authentication yet")
+    expect(tuiError).not.toContain("opencode models")
+    expect(tuiError).not.toContain("opencode.json")
+    expect(tuiError).not.toContain("opencode does not support MCP authentication yet")
 
     expect(pr).toContain("then run wiscode")
     expect(pr).toContain('UI.println("Starting WisCode...")')
@@ -135,9 +150,11 @@ describe("user visible branding copy", () => {
     expect(acp).toContain("Run `wiscode auth login` in the terminal")
     expect(acp).toContain('name: "Login with WisCode"')
     expect(acp).toContain('command: "wiscode"')
+    expect(acp).toContain("WisCode prompt failed")
     expect(acp).not.toContain("Run `opencode auth login` in the terminal")
     expect(acp).not.toContain('name: "Login with opencode"')
     expect(acp).not.toContain('command: "opencode"')
+    expect(acp).not.toContain("OpenCode prompt failed")
 
     expect(github).toContain('console.log("WisCode session", session.id)')
     expect(github).toContain('console.log("Sending message to WisCode...")')
