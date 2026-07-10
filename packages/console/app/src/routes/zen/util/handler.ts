@@ -87,7 +87,7 @@ export async function handler(
   type CostInfo = ReturnType<typeof calculateCost>
 
   const MAX_FAILOVER_RETRIES = 3
-  const MAX_429_RETRIES = 3
+  const MAX_RETRYABLE_STATUS_RETRIES = 3
   const dict = i18n(localeFromRequest(input.request))
   const t = (key: Key, params?: Record<string, string | number>) => resolve(dict[key], params)
   const ADMIN_WORKSPACES = [
@@ -214,7 +214,7 @@ export async function handler(
       logger.debug("REQUEST URL: " + reqUrl)
       logger.debug("REQUEST: " + reqBody.substring(0, 300) + "...")
       const isNewInference = providerInfo.id.startsWith("console.") || providerInfo.id.startsWith("console-go.")
-      const res = await fetchWith429Retry(
+      const res = await fetchWithRetryableStatus(
         reqUrl,
         {
           method: "POST",
@@ -247,7 +247,7 @@ export async function handler(
           // abandoned Console requests do not leave orphaned inference work open.
           signal: input.request.signal,
         },
-        { count: isNewInference ? MAX_429_RETRIES : 0 },
+        { count: isNewInference ? MAX_RETRYABLE_STATUS_RETRIES : 0 },
       )
 
       if (isNewInference) {
@@ -308,7 +308,7 @@ export async function handler(
     logger.debug("STATUS: " + res.status + " " + res.statusText)
 
     // Handle non-streaming response
-    if (!isStream || [400, 404, 429].includes(res.status)) {
+    if (!isStream || [400, 404, 429, 529].includes(res.status)) {
       const json = await res.json()
       await rateLimiter?.track()
       const usage = providerInfo.extractUsage(json)
@@ -1000,11 +1000,11 @@ export async function handler(
     providerInfo.apiKey = authInfo.provider.credentials
   }
 
-  async function fetchWith429Retry(url: string, options: RequestInit, retry = { count: 0 }) {
+  async function fetchWithRetryableStatus(url: string, options: RequestInit, retry = { count: 0 }) {
     const res = await fetch(url, options)
-    if (res.status === 429 && retry.count < MAX_429_RETRIES) {
+    if ([429, 529].includes(res.status) && retry.count < MAX_RETRYABLE_STATUS_RETRIES) {
       await new Promise((resolve) => setTimeout(resolve, Math.pow(2, retry.count) * 500))
-      return fetchWith429Retry(url, options, { count: retry.count + 1 })
+      return fetchWithRetryableStatus(url, options, { count: retry.count + 1 })
     }
     return res
   }
