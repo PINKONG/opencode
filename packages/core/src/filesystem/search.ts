@@ -129,6 +129,8 @@ export const fffLayer = Layer.effect(
         Fff.create({
           basePath: location.directory,
           aiMode: true,
+          disableMmapCache: true,
+          disableContentIndexing: true,
         }),
       catch: (cause) => cause,
     }).pipe(

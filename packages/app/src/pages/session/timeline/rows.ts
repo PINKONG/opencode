@@ -39,6 +39,8 @@ export namespace Timeline {
     showReasoning: boolean,
     status: SessionStatus["type"],
     isActive: boolean,
+    // v2 renders comments inside the user message attachments row instead of a strip row
+    inlineComments: boolean,
   ) {
     const rows: TimelineRow.TimelineRow[] = []
 
@@ -76,7 +78,7 @@ export namespace Timeline {
         : groupParts(assistantPartRefs).map((group) => ({ type: "part" as const, group }))
     if (previousUserMessage) rows.push(new TimelineRow.TurnGap({ userMessageID: userMessage.id }))
 
-    if (comments.length > 0)
+    if (comments.length > 0 && !inlineComments)
       rows.push(
         new TimelineRow.CommentStrip({
           userMessageID: userMessage.id,
@@ -86,7 +88,7 @@ export namespace Timeline {
     rows.push(
       new TimelineRow.UserMessage({
         userMessageID: userMessage.id,
-        anchor: comments.length === 0,
+        anchor: inlineComments || comments.length === 0,
       }),
     )
 

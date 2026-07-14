@@ -37,7 +37,7 @@ export function HelpButton() {
 
   return (
     <a
-      href="https://opencode.ai"
+      href="https://github.com/PINKONG/opencode"
       aria-label="Open the WisCode website"
       data-component="icon-button-v2"
       data-size="large"
