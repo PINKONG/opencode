@@ -1,5 +1,5 @@
 import { Binary } from "@opencode-ai/core/util/binary"
-import type { Message, Part, Session } from "@opencode-ai/sdk/v2/client"
+import type { Message, Part, Session, SessionStatus } from "@opencode-ai/sdk/v2/client"
 import { createMemo } from "solid-js"
 import { produce, reconcile, type SetStoreFunction } from "solid-js/store"
 import type { createServerSdkContext } from "./server-sdk"
@@ -59,6 +59,22 @@ export const createDirSyncContext = (
     )
   }
 
+  const refreshSessionStatus = async () => {
+    const statuses = (await client.session.status()).data ?? {}
+    serverSync.session.set(
+      "session_status",
+      produce((draft: Record<string, SessionStatus | undefined>) => {
+        for (const sessionID of Object.keys(draft)) {
+          if (statuses[sessionID]) continue
+          if (serverSync.session.get(sessionID)?.directory === directory) delete draft[sessionID]
+        }
+      }),
+    )
+    for (const [sessionID, status] of Object.entries(statuses)) {
+      serverSync.session.set("session_status", sessionID, reconcile(status))
+    }
+  }
+
   return {
     data,
     set,
@@ -115,6 +131,7 @@ export const createDirSyncContext = (
         await serverSync.session.sync(sessionID, options)
         index(sessionID)
       },
+      refreshStatus: refreshSessionStatus,
       diff: serverSync.session.diff,
       todo: serverSync.session.todo,
       history: serverSync.session.history,

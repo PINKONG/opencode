@@ -48,7 +48,10 @@ export function DirectoryDataProvider(
   createResource(
     () => params.id,
     (id) =>
-      safeSessionSync(() => sync().session.sync(id), (error) =>
+      safeSessionSync(async () => {
+        await sync().session.sync(id)
+        await sync().session.refreshStatus()
+      }, (error) =>
         showToast({
           variant: "error",
           title: language.t("common.requestFailed"),
