@@ -102,10 +102,14 @@ export const dict = {
   "temp.logoDarkAlt": "opencode 어두운 로고",
 
   "home.banner.badge": "신규",
-  "home.banner.text": "데스크톱 앱 베타 버전 출시",
-  "home.banner.platforms": "macOS, Windows, Linux 지원",
+  "home.banner.text": "데스크톱 탭을 소개합니다.",
+  "home.banner.platforms": "macOS, Windows, Linux에서 사용할 수 있습니다",
   "home.banner.downloadNow": "지금 다운로드",
   "home.banner.downloadBetaNow": "데스크톱 베타 다운로드",
+  "home.promo.title": "데스크톱 탭을 소개합니다",
+  "home.promo.body": "탭으로 작업과 활성 세션을 정리하세요.",
+  "home.promo.cta": "최신 버전을 다운로드하여 시작하세요.",
+  "home.promo.close": "데스크톱 앱 안내 닫기",
 
   "home.hero.title": "오픈 소스 AI 코딩 에이전트",
   "home.hero.subtitle.a": "무료 모델이 포함되어 있으며, 어떤 제공자의 모델이든 연결 가능합니다.",
@@ -698,15 +702,15 @@ export const dict = {
   "workspace.referral.apply.confirmBody": "{{amount}}를 사용하여 이 워크스페이스의 현재 사용량을 줄입니다.",
   "workspace.referral.apply.confirmAction": "사용",
 
-  "download.title": "OpenCode | 다운로드",
-  "download.meta.description": "macOS, Windows, Linux용 OpenCode 다운로드",
-  "download.hero.title": "OpenCode 다운로드",
+  "download.title": "WisCode | 다운로드",
+  "download.meta.description": "macOS, Windows, Linux용 WisCode 다운로드",
+  "download.hero.title": "WisCode 데스크톱 다운로드",
   "download.hero.subtitle": "macOS, Windows, Linux용 베타 버전 사용 가능",
   "download.hero.button": "{{os}}용 다운로드",
-  "download.section.terminal": "OpenCode 터미널",
-  "download.section.desktop": "OpenCode 데스크톱 (베타)",
-  "download.section.extensions": "OpenCode 확장 프로그램",
-  "download.section.integrations": "OpenCode 통합",
+  "download.section.terminal": "WisCode 터미널",
+  "download.section.desktop": "WisCode 데스크톱",
+  "download.section.extensions": "WisCode 확장 프로그램",
+  "download.section.integrations": "WisCode 통합",
   "download.action.download": "다운로드",
   "download.action.install": "설치",
 
@@ -720,14 +724,14 @@ export const dict = {
     "꼭 그렇지는 않지만, 아마도 필요할 것입니다. OpenCode를 유료 제공자에 연결하려면 AI 구독이 필요할 수 있습니다. 하지만",
   "download.faq.a3.localLink": "로컬 모델",
   "download.faq.a3.afterLocal.beforeZen": "은 무료로 사용할 수 있습니다. 우리는",
-  "download.faq.a3.afterZen": " 사용을 권장하지만, OpenCode는 OpenAI, Anthropic, xAI 등 모든 인기 제공자와 작동합니다.",
+  "download.faq.a3.afterZen": " 사용을 권장하지만, WisCode는 OpenAI, Anthropic, xAI 등 모든 인기 제공자와 작동합니다.",
 
-  "download.faq.a5.p1": "OpenCode는 100% 무료로 사용할 수 있습니다.",
+  "download.faq.a5.p1": "WisCode는 100% 무료로 사용할 수 있습니다.",
   "download.faq.a5.p2.beforeZen":
     "추가 비용은 모델 제공자 구독에서 발생합니다. OpenCode는 모든 모델 제공자와 작동하지만, 우리는",
   "download.faq.a5.p2.afterZen": " 사용을 권장합니다.",
 
-  "download.faq.a6.p1": "데이터와 정보는 OpenCode에서 공유 링크를 생성할 때만 저장됩니다.",
+  "download.faq.a6.p1": "데이터와 정보는 WisCode에서 공유 링크를 생성할 때만 저장됩니다.",
   "download.faq.a6.p2.beforeShare": "더 알아보기:",
   "download.faq.a6.shareLink": "공유 페이지",
 

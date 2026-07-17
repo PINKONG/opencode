@@ -102,10 +102,14 @@ export const dict = {
   "temp.logoDarkAlt": "opencode koyu logo",
 
   "home.banner.badge": "Yeni",
-  "home.banner.text": "Masaüstü uygulaması beta olarak mevcut",
-  "home.banner.platforms": "macOS, Windows ve Linux'ta",
+  "home.banner.text": "Masaüstü uygulamasında sekmelerle tanışın.",
+  "home.banner.platforms": "macOS, Windows ve Linux'ta kullanılabilir",
   "home.banner.downloadNow": "Şimdi indir",
   "home.banner.downloadBetaNow": "Masaüstü betayı şimdi indir",
+  "home.promo.title": "Masaüstü uygulamasında sekmelerle tanışın",
+  "home.promo.body": "Çalışmalarınızı ve etkin oturumlarınızı sekmelerle düzenleyin.",
+  "home.promo.cta": "Başlamak için en son sürümü indirin.",
+  "home.promo.close": "Masaüstü uygulaması duyurusunu kapat",
 
   "home.hero.title": "Açık kaynaklı yapay zeka kodlama ajanı",
   "home.hero.subtitle.a": "Ücretsiz modeller dahil veya herhangi bir sağlayıcıdan herhangi bir modeli bağlayın,",
@@ -709,15 +713,15 @@ export const dict = {
   "workspace.referral.apply.confirmBody": "Bu workspace'in mevcut kullanımını azaltmak için {{amount}} kullan.",
   "workspace.referral.apply.confirmAction": "Kullan",
 
-  "download.title": "OpenCode | İndir",
-  "download.meta.description": "OpenCode'u macOS, Windows ve Linux için indirin",
-  "download.hero.title": "OpenCode'u İndir",
+  "download.title": "WisCode | İndir",
+  "download.meta.description": "WisCode'u macOS, Windows ve Linux için indirin",
+  "download.hero.title": "WisCode Desktop'u İndir",
   "download.hero.subtitle": "macOS, Windows ve Linux için Beta olarak sunuluyor",
   "download.hero.button": "{{os}} için indir",
-  "download.section.terminal": "OpenCode Terminal",
-  "download.section.desktop": "OpenCode Desktop (Beta)",
-  "download.section.extensions": "OpenCode Eklentileri",
-  "download.section.integrations": "OpenCode Entegrasyonları",
+  "download.section.terminal": "WisCode Terminal",
+  "download.section.desktop": "WisCode Desktop",
+  "download.section.extensions": "WisCode Eklentileri",
+  "download.section.integrations": "WisCode Entegrasyonları",
   "download.action.download": "İndir",
   "download.action.install": "Kur",
 
@@ -734,7 +738,7 @@ export const dict = {
   "download.faq.a3.afterZen":
     " kullanmaya teşvik ediyoruz, ancak OpenCode OpenAI, Anthropic, xAI vb. gibi tüm popüler sağlayıcılarla çalışır.",
 
-  "download.faq.a5.p1": "OpenCode %100 ücretsizdir.",
+  "download.faq.a5.p1": "WisCode %100 ücretsizdir.",
   "download.faq.a5.p2.beforeZen":
     "Ek maliyetler, bir model sağlayıcısına olan aboneliğinizden gelir. OpenCode herhangi bir model sağlayıcısıyla çalışır, ancak",
   "download.faq.a5.p2.afterZen": " kullanmanızı öneririz.",

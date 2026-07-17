@@ -102,10 +102,14 @@ export const dict = {
   "temp.logoDarkAlt": "opencodeのロゴ（ダーク）",
 
   "home.banner.badge": "新着",
-  "home.banner.text": "デスクトップアプリのベータ版が利用可能",
-  "home.banner.platforms": "macOS、Windows、Linux で",
+  "home.banner.text": "デスクトップ版にタブが登場。",
+  "home.banner.platforms": "macOS、Windows、Linux で利用できます",
   "home.banner.downloadNow": "今すぐダウンロード",
   "home.banner.downloadBetaNow": "デスクトップベータ版を今すぐダウンロード",
+  "home.promo.title": "デスクトップ版にタブが登場",
+  "home.promo.body": "タブで作業とアクティブなセッションを整理できます。",
+  "home.promo.cta": "始めるには最新版をダウンロードしてください。",
+  "home.promo.close": "デスクトップアプリのお知らせを閉じる",
 
   "home.hero.title": "オープンソースのAIコーディングエージェント",
   "home.hero.subtitle.a": "無料モデルが含まれています。また、任意のプロバイダーの任意のモデルに接続でき、",
@@ -706,15 +710,15 @@ export const dict = {
   "workspace.referral.apply.confirmBody": "{{amount}} を適用して、このワークスペースの現在の使用量を減らします。",
   "workspace.referral.apply.confirmAction": "適用",
 
-  "download.title": "OpenCode | ダウンロード",
-  "download.meta.description": "OpenCode を macOS、Windows、Linux 向けにダウンロード",
-  "download.hero.title": "OpenCode をダウンロード",
+  "download.title": "WisCode | ダウンロード",
+  "download.meta.description": "WisCode を macOS、Windows、Linux 向けにダウンロード",
+  "download.hero.title": "WisCode デスクトップ版をダウンロード",
   "download.hero.subtitle": "macOS、Windows、Linux 向けベータ版を利用可能",
   "download.hero.button": "{{os}} 向けダウンロード",
-  "download.section.terminal": "OpenCode Terminal",
-  "download.section.desktop": "OpenCode Desktop (Beta)",
-  "download.section.extensions": "OpenCode Extensions",
-  "download.section.integrations": "OpenCode Integrations",
+  "download.section.terminal": "WisCode Terminal",
+  "download.section.desktop": "WisCode Desktop",
+  "download.section.extensions": "WisCode Extensions",
+  "download.section.integrations": "WisCode Integrations",
   "download.action.download": "ダウンロード",
   "download.action.install": "インストール",
 
@@ -731,12 +735,12 @@ export const dict = {
   "download.faq.a3.afterZen":
     "の利用をお勧めしていますが、OpenCodeはOpenAI、Anthropic、xAIなどの主要なプロバイダーに対応しています。",
 
-  "download.faq.a5.p1": "OpenCodeは100%無料で利用できます。",
+  "download.faq.a5.p1": "WisCodeは100%無料で利用できます。",
   "download.faq.a5.p2.beforeZen":
     "追加コストはモデルプロバイダーのサブスクリプションから発生します。OpenCodeはどのモデルプロバイダーでも利用できますが、",
   "download.faq.a5.p2.afterZen": "の利用をおすすめします。",
 
-  "download.faq.a6.p1": "あなたのデータと情報は、OpenCodeで共有リンクを作成したときにのみ保存されます。",
+  "download.faq.a6.p1": "あなたのデータと情報は、WisCodeで共有リンクを作成したときにのみ保存されます。",
   "download.faq.a6.p2.beforeShare": "詳しくは",
   "download.faq.a6.shareLink": "共有ページ",
 

@@ -102,10 +102,14 @@ export const dict = {
   "temp.logoDarkAlt": "opencode logo dark",
 
   "home.banner.badge": "Ny",
-  "home.banner.text": "Desktop-app tilgængelig i beta",
-  "home.banner.platforms": "på macOS, Windows og Linux",
+  "home.banner.text": "Introduktion af Tabs til Desktop.",
+  "home.banner.platforms": "Tilgængelig på macOS, Windows og Linux",
   "home.banner.downloadNow": "Download nu",
   "home.banner.downloadBetaNow": "Download desktop-betaen nu",
+  "home.promo.title": "Introduktion af Tabs til Desktop",
+  "home.promo.body": "Organiser dit arbejde og aktive sessioner med faner.",
+  "home.promo.cta": "Download den nyeste version for at komme i gang.",
+  "home.promo.close": "Luk meddelelsen om Desktop-appen",
 
   "home.hero.title": "Den open source AI-kodningsagent",
   "home.hero.subtitle.a": "Gratis modeller inkluderet, eller forbind enhver model fra enhver udbyder,",
@@ -704,15 +708,15 @@ export const dict = {
   "workspace.referral.apply.confirmBody": "Brug {{amount}} til at reducere dette workspaces nuværende forbrug.",
   "workspace.referral.apply.confirmAction": "Brug",
 
-  "download.title": "OpenCode | Download",
-  "download.meta.description": "Download OpenCode til macOS, Windows og Linux",
-  "download.hero.title": "Download OpenCode",
+  "download.title": "WisCode | Download",
+  "download.meta.description": "Download WisCode til macOS, Windows og Linux",
+  "download.hero.title": "Download WisCode Desktop",
   "download.hero.subtitle": "Tilgængelig i beta til macOS, Windows og Linux",
   "download.hero.button": "Download til {{os}}",
-  "download.section.terminal": "OpenCode Terminal",
-  "download.section.desktop": "OpenCode Desktop (Beta)",
-  "download.section.extensions": "OpenCode Extensions",
-  "download.section.integrations": "OpenCode Integrations",
+  "download.section.terminal": "WisCode Terminal",
+  "download.section.desktop": "WisCode Desktop",
+  "download.section.extensions": "WisCode Extensions",
+  "download.section.integrations": "WisCode Integrations",
   "download.action.download": "Download",
   "download.action.install": "Installer",
 
@@ -726,14 +730,14 @@ export const dict = {
     "Ikke nødvendigvis, men sandsynligvis. Du skal bruge et AI-abonnement hvis du vil forbinde OpenCode til en betalt udbyder, men du kan arbejde med",
   "download.faq.a3.localLink": "lokale modeller",
   "download.faq.a3.afterLocal.beforeZen": "gratis. Selvom vi opfordrer brugere til at bruge",
-  "download.faq.a3.afterZen": ", fungerer OpenCode med alle populære udbydere som OpenAI, Anthropic, xAI osv.",
+  "download.faq.a3.afterZen": ", fungerer WisCode med alle populære udbydere som OpenAI, Anthropic, xAI osv.",
 
-  "download.faq.a5.p1": "OpenCode er 100% gratis at bruge.",
+  "download.faq.a5.p1": "WisCode er 100% gratis at bruge.",
   "download.faq.a5.p2.beforeZen":
     "Eventuelle ekstra omkostninger kommer fra dit abonnement hos en modeludbyder. Selvom OpenCode fungerer med enhver modeludbyder, anbefaler vi at bruge",
   "download.faq.a5.p2.afterZen": ".",
 
-  "download.faq.a6.p1": "Dine data og oplysninger gemmes kun når du opretter delbare links i OpenCode.",
+  "download.faq.a6.p1": "Dine data og oplysninger gemmes kun når du opretter delbare links i WisCode.",
   "download.faq.a6.p2.beforeShare": "Læs mere om",
   "download.faq.a6.shareLink": "delingssider",
 

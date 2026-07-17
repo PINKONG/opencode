@@ -102,10 +102,14 @@ export const dict = {
   "temp.logoDarkAlt": "โลโก้ opencode แบบมืด",
 
   "home.banner.badge": "ใหม่",
-  "home.banner.text": "แอปเดสก์ท็อปพร้อมใช้งานในเวอร์ชันเบต้า",
-  "home.banner.platforms": "บน macOS, Windows และ Linux",
+  "home.banner.text": "ขอแนะนำแท็บสำหรับเดสก์ท็อป.",
+  "home.banner.platforms": "พร้อมใช้งานบน macOS, Windows และ Linux",
   "home.banner.downloadNow": "ดาวน์โหลดตอนนี้",
   "home.banner.downloadBetaNow": "ดาวน์โหลดเบต้าเดสก์ท็อปตอนนี้",
+  "home.promo.title": "ขอแนะนำแท็บสำหรับเดสก์ท็อป",
+  "home.promo.body": "จัดระเบียบงานและเซสชันที่ใช้งานอยู่ด้วยแท็บ",
+  "home.promo.cta": "ดาวน์โหลดเวอร์ชันล่าสุดเพื่อเริ่มต้นใช้งาน",
+  "home.promo.close": "ปิดประกาศเกี่ยวกับแอปเดสก์ท็อป",
 
   "home.hero.title": "เอเจนต์เขียนโค้ดด้วย AI แบบโอเพนซอร์ส",
   "home.hero.subtitle.a": "มีโมเดลฟรีรวมอยู่ หรือเชื่อมต่อโมเดลใดก็ได้จากผู้ให้บริการรายใดก็ได้,",
@@ -701,15 +705,15 @@ export const dict = {
   "workspace.referral.apply.confirmBody": "ใช้ {{amount}} เพื่อลดการใช้งานปัจจุบันของ workspace นี้",
   "workspace.referral.apply.confirmAction": "ใช้",
 
-  "download.title": "OpenCode | ดาวน์โหลด",
-  "download.meta.description": "ดาวน์โหลด OpenCode สำหรับ macOS, Windows และ Linux",
-  "download.hero.title": "ดาวน์โหลด OpenCode",
+  "download.title": "WisCode | ดาวน์โหลด",
+  "download.meta.description": "ดาวน์โหลด WisCode สำหรับ macOS, Windows และ Linux",
+  "download.hero.title": "ดาวน์โหลด WisCode สำหรับเดสก์ท็อป",
   "download.hero.subtitle": "พร้อมใช้งานในเวอร์ชันเบต้าสำหรับ macOS, Windows และ Linux",
   "download.hero.button": "ดาวน์โหลดสำหรับ {{os}}",
-  "download.section.terminal": "OpenCode Terminal",
-  "download.section.desktop": "OpenCode Desktop (Beta)",
-  "download.section.extensions": "ส่วนขยาย OpenCode",
-  "download.section.integrations": "การเชื่อมต่อ OpenCode",
+  "download.section.terminal": "WisCode Terminal",
+  "download.section.desktop": "WisCode Desktop",
+  "download.section.extensions": "ส่วนขยาย WisCode",
+  "download.section.integrations": "การเชื่อมต่อ WisCode",
   "download.action.download": "ดาวน์โหลด",
   "download.action.install": "ติดตั้ง",
 
@@ -723,14 +727,14 @@ export const dict = {
     "ไม่จำเป็นเสมอไป แต่อาจจะต้องมี คุณจะต้องมีการสมัครสมาชิก AI หากต้องการเชื่อมต่อ OpenCode กับผู้ให้บริการที่มีค่าใช้จ่าย แม้ว่าคุณจะสามารถทำงานกับ",
   "download.faq.a3.localLink": "โมเดล Local",
   "download.faq.a3.afterLocal.beforeZen": "ได้ฟรี แม้ว่าเราจะแนะนำให้ผู้ใช้ใช้งาน",
-  "download.faq.a3.afterZen": ", OpenCode ก็ทำงานร่วมกับผู้ให้บริการยอดนิยมทั้งหมด เช่น OpenAI, Anthropic, xAI เป็นต้น",
+  "download.faq.a3.afterZen": ", WisCode ก็ทำงานร่วมกับผู้ให้บริการยอดนิยมทั้งหมด เช่น OpenAI, Anthropic, xAI เป็นต้น",
 
-  "download.faq.a5.p1": "OpenCode ใช้งานได้ฟรี 100%",
+  "download.faq.a5.p1": "WisCode ใช้งานได้ฟรี 100%",
   "download.faq.a5.p2.beforeZen":
     "ค่าใช้จ่ายเพิ่มเติมใดๆ จะมาจากการสมัครสมาชิกของคุณกับผู้ให้บริการโมเดล แม้ว่า OpenCode จะทำงานร่วมกับผู้ให้บริการโมเดลใดก็ได้ แต่เราแนะนำให้ใช้",
   "download.faq.a5.p2.afterZen": "",
 
-  "download.faq.a6.p1": "ข้อมูลของคุณจะถูกจัดเก็บเฉพาะเมื่อคุณสร้างลิงก์ที่แชร์ได้ใน OpenCode เท่านั้น",
+  "download.faq.a6.p1": "ข้อมูลของคุณจะถูกจัดเก็บเฉพาะเมื่อคุณสร้างลิงก์ที่แชร์ได้ใน WisCode เท่านั้น",
   "download.faq.a6.p2.beforeShare": "เรียนรู้เพิ่มเติมเกี่ยวกับ",
   "download.faq.a6.shareLink": "หน้าแชร์",
 

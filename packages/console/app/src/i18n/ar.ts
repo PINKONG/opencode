@@ -102,10 +102,14 @@ export const dict = {
   "temp.logoDarkAlt": "شعار opencode الداكن",
 
   "home.banner.badge": "جديد",
-  "home.banner.text": "تطبيق سطح المكتب متاح بنسخة تجريبية",
-  "home.banner.platforms": "على macOS، Windows، وLinux",
+  "home.banner.text": "نقدّم علامات التبويب لتطبيق سطح المكتب.",
+  "home.banner.platforms": "متاحة على macOS وWindows وLinux",
   "home.banner.downloadNow": "حمّل الآن",
   "home.banner.downloadBetaNow": "حمّل النسخة التجريبية لتطبيق سطح المكتب الآن",
+  "home.promo.title": "نقدّم علامات التبويب لتطبيق سطح المكتب",
+  "home.promo.body": "نظّم عملك وجلساتك النشطة باستخدام علامات التبويب.",
+  "home.promo.cta": "نزّل أحدث إصدار للبدء.",
+  "home.promo.close": "إغلاق إعلان تطبيق سطح المكتب",
 
   "home.hero.title": "وكيل برمجة بالذكاء الاصطناعي مفتوح المصدر",
   "home.hero.subtitle.a": "نماذج مجانية مضمّنة أو اربط أي نموذج من أي مزوّد،",
@@ -698,15 +702,15 @@ export const dict = {
   "workspace.referral.apply.confirmBody": "طبِّق {{amount}} لتقليل الاستخدام الحالي في مساحة العمل هذه.",
   "workspace.referral.apply.confirmAction": "تطبيق",
 
-  "download.title": "OpenCode | تنزيل",
-  "download.meta.description": "نزّل OpenCode لـ macOS، Windows، وLinux",
-  "download.hero.title": "تنزيل OpenCode",
+  "download.title": "WisCode | تنزيل",
+  "download.meta.description": "نزّل WisCode لـ macOS، Windows، وLinux",
+  "download.hero.title": "تنزيل WisCode لسطح المكتب",
   "download.hero.subtitle": "متاح في نسخة تجريبية لـ macOS، Windows، وLinux",
   "download.hero.button": "تنزيل لـ {{os}}",
-  "download.section.terminal": "OpenCode للطرفية",
-  "download.section.desktop": "OpenCode لسطح المكتب (Beta)",
-  "download.section.extensions": "امتدادات OpenCode",
-  "download.section.integrations": "تكاملات OpenCode",
+  "download.section.terminal": "WisCode للطرفية",
+  "download.section.desktop": "WisCode لسطح المكتب",
+  "download.section.extensions": "امتدادات WisCode",
+  "download.section.integrations": "تكاملات WisCode",
   "download.action.download": "تنزيل",
   "download.action.install": "تثبيت",
 
@@ -720,14 +724,14 @@ export const dict = {
     "ليس بالضرورة، ولكن على الأرجح. ستحتاج إلى اشتراك ذكاء اصطناعي إذا كنت تريد ربط OpenCode بمزوّد مدفوع، رغم أنه يمكنك العمل مع",
   "download.faq.a3.localLink": "النماذج المحلية",
   "download.faq.a3.afterLocal.beforeZen": "مجانًا. بينما نشجع المستخدمين على استخدام",
-  "download.faq.a3.afterZen": "، فإن OpenCode يعمل مع جميع المزودين الشائعين مثل OpenAI، Anthropic، xAI إلخ.",
+  "download.faq.a3.afterZen": "، فإن WisCode يعمل مع جميع المزودين الشائعين مثل OpenAI، Anthropic، xAI إلخ.",
 
-  "download.faq.a5.p1": "OpenCode مجاني 100% للاستخدام.",
+  "download.faq.a5.p1": "WisCode مجاني 100% للاستخدام.",
   "download.faq.a5.p2.beforeZen":
     "أي تكاليف إضافية ستأتي من اشتراكك لدى مزود النماذج. بينما يعمل OpenCode مع أي مزود نماذج، نوصي باستخدام",
   "download.faq.a5.p2.afterZen": ".",
 
-  "download.faq.a6.p1": "يتم حفظ بياناتك ومعلوماتك فقط عند إنشاء روابط قابلة للمشاركة في OpenCode.",
+  "download.faq.a6.p1": "يتم حفظ بياناتك ومعلوماتك فقط عند إنشاء روابط قابلة للمشاركة في WisCode.",
   "download.faq.a6.p2.beforeShare": "اعرف المزيد عن",
   "download.faq.a6.shareLink": "صفحات المشاركة",
 

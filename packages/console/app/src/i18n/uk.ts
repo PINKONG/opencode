@@ -102,10 +102,14 @@ export const dict = {
   "temp.logoDarkAlt": "темний логотип opencode",
 
   "home.banner.badge": "Нове",
-  "home.banner.text": "Десктопний застосунок доступний у бета-версії",
-  "home.banner.platforms": "на macOS, Windows та Linux",
+  "home.banner.text": "Представляємо вкладки в десктопному застосунку.",
+  "home.banner.platforms": "Доступно на macOS, Windows та Linux",
   "home.banner.downloadNow": "Завантажити зараз",
   "home.banner.downloadBetaNow": "Завантажити бета-версію десктопного застосунку",
+  "home.promo.title": "Представляємо вкладки в десктопному застосунку",
+  "home.promo.body": "Упорядковуйте роботу й активні сесії за допомогою вкладок.",
+  "home.promo.cta": "Завантажте останню версію, щоб почати.",
+  "home.promo.close": "Закрити оголошення про десктопний застосунок",
 
   "home.hero.title": "Відкритий AI-агент для кодування",
   "home.hero.subtitle.a": "Безкоштовні моделі включено або підключіть будь-яку модель від будь-якого провайдера,",
@@ -668,15 +672,15 @@ export const dict = {
   "workspace.lite.promo.otherMethods": "Інші способи оплати",
   "workspace.lite.promo.selectMethod": "Виберіть спосіб оплати",
 
-  "download.title": "OpenCode | Завантажити",
-  "download.meta.description": "Завантажте OpenCode для macOS, Windows та Linux",
-  "download.hero.title": "Завантажити OpenCode",
+  "download.title": "WisCode | Завантажити",
+  "download.meta.description": "Завантажте WisCode для macOS, Windows та Linux",
+  "download.hero.title": "Завантажити WisCode Desktop",
   "download.hero.subtitle": "Доступно в бета-версії для macOS, Windows та Linux",
   "download.hero.button": "Завантажити для {{os}}",
-  "download.section.terminal": "Термінал OpenCode",
-  "download.section.desktop": "Десктоп OpenCode (Бета)",
-  "download.section.extensions": "Розширення OpenCode",
-  "download.section.integrations": "Інтеграції OpenCode",
+  "download.section.terminal": "Термінал WisCode",
+  "download.section.desktop": "Десктоп WisCode",
+  "download.section.extensions": "Розширення WisCode",
+  "download.section.integrations": "Інтеграції WisCode",
   "download.action.download": "Завантажити",
   "download.action.install": "Встановити",
 
@@ -693,12 +697,12 @@ export const dict = {
   "download.faq.a3.afterZen":
     ", OpenCode працює з усіма популярними провайдерами, такими як OpenAI, Anthropic, xAI тощо.",
 
-  "download.faq.a5.p1": "OpenCode є 100% безкоштовним.",
+  "download.faq.a5.p1": "WisCode є 100% безкоштовним.",
   "download.faq.a5.p2.beforeZen":
     "Будь-які додаткові витрати будуть з вашої підписки у провайдера моделі. Ми рекомендуємо",
   "download.faq.a5.p2.afterZen": ".",
 
-  "download.faq.a6.p1": "Ваші дані зберігаються лише при створенні посилань для обміну в OpenCode.",
+  "download.faq.a6.p1": "Ваші дані зберігаються лише при створенні посилань для обміну в WisCode.",
   "download.faq.a6.p2.beforeShare": "Дізнайтеся більше про",
   "download.faq.a6.shareLink": "сторінки обміну",
 

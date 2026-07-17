@@ -101,10 +101,14 @@ export const dict = {
   "temp.logoDarkAlt": "ciemne logo opencode",
 
   "home.banner.badge": "Nowość",
-  "home.banner.text": "Aplikacja desktopowa dostępna w wersji beta",
-  "home.banner.platforms": "na macOS, Windows i Linux",
+  "home.banner.text": "Przedstawiamy karty w aplikacji desktopowej.",
+  "home.banner.platforms": "Dostępne na macOS, Windows i Linux",
   "home.banner.downloadNow": "Pobierz teraz",
   "home.banner.downloadBetaNow": "Pobierz betę wersji desktopowej",
+  "home.promo.title": "Przedstawiamy karty w aplikacji desktopowej",
+  "home.promo.body": "Organizuj swoją pracę i aktywne sesje za pomocą kart.",
+  "home.promo.cta": "Pobierz najnowszą wersję, aby rozpocząć.",
+  "home.promo.close": "Zamknij ogłoszenie o aplikacji desktopowej",
 
   "home.hero.title": "Open source'owy agent AI do kodowania",
   "home.hero.subtitle.a": "Darmowe modele w zestawie lub podłącz dowolny model od dowolnego dostawcy,",
@@ -706,15 +710,15 @@ export const dict = {
   "workspace.referral.apply.confirmBody": "Wykorzystaj {{amount}}, aby zmniejszyć aktualne użycie w tym workspace.",
   "workspace.referral.apply.confirmAction": "Wykorzystaj",
 
-  "download.title": "OpenCode | Pobierz",
-  "download.meta.description": "Pobierz OpenCode na macOS, Windows i Linux",
-  "download.hero.title": "Pobierz OpenCode",
+  "download.title": "WisCode | Pobierz",
+  "download.meta.description": "Pobierz WisCode na macOS, Windows i Linux",
+  "download.hero.title": "Pobierz WisCode Desktop",
   "download.hero.subtitle": "Dostępne w wersji Beta na macOS, Windows i Linux",
   "download.hero.button": "Pobierz na {{os}}",
-  "download.section.terminal": "Terminal OpenCode",
-  "download.section.desktop": "Pulpit OpenCode (Beta)",
-  "download.section.extensions": "Rozszerzenia OpenCode",
-  "download.section.integrations": "Integracje OpenCode",
+  "download.section.terminal": "Terminal WisCode",
+  "download.section.desktop": "Pulpit WisCode",
+  "download.section.extensions": "Rozszerzenia WisCode",
+  "download.section.integrations": "Integracje WisCode",
   "download.action.download": "Pobierz",
   "download.action.install": "Zainstaluj",
 
@@ -731,7 +735,7 @@ export const dict = {
   "download.faq.a3.afterZen":
     ", OpenCode współpracuje ze wszystkimi popularnymi dostawcami, takimi jak OpenAI, Anthropic, xAI itp.",
 
-  "download.faq.a5.p1": "OpenCode jest w 100% darmowy.",
+  "download.faq.a5.p1": "WisCode jest w 100% darmowy.",
   "download.faq.a5.p2.beforeZen":
     "Wszelkie dodatkowe koszty będą pochodzić z Twojej subskrypcji u dostawcy modelu. Chociaż OpenCode współpracuje z dowolnym dostawcą modeli, zalecamy korzystanie z",
   "download.faq.a5.p2.afterZen": ".",
