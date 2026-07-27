@@ -1,13 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type {
-  Message,
-  Part,
-  PermissionRequest,
-  QuestionRequest,
-  SessionStatus,
-  SnapshotFileDiff,
-  Todo,
-} from "@opencode-ai/sdk/v2/client"
+import type { Message, Part, PermissionRequest, QuestionRequest, SessionStatus, Todo } from "@opencode-ai/sdk/v2/client"
+import type { FileDiffInfo } from "@opencode-ai/client/promise"
 import { dropSessionCaches, pickSessionCacheEvictions } from "./session-cache"
 
 const msg = (id: string, sessionID: string) =>
@@ -33,10 +26,11 @@ describe("app session cache", () => {
   test("dropSessionCaches clears orphaned parts without message rows", () => {
     const store: {
       session_status: Record<string, SessionStatus | undefined>
-      session_diff: Record<string, SnapshotFileDiff[] | undefined>
+      session_diff: Record<string, FileDiffInfo[] | undefined>
       session_error: Record<string, unknown[] | undefined>
       todo: Record<string, Todo[] | undefined>
       message: Record<string, Message[] | undefined>
+      session_message: Record<string, never[] | undefined>
       part: Record<string, Part[] | undefined>
       permission: Record<string, PermissionRequest[] | undefined>
       question: Record<string, QuestionRequest[] | undefined>
@@ -47,6 +41,7 @@ describe("app session cache", () => {
       session_error: { ses_1: [] },
       todo: { ses_1: [] as Todo[] },
       message: {},
+      session_message: {},
       part: { msg_1: [part("prt_1", "ses_1", "msg_1")] },
       permission: { ses_1: [] as PermissionRequest[] },
       question: { ses_1: [] as QuestionRequest[] },
@@ -70,10 +65,11 @@ describe("app session cache", () => {
     const m = msg("msg_1", "ses_1")
     const store: {
       session_status: Record<string, SessionStatus | undefined>
-      session_diff: Record<string, SnapshotFileDiff[] | undefined>
+      session_diff: Record<string, FileDiffInfo[] | undefined>
       session_error: Record<string, unknown[] | undefined>
       todo: Record<string, Todo[] | undefined>
       message: Record<string, Message[] | undefined>
+      session_message: Record<string, never[] | undefined>
       part: Record<string, Part[] | undefined>
       permission: Record<string, PermissionRequest[] | undefined>
       question: Record<string, QuestionRequest[] | undefined>
@@ -84,6 +80,7 @@ describe("app session cache", () => {
       session_error: {},
       todo: {},
       message: { ses_1: [m] },
+      session_message: {},
       part: { [m.id]: [part("prt_1", "ses_1", m.id)] },
       permission: {},
       question: {},
