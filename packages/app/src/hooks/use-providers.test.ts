@@ -27,8 +27,8 @@ beforeAll(async () => {
     decode64: (value?: string) => (value === "encoded-dir" ? "/repo/worktree" : ""),
   }))
 
-  mock.module("@/context/global-sync", () => ({
-    useGlobalSync: () => ({
+  mock.module("@/context/server-sync", () => ({
+    useServerSync: () => () => ({
       data: { provider: globalProvider },
       child: () => [{ provider_ready: projectReady, provider: projectProvider }],
     }),

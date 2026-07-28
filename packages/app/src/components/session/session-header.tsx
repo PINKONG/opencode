@@ -8,7 +8,7 @@ import { Spinner } from "@opencode-ai/ui/spinner"
 import { showToast } from "@/utils/toast"
 import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { getFilename } from "@opencode-ai/core/util/path"
-import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, createUniqueId, For, onCleanup, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
 import { Portal } from "solid-js/web"
@@ -137,7 +137,10 @@ const showRequestError = (language: ReturnType<typeof useLanguage>, err: unknown
   })
 }
 
+const [titlebarOwner, setTitlebarOwner] = createSignal<string>()
+
 export function SessionHeader() {
+  const owner = createUniqueId()
   const layout = useLayout()
   const command = useCommand()
   const server = useServer()
@@ -165,6 +168,7 @@ export function SessionHeader() {
   const search = settings.visibility.search
   const status = settings.visibility.status
   const isDesktop = createMediaQuery("(min-width: 768px)")
+  const ownsTitlebar = createMemo(() => titlebarOwner() === owner)
 
   const [exists, setExists] = createStore<Partial<Record<OpenApp, boolean>>>({
     finder: true,
@@ -284,14 +288,18 @@ export function SessionHeader() {
   const [centerMount, setCenterMount] = createSignal<HTMLElement | null>(null)
   const rightMount = useTitlebarRightMount()
   onMount(() => {
+    setTitlebarOwner(owner)
     setCenterMount(document.getElementById("opencode-titlebar-center"))
+    onCleanup(() => {
+      setTitlebarOwner((current) => (current === owner ? undefined : current))
+    })
   })
 
   return (
     <>
-      <Show when={search() && centerMount()}>
+      <Show when={ownsTitlebar() && search() && centerMount()} keyed>
         {(mount) => (
-          <Portal mount={mount()}>
+          <Portal mount={mount}>
             <Button
               type="button"
               variant="ghost"
@@ -319,9 +327,9 @@ export function SessionHeader() {
           </Portal>
         )}
       </Show>
-      <Show when={rightMount()}>
+      <Show when={ownsTitlebar() && rightMount()} keyed>
         {(mount) => (
-          <Portal mount={mount()}>
+          <Portal mount={mount}>
             <Show
               when={isV2}
               fallback={

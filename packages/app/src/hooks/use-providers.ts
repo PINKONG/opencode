@@ -24,7 +24,7 @@ export function useProviders(directory?: Accessor<string | undefined>) {
   const providers = () => {
     const value = dir()
     const projectStore = value ? serverSync().child(value)[0] : undefined
-    if (directory)
+    if (value && directory)
       return selectProviderCatalog({
         explicit: true,
         directory: value,
@@ -58,7 +58,7 @@ export function useProviders(directory?: Accessor<string | undefined>) {
     },
     paid: () => {
       const connected = new Set(providers().connected)
-      return [
+      const paid = [
         ...Iterable.filter(
           providers().all,
           ([id]) =>
@@ -66,6 +66,7 @@ export function useProviders(directory?: Accessor<string | undefined>) {
             (id !== "opencode" || Object.values(providers().all.get(id)?.models ?? {}).some((m) => m.cost?.input)),
         ),
       ]
+      return paid
     },
   }
 }
