@@ -52,7 +52,7 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 You can hide specific models from the `/models` picker for a provider using the `blacklist` option. This is useful when a provider exposes models you don't want to use or select.
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -65,7 +65,7 @@ You can hide specific models from the `/models` picker for a provider using the 
 
 The inverse `whitelist` option hides every model except the ones listed.
 
-```json title="opencode.json" {6}
+```json title="wiscode.json" {6}
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -2096,9 +2096,9 @@ export SNOWFLAKE_CORTEX_TOKEN=your-pat-or-jwt
 `SNOWFLAKE_CORTEX_TOKEN` accepts a PAT or JWT only — the browser OAuth flow is available via `/connect` only and cannot be configured through an environment variable. `SNOWFLAKE_CORTEX_PAT` is still supported for backward compatibility.
 :::
 
-The model catalog is provided automatically. A minimal `opencode.json` is all that's needed:
+The model catalog is provided automatically. A minimal `wiscode.json` is all that's needed:
 
-```json title="opencode.json"
+```json title="wiscode.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "snowflake-cortex/claude-sonnet-4-6",

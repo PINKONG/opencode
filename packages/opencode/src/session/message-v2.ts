@@ -36,6 +36,8 @@ import type { SystemError } from "bun"
 import type { Provider } from "@/provider/provider"
 import { Effect, Schema } from "effect"
 
+export type { Assistant, Info, Part, ToolPart, ToolStateCompleted, User } from "@opencode-ai/core/v1/session"
+
 /** Error shape thrown by Bun's fetch() when gzip/br decompression fails mid-stream */
 interface FetchDecompressionError extends Error {
   code: "ZlibError"

@@ -15,13 +15,16 @@ import { useLanguage } from "@/context/language"
 import { useSettings } from "@/context/settings"
 import { SettingsList } from "./settings-list"
 import { SettingsListV2 } from "./settings-v2/parts/list"
+import {
+  createKeybindSettingsController,
+  groupKey,
+  type KeybindGroup,
+} from "./settings-keybinds-controller"
 
 const IconV2 = lazy(() => import("@opencode-ai/ui/v2/icon").then((module) => ({ default: module.Icon })))
 
 const IS_MAC = typeof navigator === "object" && /(Mac|iPod|iPhone|iPad)/.test(navigator.platform)
 const PALETTE_ID = "command.palette"
-
-type KeybindGroup = "General" | "Session" | "Navigation" | "Model and agent" | "Terminal" | "Prompt"
 
 type KeybindMeta = {
   title: string
@@ -32,23 +35,6 @@ type KeybindMap = Record<string, string | undefined>
 type CommandContext = ReturnType<typeof useCommand>
 
 const GROUPS: KeybindGroup[] = ["General", "Session", "Navigation", "Model and agent", "Terminal", "Prompt"]
-
-type GroupKey =
-  | "settings.shortcuts.group.general"
-  | "settings.shortcuts.group.session"
-  | "settings.shortcuts.group.navigation"
-  | "settings.shortcuts.group.modelAndAgent"
-  | "settings.shortcuts.group.terminal"
-  | "settings.shortcuts.group.prompt"
-
-const groupKey: Record<KeybindGroup, GroupKey> = {
-  General: "settings.shortcuts.group.general",
-  Session: "settings.shortcuts.group.session",
-  Navigation: "settings.shortcuts.group.navigation",
-  "Model and agent": "settings.shortcuts.group.modelAndAgent",
-  Terminal: "settings.shortcuts.group.terminal",
-  Prompt: "settings.shortcuts.group.prompt",
-}
 
 function groupFor(id: string): KeybindGroup {
   if (id === PALETTE_ID) return "General"
@@ -122,7 +108,7 @@ function keybinds(value: unknown): KeybindMap {
   return value as KeybindMap
 }
 
-function listFor(command: CommandContext, map: KeybindMap, palette: string) {
+function listFor(command: Pick<CommandContext, "catalog" | "options">, map: KeybindMap, palette: string) {
   const out = new Map<string, KeybindMeta>()
   out.set(PALETTE_ID, { title: palette, group: "General" })
 
@@ -262,7 +248,133 @@ function useKeyCapture(input: {
   })
 }
 
+function SettingsKeybindsV2() {
+  const command = useCommand()
+  const language = useLanguage()
+  const settings = useSettings()
+  const controller = createKeybindSettingsController(
+    {
+      command,
+      settings,
+      notify: showToast,
+    },
+    language,
+  )
+
+  return (
+    <SettingsKeybindsV2View
+      groups={controller.catalog.groups}
+      filtered={controller.catalog.filtered}
+      title={controller.catalog.title}
+      keybind={controller.catalog.keybind}
+      active={controller.capture.active}
+      onCapture={controller.capture.toggle}
+      hasOverrides={controller.settings.hasOverrides}
+      onReset={controller.settings.reset}
+    />
+  )
+}
+
+function SettingsKeybindsV2View(props: {
+  groups: KeybindGroup[]
+  filtered: (query: string) => Map<KeybindGroup, string[]>
+  title: (id: string) => string
+  keybind: (id: string) => string
+  active: () => string | null
+  onCapture: (id: string) => void
+  hasOverrides: () => boolean
+  onReset: () => void
+}) {
+  const language = useLanguage()
+  const [store, setStore] = createStore({ filter: "" })
+  const filtered = createMemo(() => props.filtered(store.filter))
+  const hasResults = createMemo(() => props.groups.some((group) => (filtered().get(group)?.length ?? 0) > 0))
+
+  return (
+    <>
+      <div class="settings-v2-tab-header settings-v2-tab-header--stacked">
+        <div class="settings-v2-tab-header-row">
+          <h2 class="settings-v2-tab-title">{language.t("settings.shortcuts.title")}</h2>
+          <ButtonV2 variant="ghost" onClick={props.onReset} disabled={!props.hasOverrides()}>
+            {language.t("settings.shortcuts.reset.button")}
+          </ButtonV2>
+        </div>
+        <div class="settings-v2-tab-search">
+          <TextInputV2
+            type="search"
+            appearance="base"
+            value={store.filter}
+            onInput={(event) => setStore("filter", event.currentTarget.value)}
+            placeholder={language.t("settings.shortcuts.search.placeholder")}
+            spellcheck={false}
+            autocorrect="off"
+            autocomplete="off"
+            autocapitalize="off"
+            aria-label={language.t("settings.shortcuts.search.placeholder")}
+          />
+          <Show when={store.filter}>
+            <IconButtonV2
+              type="button"
+              variant="ghost-muted"
+              size="small"
+              class="settings-v2-tab-search-clear"
+              icon={<IconV2 name="close" size="large" class="text-v2-icon-icon-muted" />}
+              onClick={() => setStore("filter", "")}
+            />
+          </Show>
+        </div>
+      </div>
+      <div class="settings-v2-tab-body">
+        <div class="settings-v2-shortcuts flex flex-col gap-8">
+          <For each={props.groups}>
+            {(group) => (
+              <Show when={(filtered().get(group) ?? []).length > 0}>
+                <div class="settings-v2-section">
+                  <h3 class="settings-v2-section-title">{language.t(groupKey[group])}</h3>
+                  <SettingsListV2>
+                    <For each={filtered().get(group) ?? []}>
+                      {(id) => (
+                        <div class="flex items-center justify-between gap-4 py-3 border-b border-border-weak-base last:border-none">
+                          <span>{props.title(id)}</span>
+                          <button
+                            type="button"
+                            data-keybind-id={id}
+                            classList={{
+                              "settings-v2-keybind-button": true,
+                              "settings-v2-keybind-button--active": props.active() === id,
+                            }}
+                            onClick={() => props.onCapture(id)}
+                          >
+                            <Show
+                              when={props.active() === id}
+                              fallback={props.keybind(id) || language.t("settings.shortcuts.unassigned")}
+                            >
+                              {language.t("settings.shortcuts.pressKeys")}
+                            </Show>
+                          </button>
+                        </div>
+                      )}
+                    </For>
+                  </SettingsListV2>
+                </div>
+              </Show>
+            )}
+          </For>
+          <Show when={store.filter && !hasResults()}>
+            <div class="settings-v2-shortcuts-status">
+              <span>{language.t("settings.shortcuts.search.empty")}</span>
+              <span class="settings-v2-shortcuts-status-filter">&quot;{store.filter}&quot;</span>
+            </div>
+          </Show>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export const SettingsKeybinds: Component<{ v2?: boolean }> = (props) => {
+  if (props.v2) return <SettingsKeybindsV2 />
+
   const command = useCommand()
   const language = useLanguage()
   const settings = useSettings()
@@ -476,78 +588,37 @@ export const SettingsKeybinds: Component<{ v2?: boolean }> = (props) => {
   )
 
   return (
-    <Show
-      when={props.v2}
-      fallback={
-        <div class="flex flex-col h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10">
-          <div class="sticky top-0 z-10 bg-[linear-gradient(to_bottom,var(--surface-stronger-non-alpha)_calc(100%_-_24px),transparent)]">
-            <div class="flex flex-col gap-4 pt-6 pb-6 max-w-[720px]">
-              <div class="flex items-center justify-between gap-4">
-                <h2 class="text-16-medium text-text-strong">{language.t("settings.shortcuts.title")}</h2>
-                <Button size="small" variant="secondary" onClick={resetAll} disabled={!hasOverrides()}>
-                  {language.t("settings.shortcuts.reset.button")}
-                </Button>
-              </div>
-
-              <div class="flex items-center gap-2 px-3 h-9 rounded-lg bg-surface-base">
-                <Icon name="magnifying-glass" class="text-icon-weak-base flex-shrink-0" />
-                <TextField
-                  variant="ghost"
-                  type="text"
-                  value={store.filter}
-                  onChange={(v) => setStore("filter", v)}
-                  placeholder={language.t("settings.shortcuts.search.placeholder")}
-                  spellcheck={false}
-                  autocorrect="off"
-                  autocomplete="off"
-                  autocapitalize="off"
-                  class="flex-1"
-                />
-                <Show when={store.filter}>
-                  <IconButton icon="circle-x" variant="ghost" onClick={() => setStore("filter", "")} />
-                </Show>
-              </div>
-            </div>
-          </div>
-          {groups}
-        </div>
-      }
-    >
-      <>
-        <div class="settings-v2-tab-header settings-v2-tab-header--stacked">
-          <div class="settings-v2-tab-header-row">
-            <h2 class="settings-v2-tab-title">{language.t("settings.shortcuts.title")}</h2>
-            <ButtonV2 variant="ghost" onClick={resetAll} disabled={!hasOverrides()}>
+    <div class="flex flex-col h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10">
+      <div class="sticky top-0 z-10 bg-[linear-gradient(to_bottom,var(--surface-stronger-non-alpha)_calc(100%_-_24px),transparent)]">
+        <div class="flex flex-col gap-4 pt-6 pb-6 max-w-[720px]">
+          <div class="flex items-center justify-between gap-4">
+            <h2 class="text-16-medium text-text-strong">{language.t("settings.shortcuts.title")}</h2>
+            <Button size="small" variant="secondary" onClick={resetAll} disabled={!hasOverrides()}>
               {language.t("settings.shortcuts.reset.button")}
-            </ButtonV2>
+            </Button>
           </div>
-          <div class="settings-v2-tab-search">
-            <TextInputV2
-              type="search"
-              appearance="base"
+
+          <div class="flex items-center gap-2 px-3 h-9 rounded-lg bg-surface-base">
+            <Icon name="magnifying-glass" class="text-icon-weak-base flex-shrink-0" />
+            <TextField
+              variant="ghost"
+              type="text"
               value={store.filter}
-              onInput={(event) => setStore("filter", event.currentTarget.value)}
+              onChange={(v) => setStore("filter", v)}
               placeholder={language.t("settings.shortcuts.search.placeholder")}
               spellcheck={false}
               autocorrect="off"
               autocomplete="off"
               autocapitalize="off"
-              aria-label={language.t("settings.shortcuts.search.placeholder")}
+              class="flex-1"
             />
             <Show when={store.filter}>
-              <IconButtonV2
-                type="button"
-                variant="ghost-muted"
-                size="small"
-                class="settings-v2-tab-search-clear"
-                icon={<IconV2 name="close" size="large" class="text-v2-icon-icon-muted" />}
-                onClick={() => setStore("filter", "")}
-              />
+              <IconButton icon="circle-x" variant="ghost" onClick={() => setStore("filter", "")} />
             </Show>
           </div>
         </div>
-        <div class="settings-v2-tab-body">{groups}</div>
-      </>
-    </Show>
+      </div>
+      {groups}
+    </div>
   )
 }

@@ -16,6 +16,9 @@ const isGitHubActions = process.env.GITHUB_ACTIONS === "true"
 const legacyDesktopEntry = path.join(packageDir, "resources", "linux", "opencode-desktop.desktop")
 const legacyDesktopEntryFpm = `${legacyDesktopEntry}=/usr/share/applications/opencode-desktop.desktop`
 
+const metainfoFpm = (appId: string) =>
+  `${path.join(packageDir, "resources", `${appId}.metainfo.xml`)}=/usr/share/metainfo/${appId}.metainfo.xml`
+
 async function signWindows(configuration: { path: string }) {
   if (process.platform !== "win32") return
   if (!isGitHubActions) return
@@ -147,7 +150,8 @@ function getConfig() {
         ...base,
         appId,
         productName: "WisCode Dev",
-        rpm: { packageName: "wiscode-dev" },
+        deb: { fpm: [metainfoFpm(appId)] },
+        rpm: { packageName: "wiscode-dev", fpm: [metainfoFpm(appId)] },
       }
     }
     case "beta": {
@@ -157,7 +161,8 @@ function getConfig() {
         productName: "WisCode Beta",
         protocols: { name: "WisCode Beta", schemes: ["wiscode"] },
         publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "beta" },
-        rpm: { packageName: "wiscode-beta" },
+        deb: { fpm: [metainfoFpm(appId)] },
+        rpm: { packageName: "wiscode-beta", fpm: [metainfoFpm(appId)] },
       }
     }
     case "prod": {
@@ -167,8 +172,8 @@ function getConfig() {
         productName: "WisCode",
         protocols: { name: "WisCode", schemes: ["wiscode"] },
         publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "latest" },
-        deb: { fpm: [legacyDesktopEntryFpm] },
-        rpm: { packageName: "wiscode", fpm: [legacyDesktopEntryFpm] },
+        deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
+        rpm: { packageName: "wiscode", fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
       }
     }
   }

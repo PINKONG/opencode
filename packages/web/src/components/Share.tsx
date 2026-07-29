@@ -8,6 +8,7 @@ import styles from "./share.module.css"
 import type { MessageV2 } from "opencode/session/message-v2"
 import type { Message } from "opencode/session/message"
 import type { Session } from "opencode/session/index"
+import { MessageID, PartID, SessionID } from "opencode/session/schema"
 import { Part, ProviderIcon } from "./share/part"
 
 type MessageWithParts = MessageV2.Info & { parts: MessageV2.Part[] }
@@ -38,6 +39,19 @@ function getStatusText(status: [Status, string?], messages: Record<string, strin
   }
 }
 
+function partBase(v1: Message.Info, index: number) {
+  return {
+    id: PartID.ascending(`${v1.id}-${index}`),
+    messageID: MessageID.make(v1.id),
+    sessionID: SessionID.make(v1.metadata.sessionID),
+  }
+}
+
+function toolInput(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
+  return value as Record<string, unknown>
+}
+
 export default function Share(props: {
   id: string
   api: string
@@ -62,7 +76,7 @@ export default function Share(props: {
     messages: Record<string, MessageWithParts>
   }>({
     info: {
-      id: props.id,
+      id: SessionID.make(props.id),
       slug: props.info.slug,
       projectID: props.info.projectID,
       directory: props.info.directory,
@@ -501,10 +515,10 @@ export default function Share(props: {
 export function fromV1(v1: Message.Info): MessageWithParts {
   if (v1.role === "assistant") {
     return {
-      id: v1.id,
-      sessionID: v1.metadata.sessionID,
+      id: MessageID.make(v1.id),
+      sessionID: SessionID.make(v1.metadata.sessionID),
       role: "assistant",
-      parentID: "",
+      parentID: MessageID.ascending(`${v1.id}-parent`),
       agent: "build",
       time: {
         created: v1.metadata.time.created,
@@ -522,16 +536,12 @@ export function fromV1(v1: Message.Info): MessageWithParts {
         },
         reasoning: 0,
       },
-      modelID: v1.metadata.assistant!.modelID,
-      providerID: v1.metadata.assistant!.providerID,
+      modelID: v1.metadata.assistant!.modelID as MessageV2.Assistant["modelID"],
+      providerID: v1.metadata.assistant!.providerID as MessageV2.Assistant["providerID"],
       mode: "build",
       error: v1.metadata.error,
       parts: v1.parts.flatMap((part, index): MessageV2.Part[] => {
-        const base = {
-          id: index.toString(),
-          messageID: v1.id,
-          sessionID: v1.metadata.sessionID,
-        }
+        const base = partBase(v1, index)
         if (part.type === "text") {
           return [
             {
@@ -569,7 +579,7 @@ export function fromV1(v1: Message.Info): MessageWithParts {
                 if (part.toolInvocation.state === "call") {
                   return {
                     status: "running",
-                    input: part.toolInvocation.args,
+                    input: toolInput(part.toolInvocation.args),
                     time: {
                       start: time.start,
                     },
@@ -579,7 +589,7 @@ export function fromV1(v1: Message.Info): MessageWithParts {
                 if (part.toolInvocation.state === "result") {
                   return {
                     status: "completed",
-                    input: part.toolInvocation.args,
+                    input: toolInput(part.toolInvocation.args),
                     output: part.toolInvocation.result,
                     title,
                     time,
@@ -598,23 +608,19 @@ export function fromV1(v1: Message.Info): MessageWithParts {
 
   if (v1.role === "user") {
     return {
-      id: v1.id,
-      sessionID: v1.metadata.sessionID,
+      id: MessageID.make(v1.id),
+      sessionID: SessionID.make(v1.metadata.sessionID),
       role: "user",
       agent: "user",
       model: {
-        providerID: "",
-        modelID: "",
+        providerID: "" as MessageV2.Assistant["providerID"],
+        modelID: "" as MessageV2.Assistant["modelID"],
       },
       time: {
         created: v1.metadata.time.created,
       },
       parts: v1.parts.flatMap((part, index): MessageV2.Part[] => {
-        const base = {
-          id: index.toString(),
-          messageID: v1.id,
-          sessionID: v1.metadata.sessionID,
-        }
+        const base = partBase(v1, index)
         if (part.type === "text") {
           return [
             {
