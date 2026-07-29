@@ -1,3 +1,6 @@
+import { Server } from "@modelcontextprotocol/sdk/server/index.js"
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
+import { ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 if (process.argv.includes("--hang")) {
   const pidFile = process.env.MCP_LIFECYCLE_PID_FILE
   if (!pidFile) throw new Error("MCP_LIFECYCLE_PID_FILE is required")
@@ -5,12 +8,9 @@ if (process.argv.includes("--hang")) {
   await new Promise(() => {})
 }
 
-const { Server } = await import("@modelcontextprotocol/server")
-const { StdioServerTransport } = await import("@modelcontextprotocol/server/stdio")
-
 const server = new Server({ name: "mcp-lifecycle-stdio", version: "1.0.0" }, { capabilities: { tools: {} } })
 
-server.setRequestHandler("tools/list", () =>
+server.setRequestHandler(ListToolsRequestSchema, () =>
   Promise.resolve({
     tools: [
       {

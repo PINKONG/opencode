@@ -82,7 +82,7 @@ function nativeTarget() {
 }
 
 export function getCurrentSidecar(target = RUST_TARGET ?? nativeTarget()) {
-  const binaryConfig = SIDECAR_BINARIES.find((b) => b.rustTarget === target)
+  const binaryConfig = SIDECAR_BINARIES.find((item) => item.rustTarget === target)
   if (!binaryConfig) throw new Error(`Sidecar configuration not available for Rust target '${target}'`)
 
   return binaryConfig
