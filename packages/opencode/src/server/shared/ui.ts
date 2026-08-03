@@ -85,7 +85,7 @@ export function serveEmbeddedUIEffect(
 ) {
   const file = embeddedWebUI[requestPath.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
   if (!file) return Effect.succeed(notFound())
-    const resolvedPath = resolveEmbeddedAssetPath(file)
+  const resolvedPath = resolveEmbeddedAssetPath(file)
 
   return fs.readFile(resolvedPath).pipe(
     Effect.map((body) => {

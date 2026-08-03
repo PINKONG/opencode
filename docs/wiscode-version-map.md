@@ -20,6 +20,9 @@
 
 | WisCode 版本 | OpenCode 基线 | 说明 |
 | --- | --- | --- |
+| `1.4.11` | `v1.18.11` | 同步 OpenCode v1.18.11，保持品牌、配置隔离、知识库、sidecar/embed、内置 Node/rg、`/init` 屏蔽与供应商品牌边界 |
+| `1.4.10` | `v1.18.10` | 同步 OpenCode v1.18.10，保持品牌、配置隔离、知识库、sidecar/embed、内置 Node/rg、`/init` 屏蔽与供应商品牌边界 |
+| `1.4.9` | `v1.18.9` | 同步 OpenCode v1.18.9，保持品牌、配置隔离、知识库、sidecar/embed、内置 Node/rg、`/init` 屏蔽与供应商品牌边界 |
 | `1.4.8` | `v1.18.8` | 同步 OpenCode v1.18.8，保持品牌、配置隔离、知识库、sidecar/embed、内置 Node/rg、`/init` 屏蔽与供应商品牌边界 |
 | `1.4.7` | `v1.18.7` | 同步 OpenCode v1.18.7，保持品牌、配置隔离、知识库、sidecar/embed、内置 Node/rg、`/init` 屏蔽与供应商品牌边界 |
 | `1.4.6` | `v1.18.6` | 同步 OpenCode v1.18.6，保持品牌、配置隔离、知识库、sidecar/embed、内置 Node/rg、`/init` 屏蔽与供应商品牌边界 |
