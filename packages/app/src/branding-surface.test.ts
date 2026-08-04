@@ -22,6 +22,7 @@ describe("app branding surface", () => {
     const helpButton = await read("./components/help-button.tsx")
     const home = await read("./pages/home.tsx")
     const layout = await read("./pages/layout.tsx")
+    const draftStore = await read("./utils/draft-store.ts")
 
     expect(favicon).not.toContain('content="OpenCode"')
     expect(manifest).not.toContain('"OpenCode"')
@@ -45,6 +46,8 @@ describe("app branding surface", () => {
     expect(windowsMenu).not.toContain("OpenCode menu")
     expect(windowsMenu).not.toContain(">OpenCode<")
     expect(helpButton).not.toContain('href="https://opencode.ai"')
+    expect(draftStore).not.toContain('"opencode-drafts"')
+    expect(draftStore).toContain('"wiscode-drafts"')
     const appVisible = stripJsxComments(app)
     expect(appVisible).toContain('<Splash class="w-16 h-20 opacity-50 animate-pulse" />')
     expect(appVisible).not.toContain('<Logo class="w-24 mb-4" />')
