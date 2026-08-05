@@ -91,6 +91,7 @@
 - [packages/app/src/context/server.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/context/server.tsx)
 - [packages/app/src/utils/server.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/app/src/utils/server.ts)
 - [packages/desktop/src/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src/index.tsx)
+- [packages/desktop/src/renderer/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src/renderer/index.tsx)
 - [packages/desktop-electron/src/renderer/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop-electron/src/renderer/index.tsx)
 - [packages/opencode/src/server/middleware.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/middleware.ts)
 - [packages/opencode/src/server/routes/ui.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/routes/ui.ts)
@@ -147,11 +148,15 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 - [packages/opencode/script/build-node.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/script/build-node.ts) 必须继续生成非空 `opencode-web-ui.gen.ts`
 - [packages/desktop/electron.vite.config.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/electron.vite.config.ts) 必须继续复制 node dist 中除 `node.js` / `node.js.map` 之外的 embedded UI 资源
 - [packages/opencode/src/server/routes/ui.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/routes/ui.ts) 必须把 embedded 清单中的相对路径解析成基于 node bundle 的绝对路径，再读文件
+- [packages/desktop/src/renderer/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src/renderer/index.tsx) 的 app `PlatformProvider` 必须继续注入 `getSidecarLanConfig` / `setSidecarLanConfig` / `getSidecarLanStatus`，否则设置页的网络配置区会被条件渲染隐藏
+- [packages/desktop/src/renderer/index.tsx](/Volumes/EXTENSION/works/morewis/opencode/packages/desktop/src/renderer/index.tsx) 必须继续拦截 `install-cli` 菜单命令并调用 renderer 侧 `installCli()`
 
 这几项任一被冲掉，都会出现直接回归：
 - 浏览器打开 sidecar 链接时回退到线上 UI，导致品牌错位或认证错位
 - `/?auth_token=...` 跳转到 `/?embed_session=...` 后返回 `{"error":"Not Found"}`
 - 打包后 desktop 正常启动，但浏览器访问 sidecar embed URL 失败
+- 设置页缺少“网络配置 / Expose local server to LAN”
+- mac 菜单存在 `Install CLI...` 但点击后没有执行安装
 
 ### 7. 内置 `/init` 命令必须保持屏蔽
 

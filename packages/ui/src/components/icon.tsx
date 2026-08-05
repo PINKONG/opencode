@@ -157,7 +157,18 @@ export function Icon(props: IconProps) {
   const [local, others] = splitProps(props, ["name", "size", "class", "classList"])
   onMount(ensureSprite)
   return (
-    <div data-component="icon" data-size={local.size || "normal"}>
+    <div
+      data-component="icon"
+      data-size={local.size || "normal"}
+      data-directional={
+        local.name === "arrow-left" ||
+        local.name === "arrow-right" ||
+        local.name === "chevron-left" ||
+        local.name === "chevron-right"
+          ? true
+          : undefined
+      }
+    >
       <svg
         data-slot="icon-svg"
         classList={{

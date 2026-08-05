@@ -28,8 +28,8 @@ import {
 } from "./onboarding"
 import {
   getDefaultServerUrl,
-  preferAppEnv,
   getSidecarLanConfig,
+  preferAppEnv,
   setSidecarLanConfig,
   setDefaultServerUrl,
   spawnLocalServer,
@@ -52,6 +52,8 @@ import { registerWslIpcHandlers } from "./wsl/ipc"
 import { spawnWslSidecar } from "./wsl/sidecar"
 import { migrate } from "./migrate"
 import { cleanupStoreFiles } from "./store-cleanup"
+import { startBackgroundCli } from "./background-cli"
+import { setNativeTranslations } from "./native-translations"
 
 const APP_NAMES: Record<string, string> = {
   dev: "WisCode Dev",
@@ -64,6 +66,7 @@ const APP_IDS: Record<string, string> = {
   prod: "ai.wiscode.desktop",
 }
 const TEST_ONBOARDING = process.env.OPENCODE_TEST_ONBOARDING === "1"
+const SIDECAR_VERSION = process.env.OPENCODE_SIDECAR_V2 === "1" ? "v2" : "v1"
 const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
 
 let logger: ReturnType<typeof initLogging>
@@ -279,7 +282,6 @@ const main = Effect.gen(function* () {
   app.setAsDefaultProtocolClient("wiscode")
   registerRendererProtocol()
   setDockIcon()
-
   yield* Effect.promise(() => syncCli()).pipe(
     Effect.catch((error) =>
       Effect.sync(() => {
@@ -294,8 +296,15 @@ const main = Effect.gen(function* () {
       }),
     ),
   )
-
   const updater = setupAutoUpdater(stopSidecars)
+  const menuDeps = {
+    trigger: (id: string) => {
+      const win = getLastFocusedWindow()
+      if (win) sendMenuCommand(win, id)
+    },
+    checkForUpdates: () => void showUpdaterDialog(updater, true),
+    relaunch,
+  }
   registerIpcHandlers({
     killSidecar: () => killSidecar(),
     relaunch,
@@ -328,6 +337,9 @@ const main = Effect.gen(function* () {
     exportDebugLogs: () => exportDebugLogs(),
     recordFatalRendererError: (error: FatalRendererError) =>
       writeLog("renderer", "fatal renderer error", { ...error }, "error"),
+    setNativeTranslations: (bundle) => {
+      if (setNativeTranslations(bundle)) createMenu(menuDeps)
+    },
   })
   registerWslIpcHandlers(wslServers)
   void updater.start()
@@ -342,33 +354,51 @@ const main = Effect.gen(function* () {
     ),
   )
 
-  const config = getSidecarLanConfig()
-  const hosts = resolveSidecarHosts(config, networkInterfaces())
-  const port = yield* Effect.promise(() => getSidecarPort(config))
-  const url = `http://${hosts.clientHost}:${port}`
-  const advertiseUrl = `http://${hosts.advertiseHost}:${port}`
-  const password =
-    config.fixedToken === true
-      ? process.env.OPENCODE_SERVER_PASSWORD || SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD
-      : randomUUID()
-  const sidecarLanAccessUrl = hosts.status === "available" ? new URL(advertiseUrl) : null
-  if (sidecarLanAccessUrl) {
-    sidecarLanAccessUrl.searchParams.set("auth_token", Buffer.from(`wiscode:${password}`).toString("base64"))
-  }
-  sidecarLanStatus = {
-    enabled: config.enabled,
-    status: hosts.status,
-    address: hosts.status === "available" ? hosts.advertiseHost : null,
-    url: hosts.status === "available" ? advertiseUrl : null,
-    accessUrl: sidecarLanAccessUrl?.toString() ?? null,
-    port,
-  }
-
   const loadingTask = yield* Effect.gen(function* () {
-    logger.log("sidecar connection started", { url, advertiseUrl })
+    logger.log("sidecar connection started", { version: SIDECAR_VERSION })
 
     ensureLoopbackNoProxy()
     useEnvProxy()
+
+    if (SIDECAR_VERSION === "v2") {
+      logger.log("spawning v2 sidecar")
+      const sidecar = yield* Effect.promise(() => startBackgroundCli(logger, process.env.XDG_STATE_HOME))
+      yield* Deferred.succeed(serverReady, {
+        url: sidecar.url,
+        displayUrl: null,
+        username: sidecar.username,
+        password: sidecar.password,
+      })
+
+      if (process.platform === "win32") {
+        void wslServers.initialize().catch((error) => logger.error("wsl server initialization failed", error))
+      }
+
+      logger.log("loading task finished")
+      return
+    }
+
+    const config = getSidecarLanConfig()
+    const hosts = resolveSidecarHosts(config, networkInterfaces())
+    const port = yield* Effect.promise(() => getSidecarPort(config))
+    const url = `http://${hosts.clientHost}:${port}`
+    const advertiseUrl = `http://${hosts.advertiseHost}:${port}`
+    const password =
+      config.fixedToken === true
+        ? process.env.OPENCODE_SERVER_PASSWORD || SIDECAR_FIXED_TOKEN_DEFAULT_PASSWORD
+        : randomUUID()
+    const sidecarLanAccessUrl = hosts.status === "available" ? new URL(advertiseUrl) : null
+    if (sidecarLanAccessUrl) {
+      sidecarLanAccessUrl.searchParams.set("auth_token", Buffer.from(`wiscode:${password}`).toString("base64"))
+    }
+    sidecarLanStatus = {
+      enabled: config.enabled,
+      status: hosts.status,
+      address: hosts.status === "available" ? hosts.advertiseHost : null,
+      url: hosts.status === "available" ? advertiseUrl : null,
+      accessUrl: sidecarLanAccessUrl?.toString() ?? null,
+      port,
+    }
 
     logger.log("spawning sidecar", { url, advertiseUrl, bindHost: hosts.bindHost })
     const { listener, health } = yield* Effect.promise(() =>
@@ -407,20 +437,7 @@ const main = Effect.gen(function* () {
   yield* Fiber.await(loadingTask)
 
   const windows = restoreMainWindows()
-  if (windows.length) {
-    createMenu({
-      trigger: (id) => {
-        const win = getLastFocusedWindow()
-        if (win) sendMenuCommand(win, id)
-      },
-      checkForUpdates: () => {
-        void showUpdaterDialog(updater, true)
-      },
-      relaunch: () => {
-        relaunch()
-      },
-    })
-  }
+  if (windows.length) createMenu(menuDeps)
 })
 
 Effect.runFork(main)

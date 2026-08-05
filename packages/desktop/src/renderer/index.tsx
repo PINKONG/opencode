@@ -13,6 +13,7 @@ import {
   ServerConnection,
   useCommand,
   useWslServers,
+  useLanguage,
 } from "@opencode-ai/app"
 import type { UpdaterState } from "@opencode-ai/app/updater"
 import * as Sentry from "@sentry/solid"
@@ -22,7 +23,7 @@ import { createEffect, createMemo, createResource, createSignal, onCleanup, Show
 import { render } from "solid-js/web"
 import pkg from "../../package.json"
 import { installCli } from "./cli"
-import { initI18n, t } from "./i18n"
+import { t } from "./i18n"
 import { initializationData } from "./initialization"
 import { DesktopFirstLaunchOnboarding } from "./onboarding"
 import { resetZoom, setPinchZoomEnabled, webviewZoom, zoomIn, zoomOut } from "./webview-zoom"
@@ -59,8 +60,6 @@ if (import.meta.env.VITE_SENTRY_DSN) {
     },
   })
 }
-
-void initI18n()
 
 const [updaterState, setUpdaterState] = createSignal<UpdaterState>({ status: "disabled" })
 void window.api.updater.subscribe(setUpdaterState)
@@ -176,14 +175,14 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     async openDirectoryPickerDialog(opts) {
       return window.api.openDirectoryPicker({
         multiple: opts?.multiple ?? false,
-        title: opts?.title ?? t("desktop.dialog.chooseFolder"),
+        title: opts?.title,
       })
     },
 
     async openAttachmentPickerDialog(opts, onFile) {
       const result = await window.api.openFilePicker({
         multiple: opts?.multiple ?? false,
-        title: opts?.title ?? t("desktop.dialog.chooseFile"),
+        title: opts?.title,
         defaultPath: opts?.defaultPath,
         extensions: opts?.extensions ?? ACCEPTED_FILE_EXTENSIONS,
       })
@@ -205,7 +204,7 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
 
     async saveFilePickerDialog(opts) {
       return window.api.saveFilePicker({
-        title: opts?.title ?? t("desktop.dialog.saveFile"),
+        title: opts?.title,
         defaultPath: opts?.defaultPath,
       })
     },
@@ -333,6 +332,7 @@ window.api.onMenuCommand((id) => {
     void installCli()
     return
   }
+
   menuTrigger?.(id)
 })
 listenForDeepLinks()
@@ -389,6 +389,7 @@ function DesktopRoot(props: { windowState: DesktopWindowState }) {
 
   function App() {
     const wslServers = useWslServers()
+    const language = useLanguage()
     const ready = createMemo(
       () => !defaultServer.loading && !sidecar.loading && !locale.loading && !wslServers.isLoading,
     )
@@ -397,18 +398,17 @@ function DesktopRoot(props: { windowState: DesktopWindowState }) {
       const list: ServerConnection.Any[] = []
       if (data) {
         list.push({
-          displayName: "Local Server",
+          displayName: language.t("desktop.server.local"),
           type: "sidecar",
           variant: "base",
           http: {
             url: data.url,
-            displayUrl: data.displayUrl ?? undefined,
             username: data.username ?? undefined,
             password: data.password ?? undefined,
           },
         })
       }
-      list.push(...readyWslConnections(wslServers.data))
+      list.push(...readyWslConnections(wslServers.data, language.t("wsl.server.label")))
       return list
     })
     const effectiveDefaultServer = createMemo(() =>
@@ -440,7 +440,10 @@ function DesktopRoot(props: { windowState: DesktopWindowState }) {
 
   return (
     <PlatformProvider value={platform}>
-      <AppBaseProviders locale={locale.latest}>
+      <AppBaseProviders
+        locale={locale.latest}
+        onNativeTranslations={(bundle) => void window.api.setNativeTranslations(bundle).catch(() => undefined)}
+      >
         <Show when={true}>{(_) => <App />}</Show>
       </AppBaseProviders>
     </PlatformProvider>

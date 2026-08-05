@@ -37,7 +37,7 @@ describe("WSL server settings presentation", () => {
     expect(wslRuntimeRetryable({ kind: "stopped" })).toBe(true)
   })
 
-  test("offers install and update only when WisCode needs attention", () => {
+  test("offers install and update only when OpenCode needs attention", () => {
     expect(wslOpencodeAction(undefined)).toBeUndefined()
     expect(
       wslOpencodeAction({
@@ -48,7 +48,7 @@ describe("WSL server settings presentation", () => {
         matchesDesktop: null,
         error: null,
       }),
-    ).toBe("Install WisCode")
+    ).toBe("wsl.onboarding.installOpencode")
     expect(
       wslOpencodeAction({
         distro: "Debian",
@@ -58,7 +58,7 @@ describe("WSL server settings presentation", () => {
         matchesDesktop: false,
         error: null,
       }),
-    ).toBe("Update WisCode")
+    ).toBe("wsl.onboarding.updateOpencode")
     expect(
       wslOpencodeAction({
         distro: "Debian",
@@ -179,7 +179,7 @@ describe("WSL server settings presentation", () => {
     expect(model.busy).toBe(true)
   })
 
-  test("does not report ready when WisCode is present but cannot run", () => {
+  test("does not report ready when OpenCode is present but cannot run", () => {
     const model = addServerViewModel({
       state: {
         ...readyWslState,
