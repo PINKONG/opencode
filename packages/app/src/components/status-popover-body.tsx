@@ -105,10 +105,13 @@ async function copyServerAccessUrl(
   platform: ReturnType<typeof usePlatform>,
   conn: ServerConnection.Any,
 ) {
-  const url =
+  const lanUrl =
     conn.type === "sidecar" && conn.variant === "base"
-      ? ((await platform.getSidecarLanStatus?.().catch(() => undefined))?.accessUrl ?? buildServerAccessUrl(conn.http))
-      : buildServerAccessUrl(conn.http)
+      ? (await platform.getSidecarLanStatus?.().catch(() => undefined))?.accessUrl
+      : undefined
+  const url = lanUrl
+    ? lanUrl
+    : buildServerAccessUrl(conn.http)
   const copied = await writeClipboard(url)
   if (!copied) {
     showToast({
