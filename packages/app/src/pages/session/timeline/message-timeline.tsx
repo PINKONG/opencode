@@ -61,6 +61,7 @@ import { shouldMarkBoundaryGesture, normalizeWheelDelta } from "@/pages/session/
 import { SessionContextUsage } from "@/components/session-context-usage"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLanguage } from "@/context/language"
+import { useServer } from "@/context/server"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { useServerSDK } from "@/context/server-sdk"
 import { usePlatform } from "@/context/platform"
@@ -72,7 +73,7 @@ import { useSync } from "@/context/sync"
 import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
 import { sessionTitle } from "@/utils/session-title"
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
-import { formatServerError } from "@/utils/server-errors"
+import { formatServerError, isLocalSessionNotFoundError, isSessionNotFoundError } from "@/utils/server-errors"
 import { safeSessionSync } from "@/utils/session-sync"
 import { makeTimer } from "@solid-primitives/timer"
 import { scheduleConnectedMeasure } from "./measure"
@@ -267,6 +268,7 @@ export function MessageTimeline(props: {
   const sync = useSync()
   const settings = useSettings()
   const tabs = useTabs()
+  const server = useServer()
   const language = useLanguage()
   const dialog = useDialog()
   const { params, sessionKey } = useSessionKey()
@@ -277,13 +279,17 @@ export function MessageTimeline(props: {
   const platform = usePlatform()
 
   const syncSessionSafe = (sessionID: string, opts?: { force?: boolean }) =>
-    safeSessionSync(() => sync().session.sync(sessionID, opts), (error) =>
+    safeSessionSync(() => sync().session.sync(sessionID, opts), (error) => {
+      if (isSessionNotFoundError(error, sessionID) || isLocalSessionNotFoundError(error, sessionID)) {
+        tabs.removeSessionTab({ server: server.key, sessionId: sessionID })
+        return
+      }
       showToast({
         variant: "error",
         title: language.t("common.requestFailed"),
         description: formatServerError(error, language.t),
-      }),
-    )
+      })
+    })
   const [listRoot, setListRoot] = createSignal<HTMLDivElement>()
   const sessionID = createMemo(() => params.id)
   const sessionStatus = createMemo(() => {

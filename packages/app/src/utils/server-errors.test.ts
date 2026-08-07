@@ -201,4 +201,15 @@ describe("isSessionNotFoundError", () => {
       ),
     ).toBe(false)
   })
+
+  test("matches a NotFoundError body with the session not-found message", () => {
+    expect(
+      isSessionNotFoundError(
+        new Error("Session not found", {
+          cause: { body: { name: "NotFoundError", data: { message: "Session not found: ses_tab" } }, status: 404 },
+        }),
+        "ses_tab",
+      ),
+    ).toBe(true)
+  })
 })

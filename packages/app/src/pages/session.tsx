@@ -213,6 +213,10 @@ function SessionErrorFallback(props: { error: unknown; sessionID?: string; serve
     if (!props.sessionID) return
     tabs.removeSessionTab({ server: props.serverKey ?? server.key, sessionId: props.sessionID })
   }
+  createEffect(() => {
+    if (!isCurrentSessionNotFoundError(props.error, props.sessionID)) return
+    closeTab()
+  })
   if (isCurrentSessionNotFoundError(props.error, props.sessionID)) {
     return (
       <div class="flex-1 min-h-0 overflow-hidden">
@@ -360,6 +364,7 @@ export default function Page() {
   const dialog = useDialog()
   const language = useLanguage()
   const sdk = useSDK()
+  const server = useServer()
   const serverSDK = useServerSDK()
   const settings = useSettings()
   const platform = usePlatform()
@@ -367,6 +372,7 @@ export default function Page() {
   const comments = useComments()
   const command = useCommand()
   const terminal = useTerminal()
+  const sessionTabs = useTabs()
   const [searchParams, setSearchParams] = useSearchParams<{ prompt?: string }>()
   const location = useLocation()
   const navigate = useNavigate()
@@ -545,7 +551,11 @@ export default function Page() {
   const activeTab = tabState.activeTab
   const activeFileTab = tabState.activeFileTab
   const revertMessageID = createMemo(() => info()?.revert?.messageID)
-  const timeline = createTimelineModel({ sessionID: () => params.id, revertMessageID })
+  const timeline = createTimelineModel({
+    sessionID: () => params.id,
+    revertMessageID,
+    onSessionNotFound: (sessionID) => sessionTabs.removeSessionTab({ server: server.key, sessionId: sessionID }),
+  })
   const historyLoading = timeline.history.loading
   const historyMore = timeline.history.more
   const lastUserMessage = timeline.lastUserMessage

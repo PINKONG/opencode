@@ -3,6 +3,7 @@ import { createMemo, createResource, onCleanup, untrack, type Accessor } from "s
 import { useServerSync } from "@/context/server-sync"
 import { useSync } from "@/context/sync"
 import { same } from "@/utils/same"
+import { isLocalSessionNotFoundError, isSessionNotFoundError } from "@/utils/server-errors"
 
 const emptyUserMessages: UserMessage[] = []
 const sessionFreshness = 15_000
@@ -10,6 +11,7 @@ const sessionFreshness = 15_000
 export function createTimelineModel(input: {
   sessionID: Accessor<string | undefined>
   revertMessageID: Accessor<string | undefined>
+  onSessionNotFound?: (sessionID: string) => void
 }) {
   const serverSync = useServerSync()
   const sync = useSync()
@@ -36,7 +38,13 @@ export function createTimelineModel(input: {
         }, 0)
       })
 
-      return sync().session.sync(id)
+      return sync().session.sync(id).catch((error) => {
+        if (isSessionNotFoundError(error, id) || isLocalSessionNotFoundError(error, id)) {
+          input.onSessionNotFound?.(id)
+          return
+        }
+        throw error
+      })
     },
   )
   const messages = createMemo(() => {
