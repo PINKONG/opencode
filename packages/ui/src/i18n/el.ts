@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict: Record<string, string> = {
+  ...en,
   "ui.sessionReview.title": "Αλλαγές συνεδρίας",
   "ui.sessionReview.title.git": "Git αλλαγές",
   "ui.sessionReview.title.branch": "Αλλαγές κλάδου",
@@ -69,7 +72,7 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.error.addCredits": "Προσθήκη πιστώσεων",
   "dialog.usageExceeded.freeTier.title": "Συμπληρώθηκε το δωρεάν όριο",
   "dialog.usageExceeded.freeTier.description":
-    "Εγγραφείτε στο OpenCode Μετάβαση για αξιόπιστη πρόσβαση στα καλύτερα μοντέλα ανοιχτού κώδικα, ξεκινώντας από 5 $/μήνα.",
+    "Εγγραφείτε στο WisCode Μετάβαση για αξιόπιστη πρόσβαση στα καλύτερα μοντέλα ανοιχτού κώδικα, ξεκινώντας από 5 $/μήνα.",
   "dialog.usageExceeded.freeTier.actionLabel": "Εγγραφή",
   "dialog.usageExceeded.accountRateLimit.title": "Συμπληρώθηκε το όριο μετάβασης",
   "dialog.usageExceeded.accountRateLimit.description":

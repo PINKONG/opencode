@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "Έλεγχος για ενημερώσεις...",
   "desktop.menu.installCli": "Εγκατάσταση CLI...",
   "desktop.menu.reloadWebview": "Επανάληψη φόρτωσης Webview",
@@ -9,12 +12,12 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Ο έλεγχος ενημέρωσης απέτυχε",
   "desktop.updater.checkFailed.message": "Απέτυχε ο έλεγχος για ενημερώσεις",
   "desktop.updater.none.title": "Δεν υπάρχει διαθέσιμη ενημέρωση",
-  "desktop.updater.none.message": "Χρησιμοποιείτε ήδη την πιο πρόσφατη έκδοση του OpenCode",
+  "desktop.updater.none.message": "Χρησιμοποιείτε ήδη την πιο πρόσφατη έκδοση του WisCode",
   "desktop.updater.downloadFailed.title": "Η ενημέρωση απέτυχε",
   "desktop.updater.downloadFailed.message": "Απέτυχε η λήψη της ενημέρωσης",
   "desktop.updater.downloaded.title": "Η ενημέρωση λήφθηκε",
   "desktop.updater.downloaded.prompt":
-    "Έχει γίνει λήψη της έκδοσης {{version}} του OpenCode. Θέλετε να την εγκαταστήσετε και να επανεκκινήσετε την εφαρμογή;",
+    "Έχει γίνει λήψη της έκδοσης {{version}} του WisCode. Θέλετε να την εγκαταστήσετε και να επανεκκινήσετε την εφαρμογή;",
   "desktop.updater.installFailed.title": "Η ενημέρωση απέτυχε",
   "desktop.updater.installFailed.message": "Αποτυχία εγκατάστασης ενημέρωσης",
   "desktop.cli.installed.title": "Το CLI εγκαταστάθηκε",

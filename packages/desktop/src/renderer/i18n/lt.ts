@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "Tikrinti, ar yra naujinimų...",
   "desktop.menu.installCli": "Įdiegti CLI...",
   "desktop.menu.reloadWebview": "Iš naujo įkelti Webview",
@@ -9,12 +12,12 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Naujinių patikrinti nepavyko",
   "desktop.updater.checkFailed.message": "Nepavyko patikrinti, ar nėra naujinimų",
   "desktop.updater.none.title": "Naujinių nėra",
-  "desktop.updater.none.message": "Jau naudojate naujausią OpenCode versiją",
+  "desktop.updater.none.message": "Jau naudojate naujausią WisCode versiją",
   "desktop.updater.downloadFailed.title": "Nepavyko atnaujinti",
   "desktop.updater.downloadFailed.message": "Nepavyko atsisiųsti naujinimo",
   "desktop.updater.downloaded.title": "Naujinimas parsiųstas",
   "desktop.updater.downloaded.prompt":
-    "OpenCode versija {{version}} atsisiųsta, ar norėtumėte ją įdiegti ir paleisti iš naujo?",
+    "WisCode versija {{version}} atsisiųsta, ar norėtumėte ją įdiegti ir paleisti iš naujo?",
   "desktop.updater.installFailed.title": "Nepavyko atnaujinti",
   "desktop.updater.installFailed.message": "Nepavyko įdiegti naujinimo",
   "desktop.cli.installed.title": "CLI įdiegtas",

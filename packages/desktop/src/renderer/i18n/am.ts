@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "ዝማኔዎችን ይመልከቱ...",
   "desktop.menu.installCli": "ጫን CLI...",
   "desktop.menu.reloadWebview": "ዳግም ጫን Webview",
@@ -9,11 +12,11 @@ export const dict = {
   "desktop.updater.checkFailed.title": "ማዘመን ቼክ አልተሳካም",
   "desktop.updater.checkFailed.message": "ዝማኔዎችን ማረጋገጥ አልተሳካም",
   "desktop.updater.none.title": "ምንም ማሻሻያ የለም",
-  "desktop.updater.none.message": "አሁን የቅርብ ጊዜውን የOpenCode ስሪት እየተጠቀሙ ነው",
+  "desktop.updater.none.message": "አሁን የቅርብ ጊዜውን የWisCode ስሪት እየተጠቀሙ ነው",
   "desktop.updater.downloadFailed.title": "ዝማኔ አልተሳካም",
   "desktop.updater.downloadFailed.message": "ዝማኔን ማውረድ አልተሳካም",
   "desktop.updater.downloaded.title": "ዝማኔው ወርዷል",
-  "desktop.updater.downloaded.prompt": "ስሪት {{version}} ከOpenCode ወርዷል፣ መጫን እና እንደገና ማስጀመር ይፈልጋሉ?",
+  "desktop.updater.downloaded.prompt": "ስሪት {{version}} ከWisCode ወርዷል፣ መጫን እና እንደገና ማስጀመር ይፈልጋሉ?",
   "desktop.updater.installFailed.title": "ዝማኔ አልተሳካም",
   "desktop.updater.installFailed.message": "ዝማኔን መጫን አልተሳካም",
   "desktop.cli.installed.title": "CLI ተጭኗል",

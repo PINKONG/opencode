@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict: Record<string, string> = {
+  ...en,
   "ui.sessionReview.title": "Seansi muudatused",
   "ui.sessionReview.title.git": "Giti muudatused",
   "ui.sessionReview.title.branch": "Haru muutused",
@@ -69,7 +72,7 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.error.addCredits": "Lisa krediite",
   "dialog.usageExceeded.freeTier.title": "Tasuta limiit on täis",
   "dialog.usageExceeded.freeTier.description":
-    "Tellige OpenCode, et saada usaldusväärne juurdepääs parimatele avatud lähtekoodiga mudelitele alates 5 dollarist kuus.",
+    "Tellige WisCode, et saada usaldusväärne juurdepääs parimatele avatud lähtekoodiga mudelitele alates 5 dollarist kuus.",
   "dialog.usageExceeded.freeTier.actionLabel": "Telli",
   "dialog.usageExceeded.accountRateLimit.title": "Go limiit on täis",
   "dialog.usageExceeded.accountRateLimit.description":

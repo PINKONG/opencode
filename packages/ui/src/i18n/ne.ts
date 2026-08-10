@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict: Record<string, string> = {
+  ...en,
   "ui.sessionReview.title": "सत्र परिवर्तन",
   "ui.sessionReview.title.git": "Git परिवर्तनहरू",
   "ui.sessionReview.title.branch": "शाखा परिवर्तन",
@@ -71,7 +74,7 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.error.addCredits": "क्रेडिटहरू थप्नुहोस्",
   "dialog.usageExceeded.freeTier.title": "नि: शुल्क सीमा पुग्यो",
   "dialog.usageExceeded.freeTier.description":
-    "OpenCode को सदस्यता लिनुहोस्, उत्कृष्ट खुला स्रोत मोडेलहरूमा भरपर्दो पहुँचको लागि जानुहोस्, $5/महिनाबाट सुरु हुँदै।",
+    "WisCode को सदस्यता लिनुहोस्, उत्कृष्ट खुला स्रोत मोडेलहरूमा भरपर्दो पहुँचको लागि जानुहोस्, $5/महिनाबाट सुरु हुँदै।",
   "dialog.usageExceeded.freeTier.actionLabel": "सदस्यता लिनुहोस्",
   "dialog.usageExceeded.accountRateLimit.title": "जाने सीमा पुग्यो",
   "dialog.usageExceeded.accountRateLimit.description":

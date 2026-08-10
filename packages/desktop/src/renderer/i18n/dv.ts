@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "އަޕްޑޭޓްސް އަށް ޗެކް ކޮށްލައްވާ...",
   "desktop.menu.installCli": "CLI އިންސްޓޯލް ކުރާށެވެ...",
   "desktop.menu.reloadWebview": "ވެބްވިއު ރީލޯޑް ކުރާށެވެ",
@@ -9,12 +12,12 @@ export const dict = {
   "desktop.updater.checkFailed.title": "އަޕްޑޭޓް ޗެކް ފެއިލްވެއްޖެ",
   "desktop.updater.checkFailed.message": "އަޕްޑޭޓްތައް ޗެކް ނުކުރެވުނެވެ",
   "desktop.updater.none.title": "އެއްވެސް އަޕްޑޭޓެއް ނުލިބެއެވެ",
-  "desktop.updater.none.message": "މިހާރުވެސް ބޭނުން ކުރަމުންދަނީ OpenCode ގެ އެންމެ ފަހުގެ ވަރޝަން އެވެ",
+  "desktop.updater.none.message": "މިހާރުވެސް ބޭނުން ކުރަމުންދަނީ WisCode ގެ އެންމެ ފަހުގެ ވަރޝަން އެވެ",
   "desktop.updater.downloadFailed.title": "އަޕްޑޭޓް ފެއިލްވެއްޖެ",
   "desktop.updater.downloadFailed.message": "އަޕްޑޭޓް ޑައުންލޯޑް ނުކުރެވުނެވެ",
   "desktop.updater.downloaded.title": "އަޕްޑޭޓް ޑައުންލޯޑް ކުރެވިއްޖެއެވެ",
   "desktop.updater.downloaded.prompt":
-    "OpenCode ގެ ވަރޝަން {{version}} ޑައުންލޯޑް ކުރެވިއްޖެ، އިންސްޓޯލްކޮށް އަލުން ލޯންޗް ކުރަން ބޭނުން ހެއްޔެވެ؟",
+    "WisCode ގެ ވަރޝަން {{version}} ޑައުންލޯޑް ކުރެވިއްޖެ، އިންސްޓޯލްކޮށް އަލުން ލޯންޗް ކުރަން ބޭނުން ހެއްޔެވެ؟",
   "desktop.updater.installFailed.title": "އަޕްޑޭޓް ފެއިލްވެއްޖެ",
   "desktop.updater.installFailed.message": "އަޕްޑޭޓް އިންސްޓޯލް ކުރަން ނާކާމިޔާބުވިއެވެ",
   "desktop.cli.installed.title": "CLI އިންސްޓޯލް ކުރެވިއްޖެއެވެ",

@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict: Record<string, string> = {
+  ...en,
   "ui.sessionReview.title": "Canvis de sessió",
   "ui.sessionReview.title.git": "Canvis de Git",
   "ui.sessionReview.title.branch": "Canvis de branca",

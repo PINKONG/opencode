@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict: Record<string, string> = {
+  ...en,
   "ui.sessionReview.title": "Նիստի փոփոխություններ",
   "ui.sessionReview.title.git": "Git փոփոխություններ",
   "ui.sessionReview.title.branch": "Ճյուղի փոփոխություններ",
@@ -69,7 +72,7 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.error.addCredits": "Ավելացնել միավորներ",
   "dialog.usageExceeded.freeTier.title": "Ազատ սահմանաչափը հասել է",
   "dialog.usageExceeded.freeTier.description":
-    "Բաժանորդագրվեք OpenCode-ին Գնացեք՝ բաց կոդով լավագույն մոդելներին հուսալի մուտք ունենալու համար՝ սկսած $5/ամսական արժեքից:",
+    "Բաժանորդագրվեք WisCode-ին Գնացեք՝ բաց կոդով լավագույն մոդելներին հուսալի մուտք ունենալու համար՝ սկսած $5/ամսական արժեքից:",
   "dialog.usageExceeded.freeTier.actionLabel": "Բաժանորդագրվել",
   "dialog.usageExceeded.accountRateLimit.title": "Գնալ սահմանաչափը հասել է",
   "dialog.usageExceeded.accountRateLimit.description":

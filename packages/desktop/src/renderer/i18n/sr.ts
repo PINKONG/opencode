@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "Проверите да ли постоје ажурирања...",
   "desktop.menu.installCli": "Инсталирај CLI...",
   "desktop.menu.reloadWebview": "Поново учитај Webview",
@@ -9,12 +12,12 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Провера ажурирања није успела",
   "desktop.updater.checkFailed.message": "Провера ажурирања није успела",
   "desktop.updater.none.title": "Ажурирање није доступно",
-  "desktop.updater.none.message": "Већ користите најновију верзију OpenCode",
+  "desktop.updater.none.message": "Већ користите најновију верзију WisCode",
   "desktop.updater.downloadFailed.title": "Ажурирање није успело",
   "desktop.updater.downloadFailed.message": "Преузимање ажурирања није успело",
   "desktop.updater.downloaded.title": "Преузето ажурирање",
   "desktop.updater.downloaded.prompt":
-    "Верзија {{version}} од OpenCode је преузета, да ли желите да је инсталирате и поново покренете?",
+    "Верзија {{version}} од WisCode је преузета, да ли желите да је инсталирате и поново покренете?",
   "desktop.updater.installFailed.title": "Ажурирање није успело",
   "desktop.updater.installFailed.message": "Инсталација ажурирања није успела",
   "desktop.cli.installed.title": "CLI Инсталиран",

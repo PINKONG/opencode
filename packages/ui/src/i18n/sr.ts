@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "ui.sessionReview.title": "Промене сесије",
   "ui.sessionReview.title.git": "Git промене",
   "ui.sessionReview.title.branch": "промене гране",

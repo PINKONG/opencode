@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "Навсозиро санҷед...",
   "desktop.menu.installCli": "Насб кунед CLI...",
   "desktop.menu.reloadWebview": "Аз нав бор кунед Webview",
@@ -9,12 +12,12 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Санҷиши навсозӣ иҷро нашуд",
   "desktop.updater.checkFailed.message": "Санҷиши навсозиҳо муяссар нашуд",
   "desktop.updater.none.title": "Навсозии дастрас нест",
-  "desktop.updater.none.message": "Шумо аллакай версияи охирини OpenCode-ро истифода мебаред",
+  "desktop.updater.none.message": "Шумо аллакай версияи охирини WisCode-ро истифода мебаред",
   "desktop.updater.downloadFailed.title": "Навсозӣ ноком шуд",
   "desktop.updater.downloadFailed.message": "Боргирии навсозӣ муваффақ нашуд",
   "desktop.updater.downloaded.title": "Навсозии зеркашӣ",
   "desktop.updater.downloaded.prompt":
-    "Версияи {{version}} аз OpenCode зеркашӣ карда шуд, оё шумо мехоҳед онро насб кунед ва аз нав оғоз кунед?",
+    "Версияи {{version}} аз WisCode зеркашӣ карда шуд, оё шумо мехоҳед онро насб кунед ва аз нав оғоз кунед?",
   "desktop.updater.installFailed.title": "Навсозӣ ноком шуд",
   "desktop.updater.installFailed.message": "Навсозӣ насб карда нашуд",
   "desktop.cli.installed.title": "CLI насб карда шуд",

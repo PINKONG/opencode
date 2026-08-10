@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "Kanna fyri dagføringum...",
   "desktop.menu.installCli": "Set upp CLI...",
   "desktop.menu.reloadWebview": "Endurlesa vevvísing",
@@ -9,12 +12,12 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Dagføringarkanningin miseydnaðist",
   "desktop.updater.checkFailed.message": "Tað eydnaðist ikki at kanna fyri dagføringum",
   "desktop.updater.none.title": "Eingin dagføring er tøk",
-  "desktop.updater.none.message": "Tú brúkar longu nýggjastu útgávuna av OpenCode.",
+  "desktop.updater.none.message": "Tú brúkar longu nýggjastu útgávuna av WisCode.",
   "desktop.updater.downloadFailed.title": "Dagføring miseydnaðist",
   "desktop.updater.downloadFailed.message": "Tað eydnaðist ikki at heinta dagføring",
   "desktop.updater.downloaded.title": "Dagføring heintað",
   "desktop.updater.downloaded.prompt":
-    "Útgáva {{version}} av OpenCode er heintað, vilt tú seta hana upp og seta hana í gongd aftur?",
+    "Útgáva {{version}} av WisCode er heintað, vilt tú seta hana upp og seta hana í gongd aftur?",
   "desktop.updater.installFailed.title": "Dagføring miseydnaðist",
   "desktop.updater.installFailed.message": "Tað eydnaðist ikki at seta upp dagføring",
   "desktop.cli.installed.title": "CLI Sett upp",

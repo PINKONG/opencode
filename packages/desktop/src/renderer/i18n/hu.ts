@@ -1,4 +1,7 @@
+import { dict as en } from "./en"
+
 export const dict = {
+  ...en,
   "desktop.menu.checkForUpdates": "Frissítések keresése...",
   "desktop.menu.installCli": "CLI telepítése...",
   "desktop.menu.reloadWebview": "A Webview újratöltése",
@@ -9,12 +12,12 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Frissítés ellenőrzése sikertelen",
   "desktop.updater.checkFailed.message": "Nem sikerült ellenőrizni a frissítéseket",
   "desktop.updater.none.title": "Nem érhető el frissítés",
-  "desktop.updater.none.message": "Már az OpenCode legújabb verzióját használja",
+  "desktop.updater.none.message": "Már az WisCode legújabb verzióját használja",
   "desktop.updater.downloadFailed.title": "Frissítés sikertelen",
   "desktop.updater.downloadFailed.message": "Nem sikerült letölteni a frissítést",
   "desktop.updater.downloaded.title": "Frissítés letöltve",
   "desktop.updater.downloaded.prompt":
-    "Az OpenCode {{version}} verziója letöltődött. Szeretné telepíteni és újraindítani az alkalmazást?",
+    "Az WisCode {{version}} verziója letöltődött. Szeretné telepíteni és újraindítani az alkalmazást?",
   "desktop.updater.installFailed.title": "Frissítés sikertelen",
   "desktop.updater.installFailed.message": "Nem sikerült telepíteni a frissítést",
   "desktop.cli.installed.title": "CLI telepítve",
