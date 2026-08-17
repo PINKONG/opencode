@@ -75,6 +75,20 @@ test("bundles the CLI outside the dev app archive", async () => {
 })
 
 for (const channel of ["beta", "prod"] as const) {
+  test(`uses the MoreCloud update provider for ${channel} builds`, async () => {
+    const previous = process.env.OPENCODE_CHANNEL
+    process.env.OPENCODE_CHANNEL = channel
+    const module = await import(`./electron-builder.config.ts?provider=${channel}`)
+    const config = module.default as Configuration
+    if (previous === undefined) delete process.env.OPENCODE_CHANNEL
+    else process.env.OPENCODE_CHANNEL = previous
+
+    expect(config.publish).toEqual({
+      provider: "generic",
+      url: `https://cloud.morewis.com/api/frontend/wiscode/updates/${channel === "prod" ? "prod" : "beta"}`,
+    })
+  })
+
   test(`does not bundle the CLI in ${channel} builds`, async () => {
     const previous = process.env.OPENCODE_CHANNEL
     process.env.OPENCODE_CHANNEL = channel

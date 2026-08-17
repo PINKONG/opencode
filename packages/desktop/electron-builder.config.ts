@@ -169,7 +169,7 @@ function getConfig() {
         appId,
         productName: "WisCode Beta",
         protocols: { name: "WisCode Beta", schemes: ["wiscode"] },
-        publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "beta" },
+        publish: { provider: "generic", url: "https://cloud.morewis.com/api/frontend/wiscode/updates/beta" },
         deb: { fpm: [metainfoFpm(appId)] },
         rpm: { packageName: "wiscode-beta", fpm: [metainfoFpm(appId)] },
       }
@@ -180,7 +180,7 @@ function getConfig() {
         appId,
         productName: "WisCode",
         protocols: { name: "WisCode", schemes: ["wiscode"] },
-        publish: { provider: "github", owner: "PINKONG", repo: "opencode", channel: "latest" },
+        publish: { provider: "generic", url: "https://cloud.morewis.com/api/frontend/wiscode/updates/prod" },
         deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
         rpm: { packageName: "wiscode", fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
       }
