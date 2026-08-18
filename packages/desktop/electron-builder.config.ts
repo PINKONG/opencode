@@ -104,6 +104,7 @@ const getBase = (appId: string): Configuration => ({
     },
   ],
   mac: {
+    artifactName: "${productName}_${version}_darwin-${arch}.${ext}",
     category: "public.app-category.developer-tools",
     icon: `resources/icons/icon.icns`,
     hardenedRuntime: true,
@@ -114,6 +115,7 @@ const getBase = (appId: string): Configuration => ({
     target: ["dmg", "zip"],
   },
   dmg: {
+    artifactName: "${productName}_${version}_${arch}.${ext}",
     sign: true,
   },
   protocols: {

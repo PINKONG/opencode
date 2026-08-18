@@ -22,7 +22,7 @@ export const dict = {
   "desktop.updater.installFailed.message": "Nem sikerült telepíteni a frissítést",
   "desktop.cli.installed.title": "CLI telepítve",
   "desktop.cli.installed.message":
-    "A CLI telepítési helye: {{path}}\n\nIndítsa újra a terminált az 'opencode' parancs használatához.",
+    "A CLI telepítési helye: {{path}}\n\nIndítsa újra a terminált az 'wiscode' parancs használatához.",
   "desktop.cli.failed.title": "A telepítés sikertelen",
   "desktop.cli.failed.message": "A CLI telepítése sikertelen: {{error}}",
 

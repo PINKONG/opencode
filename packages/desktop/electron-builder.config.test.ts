@@ -9,6 +9,14 @@ const channels = [
   { channel: "prod", appId: "ai.wiscode.desktop" },
 ] as const
 
+test("adds the platform to mac zip artifact names without changing dmg names", async () => {
+  const module = await import("./electron-builder.config.ts?mac-artifact-name")
+  const config = module.default as Configuration
+
+  expect(config.mac?.artifactName).toBe("${productName}_${version}_darwin-${arch}.${ext}")
+  expect(config.dmg?.artifactName).toBe("${productName}_${version}_${arch}.${ext}")
+})
+
 for (const channel of channels) {
   test(`uses one Linux desktop identity for ${channel.channel}`, async () => {
     const previous = process.env.OPENCODE_CHANNEL
