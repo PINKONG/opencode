@@ -11,10 +11,9 @@ const hooks = await Bun.file(hooksFile).text()
 describe("electron builder config", () => {
   test("does not point updater at upstream opencode releases", () => {
     expect(config).not.toContain('owner: "anomalyco"')
-    expect(config).toContain('owner: "PINKONG"')
-    expect(config).toContain('repo: "opencode"')
-    expect(config).toContain('channel: "latest"')
-    expect(config).toContain('channel: "beta"')
+    expect(config).toContain('provider: "generic"')
+    expect(config).toContain('url: "https://cloud.morewis.com/api/frontend/wiscode/updates/beta"')
+    expect(config).toContain('url: "https://cloud.morewis.com/api/frontend/wiscode/updates/prod"')
   })
 
   test("keeps branded nsis installer wiring", () => {
