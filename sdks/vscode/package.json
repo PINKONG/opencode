@@ -2,7 +2,7 @@
   "name": "wiscode",
   "displayName": "WisCode",
   "description": "WisCode for VS Code",
-  "version": "1.4.26",
+  "version": "1.4.27",
   "publisher": "sst-dev",
   "repository": {
     "type": "git",
