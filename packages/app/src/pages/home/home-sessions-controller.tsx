@@ -15,21 +15,18 @@ import type { LocalProject } from "@/context/layout"
 import { useLanguage } from "@/context/language"
 import { ServerConnection } from "@/context/server"
 import { sessionHasOpenTab, useTabs } from "@/context/tabs"
-import { compareSessionTime, displayName, errorMessage, projectForSession } from "@/pages/layout/helpers"
+import { errorMessage, projectForSession } from "@/pages/layout/helpers"
 import { useSessionTabAvatarState } from "@/pages/layout/project-avatar-state"
 import { pathKey } from "@/utils/path-key"
 import { showToast } from "@/utils/toast"
 import { Binary } from "@opencode-ai/core/util/binary"
 import { archiveHomeSession } from "../home-session-archive"
 import type { HomeController } from "./home-controller"
+import { buildHomeSessionRecords, type HomeSessionRecord } from "./home-session-records"
+
+export type { HomeSessionRecord } from "./home-session-records"
 
 const HOME_SESSION_LIMIT = 64
-export type HomeSessionRecord = {
-  session: Session
-  project: LocalProject
-  projectName: string
-}
-
 export type HomeSessionGroup = {
   id: "today" | "yesterday" | "older"
   title: string
@@ -245,30 +242,6 @@ export function createHomeSessionsController(home: HomeController) {
 
 function directories(project: LocalProject) {
   return [project.worktree, ...(project.sandboxes ?? [])]
-}
-
-function buildHomeSessionRecords(input: {
-  sessions: () => Session[]
-  projectDirectories: () => string[]
-  projects: () => LocalProject[]
-  projectByID: () => Map<string, LocalProject>
-}) {
-  const directories = new Set(input.projectDirectories().map(pathKey))
-  const sessions = input.sessions().filter((session) => directories.has(pathKey(session.directory)))
-  return [...new Map(sessions.map((session) => [session.id, session] as const)).values()]
-    .sort(compareSessionTime)
-    .flatMap((session) => {
-      const directory = pathKey(session.directory)
-      const project =
-        input
-          .projects()
-          .find(
-            (item) =>
-              pathKey(item.worktree) === directory || item.sandboxes?.some((sandbox) => pathKey(sandbox) === directory),
-          ) ?? projectForSession(session, input.projects(), input.projectByID())
-      if (!project) return []
-      return { session, project, projectName: displayName(project) }
-    })
 }
 
 export function homeSessionSearchKey(record: HomeSessionRecord) {
