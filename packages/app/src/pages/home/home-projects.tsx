@@ -2,7 +2,12 @@ import type { HomeProjectsController } from "./home-projects-controller"
 import { HomeProjectsView } from "./home-projects-view"
 import type { HomeScrollController } from "./home-scroll-controller"
 
-export function HomeProjects(props: { projects: HomeProjectsController; scroll: HomeScrollController }) {
+export function HomeProjects(props: {
+  projects: HomeProjectsController
+  scroll: HomeScrollController
+  knowledgeVisible: () => boolean
+  onOpenKnowledge: () => void
+}) {
   return (
     <HomeProjectsView
       language={props.projects.copy.language}
@@ -33,6 +38,8 @@ export function HomeProjects(props: { projects: HomeProjectsController; scroll: 
       onRevealProject={props.projects.project.reveal}
       onClearNotifications={props.projects.project.clearNotifications}
       onCloseProject={props.projects.project.close}
+      knowledgeVisible={props.knowledgeVisible}
+      onOpenKnowledge={props.onOpenKnowledge}
       onOpenSettings={props.projects.utility.settings}
       onOpenHelp={props.projects.utility.help}
     />

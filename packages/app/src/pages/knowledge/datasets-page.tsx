@@ -2,7 +2,6 @@ import { For, Show } from "solid-js"
 import { A } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { useSDK } from "@/context/sdk"
-import { knowledgeHref } from "./route"
 
 export function DatasetsPage(props: {
   data?: {
@@ -17,6 +16,7 @@ export function DatasetsPage(props: {
   loading: boolean
   error?: unknown
   client?: string
+  href: (dataset?: string, document?: string, client?: string) => string
 }) {
   const language = useLanguage()
   const sdk = useSDK()
@@ -36,7 +36,7 @@ export function DatasetsPage(props: {
           <For each={props.data?.datasets}>
             {(item) => (
               <A
-                href={knowledgeHref(sdk().directory, item.id, undefined, props.client)}
+                href={props.href(item.id, undefined, props.client)}
                 class="rounded-xl border border-border-weak-base bg-surface-base p-4 hover:bg-surface-raised-base-hover transition-colors"
               >
                 <div class="flex flex-col gap-2">

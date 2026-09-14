@@ -10,4 +10,13 @@ describe("app route registration", () => {
     expect(source).toContain('<Route path="/knowledge/:dataset"')
     expect(source).toContain('<Route path="/knowledge/:dataset/:document"')
   })
+
+  test("mounts new-layout knowledge routes outside the legacy directory layout", async () => {
+    const source = await appSource.text()
+
+    expect(source).toContain('<Route path="/knowledge/:dir" component={NewKnowledgeRoute} />')
+    expect(source).toContain('<Route path="/knowledge/:dir/:dataset" component={NewKnowledgeRoute} />')
+    expect(source).toContain('<Route path="/knowledge/:dir/:dataset/:document" component={NewKnowledgeRoute} />')
+    expect(source).toContain("<NewKnowledgePage />")
+  })
 })

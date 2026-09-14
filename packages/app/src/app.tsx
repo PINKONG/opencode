@@ -57,7 +57,7 @@ import { SettingsProvider, useSettings } from "@/context/settings"
 import { TabsProvider, useTabs, type DraftTab } from "@/context/tabs"
 import { SDKProvider, useSDK } from "@/context/sdk"
 import { WslServersProvider } from "@/wsl/context"
-import DirectoryLayout, { DirectoryDataProvider } from "@/pages/directory-layout"
+import DirectoryLayout, { decodeDirectory, DirectoryDataProvider } from "@/pages/directory-layout"
 import LegacyLayout from "@/pages/layout"
 import NewLayout from "@/pages/layout-new"
 import { ErrorPage } from "./pages/error"
@@ -68,8 +68,9 @@ import { createSessionLineage } from "@/pages/session/session-lineage"
 import { SessionPage, SessionRouteErrorBoundary, TargetSessionRouteContent } from "@/pages/session"
 import { NewHome } from "@/pages/home"
 import { LegacyHome } from "@/pages/home/legacy-home"
+import Knowledge from "@/pages/knowledge"
+import { NewKnowledgePage } from "@/pages/knowledge/new-layout"
 
-const Knowledge = lazy(() => import("@/pages/knowledge"))
 const NewSession = lazy(() => import("@/pages/new-session"))
 
 const SessionRoute = () => {
@@ -131,6 +132,23 @@ function TargetServerRoute(props: ParentProps) {
 const KnowledgeIndexRoute = () => <Knowledge />
 const KnowledgeDatasetRoute = () => <Knowledge />
 const KnowledgeDocumentRoute = () => <Knowledge />
+
+function NewKnowledgeRoute() {
+  const params = useParams<{ dir: string }>()
+  const directory = createMemo(() => decodeDirectory(params.dir) ?? "")
+
+  return (
+    <Show when={directory()} keyed>
+      {(directory) => (
+        <SDKProvider directory={() => directory}>
+          <DirectoryDataProvider directory={directory}>
+            <NewKnowledgePage />
+          </DirectoryDataProvider>
+        </SDKProvider>
+      )}
+    </Show>
+  )
+}
 
 const TargetSessionRoute = () => (
   <TargetServerRoute>
@@ -645,6 +663,9 @@ function Routes(props: { serverScoped?: JSX.Element }) {
       </Route>
       <Show when={settings.general.newLayoutDesigns()}>
         <Route path="/" component={NewHome} />
+        <Route path="/knowledge/:dir" component={NewKnowledgeRoute} />
+        <Route path="/knowledge/:dir/:dataset" component={NewKnowledgeRoute} />
+        <Route path="/knowledge/:dir/:dataset/:document" component={NewKnowledgeRoute} />
         <Route path="/:dir/session/:id" component={NewLayoutLegacySessionRedirect} />
         <Route path="/server/:serverKey/session/:id" component={TargetSessionRoute} />
       </Show>

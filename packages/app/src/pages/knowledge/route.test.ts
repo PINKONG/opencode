@@ -2,14 +2,36 @@ import { describe, expect, test } from "bun:test"
 import { base64Encode } from "@opencode-ai/core/util/encode"
 import {
   knowledgeActive,
+  knowledgeDirectory,
   knowledgeExitHref,
   knowledgeHref,
   knowledgeParentHref,
   knowledgeRootOnClientChange,
+  knowledgeV2ExitHref,
+  knowledgeV2Href,
+  knowledgeV2ParentHref,
   knowledgeVisible,
 } from "./route"
 
 describe("knowledge route helpers", () => {
+  test("uses the first project directory for the home rail entry", () => {
+    expect(
+      knowledgeDirectory({
+        directory: undefined,
+        projects: [{ worktree: "/workspace/first" }, { worktree: "/workspace/second" }],
+      }),
+    ).toBe("/workspace/first")
+  })
+
+  test("keeps the current directory ahead of the home project fallback", () => {
+    expect(
+      knowledgeDirectory({
+        directory: " /workspace/current ",
+        projects: [{ worktree: "/workspace/first" }],
+      }),
+    ).toBe("/workspace/current")
+  })
+
   test("builds dataset and document knowledge hrefs from directory", () => {
     const dir = "/tmp/demo"
     const slug = base64Encode(dir)
@@ -17,6 +39,19 @@ describe("knowledge route helpers", () => {
     expect(knowledgeHref(dir)).toBe(`/${slug}/knowledge`)
     expect(knowledgeHref(dir, "dataset-1")).toBe(`/${slug}/knowledge/dataset-1`)
     expect(knowledgeHref(dir, "dataset-1", "document-1")).toBe(`/${slug}/knowledge/dataset-1/document-1`)
+  })
+
+  test("builds new-layout knowledge hrefs outside the legacy directory route", () => {
+    const dir = "/tmp/demo"
+    const slug = base64Encode(dir)
+
+    expect(knowledgeV2Href(dir)).toBe(`/knowledge/${slug}`)
+    expect(knowledgeV2Href(dir, "dataset-1")).toBe(`/knowledge/${slug}/dataset-1`)
+    expect(knowledgeV2Href(dir, "dataset-1", "document-1", "maxkb-prod")).toBe(
+      `/knowledge/${slug}/dataset-1/document-1?client=maxkb-prod`,
+    )
+    expect(knowledgeV2ParentHref(dir, "dataset-1", "document-1")).toBe(`/knowledge/${slug}/dataset-1`)
+    expect(knowledgeV2ExitHref()).toBe("/")
   })
 
   test("preserves selected client in knowledge hrefs", () => {

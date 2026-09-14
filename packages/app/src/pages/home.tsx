@@ -1,4 +1,6 @@
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
+import { useNavigate } from "@solidjs/router"
+import { createMemo } from "solid-js"
 import { createHomeController } from "./home/home-controller"
 import { createHomeProjectsController } from "./home/home-projects-controller"
 import { HomeUtilityNav } from "./home/home-projects-view"
@@ -7,6 +9,8 @@ import { createHomeScrollController } from "./home/home-scroll-controller"
 import { createHomeSessionSearchController } from "./home/home-session-search-controller"
 import { createHomeSessionsController } from "./home/home-sessions-controller"
 import { HomeSessions } from "./home/home-sessions"
+import { knowledgeV2Href, knowledgeVisible } from "./knowledge/route"
+import { useKnowledgeAvailability } from "./knowledge/use-knowledge-availability"
 
 export function NewHome() {
   const home = createHomeController()
@@ -14,6 +18,19 @@ export function NewHome() {
   const sessions = createHomeSessionsController(home)
   const search = createHomeSessionSearchController(home, sessions)
   const scroll = createHomeScrollController(sessions.data.groups)
+  const navigate = useNavigate()
+  const knowledgeDir = createMemo(() => home.project.newSession()?.worktree)
+  const knowledge = useKnowledgeAvailability(knowledgeDir)
+  const showKnowledge = createMemo(() =>
+    knowledgeVisible({
+      loading: !!knowledge.isPending,
+      clients: knowledge.data?.clients ?? [],
+    }),
+  )
+  const openKnowledge = () => {
+    const dir = knowledgeDir()
+    if (dir) navigate(knowledgeV2Href(dir))
+  }
   return (
     <div
       class={`
@@ -35,10 +52,17 @@ export function NewHome() {
             lg:grid-cols-[280px_minmax(0,720px)] lg:grid-rows-1 lg:gap-8 lg:px-6
           `}
         >
-          <HomeProjects projects={projects} scroll={scroll} />
+          <HomeProjects
+            projects={projects}
+            scroll={scroll}
+            knowledgeVisible={showKnowledge}
+            onOpenKnowledge={openKnowledge}
+          />
           <HomeSessions sessions={sessions} search={search} scroll={scroll} />
           <HomeUtilityNav
             class="flex lg:hidden"
+            knowledgeVisible={showKnowledge}
+            onOpenKnowledge={openKnowledge}
             onOpenSettings={projects.utility.settings}
             onOpenHelp={projects.utility.help}
             language={projects.copy.language}

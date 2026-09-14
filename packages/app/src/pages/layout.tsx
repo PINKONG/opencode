@@ -83,7 +83,7 @@ import {
 } from "./layout/sidebar-workspace"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
-import { knowledgeActive, knowledgeHref, knowledgeVisible } from "@/pages/knowledge/route"
+import { knowledgeActive, knowledgeDirectory, knowledgeHref, knowledgeVisible } from "@/pages/knowledge/route"
 import { useKnowledgeAvailability } from "@/pages/knowledge/use-knowledge-availability"
 
 export default function LegacyLayout(props: ParentProps) {
@@ -139,8 +139,10 @@ export default function LegacyLayout(props: ParentProps) {
     }
   })
   const knowledgeDir = createMemo(() => {
-    const dir = route().dir || decode64(params.dir)
-    return dir?.trim() || undefined
+    return knowledgeDirectory({
+      directory: route().dir || decode64(params.dir),
+      projects: layout.projects.list(),
+    })
   })
   const knowledge = useKnowledgeAvailability(knowledgeDir)
   const knowledgeClients = createMemo(() => knowledge.data?.clients ?? [])

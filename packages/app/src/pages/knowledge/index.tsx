@@ -5,7 +5,15 @@ import { useLanguage } from "@/context/language"
 import { useSDK } from "@/context/sdk"
 import { createKnowledgeApi } from "@/data/knowledge-api"
 import { shouldRetryMaxkb } from "@/data/maxkb"
-import { knowledgeHref, knowledgeRootOnClientChange } from "./route"
+import {
+  knowledgeExitHref,
+  knowledgeHref,
+  knowledgeParentHref,
+  knowledgeRootOnClientChange,
+  knowledgeV2ExitHref,
+  knowledgeV2Href,
+  knowledgeV2ParentHref,
+} from "./route"
 import { loadDatasets, selectKnowledgeClient } from "./datasets"
 import { DatasetsPage } from "./datasets-page"
 import { DocumentsPage } from "./documents"
@@ -13,7 +21,7 @@ import { KnowledgeHeader } from "./header"
 import { ParagraphsPage } from "./paragraphs"
 import { useKnowledgeAvailability } from "./use-knowledge-availability"
 
-export default function KnowledgePage() {
+export default function KnowledgePage(props: { newLayout?: boolean }) {
   const params = useParams()
   const [query] = useSearchParams<{ client?: string }>()
   const language = useLanguage()
@@ -25,6 +33,14 @@ export default function KnowledgePage() {
   const clients = createMemo(() => availability.data?.clients ?? [])
   const [selected, setSelected] = createSignal<string>()
   const client = createMemo(() => selectKnowledgeClient(clients(), selected()))
+  const href = (dataset?: string, document?: string, client?: string) =>
+    props.newLayout
+      ? knowledgeV2Href(sdk().directory, dataset, document, client)
+      : knowledgeHref(sdk().directory, dataset, document, client)
+  const parentHref = (dataset?: string, document?: string, client?: string) =>
+    props.newLayout
+      ? knowledgeV2ParentHref(sdk().directory, dataset, document, client)
+      : knowledgeParentHref(sdk().directory, dataset, document, client)
   const api = createMemo(() => (client() ? createKnowledgeApi(sdk().client, client()!) : undefined))
   const datasets = createQuery(() => ({
     enabled: !dataset() && !document() && !!client(),
@@ -68,6 +84,9 @@ export default function KnowledgePage() {
         datasetName={datasetName()}
         document={document()}
         client={client()}
+        href={href}
+        parentHref={parentHref}
+        exitHref={props.newLayout ? knowledgeV2ExitHref() : knowledgeExitHref(sdk().directory)}
       />
       <Show when={!dataset() && !document() && clients().length > 1}>
         <div class="flex flex-col gap-2">
@@ -83,7 +102,7 @@ export default function KnowledgePage() {
             onChange={(event) => {
               const value = event.currentTarget.value
               setSelected(value || undefined)
-              navigate(knowledgeRootOnClientChange(sdk().directory))
+              navigate(props.newLayout ? knowledgeV2Href(sdk().directory) : knowledgeRootOnClientChange(sdk().directory))
             }}
           >
             <option value="">{language.t("knowledge.client.placeholder")}</option>
@@ -99,12 +118,13 @@ export default function KnowledgePage() {
           loading={!!datasets.isPending}
           error={datasets.error}
           client={client()}
+          href={href}
         />
       </Show>
       <Show when={dataset()}>
         <Show when={!document()}>
           <Show when={client()} keyed>
-            {(client) => <DocumentsPage client={client} dataset={dataset()!} />}
+            {(client) => <DocumentsPage client={client} dataset={dataset()!} href={href} />}
           </Show>
         </Show>
       </Show>

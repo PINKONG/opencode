@@ -15,11 +15,14 @@ import {
   shouldAppendDocumentPage,
 } from "./document-list"
 import { documentView } from "./documents-view"
-import { knowledgeHref } from "./route"
 
 const retry = (count: number, err: unknown) => shouldRetryMaxkb({ count, err })
 
-export function DocumentsPage(props: { client: string; dataset: string }) {
+export function DocumentsPage(props: {
+  client: string
+  dataset: string
+  href: (dataset?: string, document?: string, client?: string) => string
+}) {
   const language = useLanguage()
   const sdk = useSDK()
   const [search, setSearch] = createSignal("")
@@ -146,7 +149,7 @@ export function DocumentsPage(props: { client: string; dataset: string }) {
           <For each={docs().records}>
             {(item) => (
               <A
-                href={knowledgeHref(sdk().directory, props.dataset, item.id, props.client)}
+                href={props.href(props.dataset, item.id, props.client)}
                 class="block rounded-lg border border-border-weak-base px-4 py-3 hover:bg-surface-raised-base-hover transition-colors"
               >
                 <div class="text-14-medium text-text-strong">{item.name}</div>

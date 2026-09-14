@@ -1,18 +1,9 @@
-import { describe, expect, test } from "bun:test"
-import { knowledgeCrumbs } from "./route"
+import { expect, test } from "bun:test"
 
-describe("knowledge header helpers", () => {
-  test("uses dataset name instead of current page title in breadcrumb", () => {
-    const out = knowledgeCrumbs({
-      root: "Knowledge",
-      dataset: "dataset-1",
-      datasetName: "Industrial KB",
-      document: "document-1",
-      documentLabel: "Document paragraphs",
-      dir: "/tmp/demo",
-      client: "maxkb-prod",
-    })
+test("uses translated knowledge navigation labels", async () => {
+  const source = await Bun.file(new URL("../../i18n/zh.ts", import.meta.url)).text()
 
-    expect(out.map((item) => item.label)).toEqual(["Knowledge", "Industrial KB", "Document paragraphs"])
-  })
+  expect(source).toContain('"sidebar.knowledge": "知识库"')
+  expect(source).toContain('"knowledge.page.root": "知识库"')
+  expect(source).toContain('"knowledge.nav.exit": "退出知识库"')
 })
