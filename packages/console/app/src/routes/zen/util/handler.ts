@@ -51,7 +51,7 @@ import { countryFromRequest, isModelCountryRestricted } from "~/lib/request-coun
 import { isPeakPricing } from "./pricing"
 import { prepareRequestBody } from "./requestBody"
 import { requiresGoTrainingConsent } from "./trainingConsent"
-import { proxyInference } from "~/lib/inference-proxy"
+import { inferenceUnavailable, proxyInference } from "~/lib/inference-proxy"
 
 type ZenData = Awaited<ReturnType<typeof ZenData.list>>
 type PreparedBody = Awaited<ReturnType<typeof prepareRequestBody>>
@@ -103,22 +103,22 @@ export async function handler(
     const rawZenApiKey = opts.parseApiKey(input.request.headers)
     const zenApiKey = rawZenApiKey === "public" ? undefined : rawZenApiKey
     const zenData = ZenData.list(opts.modelList)
-    if (opts.modelList === "full" && model) {
+    if (model) {
       // Read routing metadata without running legacy model, auth, or balance checks.
       const configured = zenData.models[model]
       const entry = Array.isArray(configured)
         ? configured.find((entry) => entry.formatFilter === opts.format)
         : configured
       const response = await proxyInference(input.request, {
-        provider: entry?.byokProvider,
-        model: entry?.providers.find((provider) => provider.id === entry.byokProvider)?.model,
+        provider: opts.modelList === "full" ? entry?.byokProvider : undefined,
+        model:
+          opts.modelList === "full"
+            ? entry?.providers.find((provider) => provider.id === entry.byokProvider)?.model
+            : undefined,
         body: (providerModel) => requestBody?.stream(providerModel ?? model, false) ?? body,
       }).catch(() => {
         void (requestBody ? requestBody.cancel() : body.cancel()).catch(() => {})
-        return Response.json(
-          { error: { type: "api_error", message: "Inference routing is unavailable. Please retry later." } },
-          { status: 503, headers: { "Cache-Control": "no-store" } },
-        )
+        return inferenceUnavailable()
       })
       if (response) return response
     }
@@ -253,6 +253,8 @@ export async function handler(
           })
           if (isNewInference) {
             headers.set("x-zen-model", model)
+            if (opts.modelList === "lite")
+              headers.set("x-zen-billing-source", billingSource === "lite" ? "go" : "credit")
           }
           headers.delete("host")
           headers.delete("content-length")
@@ -262,6 +264,7 @@ export async function handler(
             headers.delete("x-opencode-client")
             headers.delete("x-opencode-request")
             headers.delete("x-zen-model")
+            headers.delete("x-zen-billing-source")
           }
           return headers
         })(),
