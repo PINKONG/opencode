@@ -57,6 +57,7 @@ export interface Settings {
 export const monoDefault = "System Mono"
 export const sansDefault = "System Sans"
 export const terminalDefault = "JetBrainsMono Nerd Font Mono"
+export const showStatusDefault = true
 const legacyNewLayoutDesignsDefault = import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"
 export const newLayoutDesignsDefault = true
 // Existing users can switch layouts until local midnight on this date. Set new Date(YYYY, M-1, D) to show.
@@ -188,7 +189,7 @@ const defaultSettings: Settings = {
     showFileTree: false,
     showNavigation: false,
     showSearch: false,
-    showStatus: false,
+    showStatus: showStatusDefault,
     showTerminal: false,
     showReasoningSummaries: false,
     shellToolPartsExpanded: false,

@@ -8,6 +8,7 @@ import {
   newLayoutDesignsDefault,
   nextSunsetCheckDelay,
   resolveNewLayoutDesigns,
+  showStatusDefault,
   shouldDisplayTabsToast,
   shouldEnableNewLayout,
 } from "./settings"
@@ -25,6 +26,12 @@ describe("agent visibility", () => {
   test("preserves the preference after initialization", () => {
     expect(initialAgentVisibility(true, true, "1.18.8")).toBeUndefined()
     expect(initialAgentVisibility(true, false)).toBeUndefined()
+  })
+})
+
+describe("server status visibility", () => {
+  test("shows the server status button by default", () => {
+    expect(showStatusDefault).toBe(true)
   })
 })
 

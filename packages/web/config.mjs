@@ -16,6 +16,6 @@ export default {
   discord: pick("WISCODE_DISCORD_URL", "https://opencode.ai/discord"),
   headerLinks: [
     { name: "app.header.home", url: "/" },
-    { name: "app.header.docs", url: "/docs/" },
+    { name: "app.header.docs", url: "/v2/docs" },
   ],
 }
