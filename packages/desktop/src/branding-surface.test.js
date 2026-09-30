@@ -45,7 +45,7 @@ describe("desktop branding surface", () => {
     expect(publish).toContain("https://github.com/PINKONG/opencode/releases/download/")
     expect(publish).not.toContain("ghcr.io/anomalyco/opencode")
     expect(publish).not.toContain("https://github.com/anomalyco/opencode/releases/download/")
-    expect(electronCfg).toContain('appId: "ai.wiscode.desktop"')
+    expect(electronCfg).toContain('prod: "ai.wiscode.desktop"')
     expect(electronCfg).not.toContain('appId: "ai.opencode.desktop"')
   })
 })
