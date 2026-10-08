@@ -50,3 +50,4 @@ packages/desktop/src-tauri/gen/schemas/acl-manifests.json
 /packages/desktop/resources/ripgrep-cache
 packages/desktop/resources/rg.exe
 packages/desktop/resources/rg
+/artifacts/
