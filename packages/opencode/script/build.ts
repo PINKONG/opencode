@@ -245,6 +245,7 @@ for (const item of targets) {
   })
 
   const binaryPath = `dist/${name}/bin/${cli}`
+  // Embedding the bundle invalidates the linker's ad-hoc signature on macOS.
   if (item.os === "darwin" && process.platform === "darwin") {
     await $`codesign --remove-signature ${binaryPath}`.nothrow()
     console.log(`Ad-hoc signing ${binaryPath}`)
