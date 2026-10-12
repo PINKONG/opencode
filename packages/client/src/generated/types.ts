@@ -482,6 +482,133 @@ export type SessionsPromptOutput = {
   }
 }["data"]
 
+export type SessionsCommandInput = {
+  readonly sessionID: { readonly sessionID: string }["sessionID"]
+  readonly id?: {
+    readonly id?: string | null
+    readonly command: string
+    readonly arguments?: string | null
+    readonly files?: ReadonlyArray<{
+      readonly uri: string
+      readonly name?: string
+      readonly description?: string
+      readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+    }> | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly resume?: boolean | null
+  }["id"]
+  readonly command: {
+    readonly id?: string | null
+    readonly command: string
+    readonly arguments?: string | null
+    readonly files?: ReadonlyArray<{
+      readonly uri: string
+      readonly name?: string
+      readonly description?: string
+      readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+    }> | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly resume?: boolean | null
+  }["command"]
+  readonly arguments?: {
+    readonly id?: string | null
+    readonly command: string
+    readonly arguments?: string | null
+    readonly files?: ReadonlyArray<{
+      readonly uri: string
+      readonly name?: string
+      readonly description?: string
+      readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+    }> | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly resume?: boolean | null
+  }["arguments"]
+  readonly files?: {
+    readonly id?: string | null
+    readonly command: string
+    readonly arguments?: string | null
+    readonly files?: ReadonlyArray<{
+      readonly uri: string
+      readonly name?: string
+      readonly description?: string
+      readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+    }> | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly resume?: boolean | null
+  }["files"]
+  readonly agent?: {
+    readonly id?: string | null
+    readonly command: string
+    readonly arguments?: string | null
+    readonly files?: ReadonlyArray<{
+      readonly uri: string
+      readonly name?: string
+      readonly description?: string
+      readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+    }> | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly resume?: boolean | null
+  }["agent"]
+  readonly model?: {
+    readonly id?: string | null
+    readonly command: string
+    readonly arguments?: string | null
+    readonly files?: ReadonlyArray<{
+      readonly uri: string
+      readonly name?: string
+      readonly description?: string
+      readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+    }> | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly resume?: boolean | null
+  }["model"]
+  readonly resume?: {
+    readonly id?: string | null
+    readonly command: string
+    readonly arguments?: string | null
+    readonly files?: ReadonlyArray<{
+      readonly uri: string
+      readonly name?: string
+      readonly description?: string
+      readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+    }> | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly resume?: boolean | null
+  }["resume"]
+}
+
+export type SessionsCommandOutput = {
+  readonly data: {
+    readonly admittedSeq: number
+    readonly id: string
+    readonly sessionID: string
+    readonly prompt: {
+      readonly text: string
+      readonly files?: ReadonlyArray<{
+        readonly uri: string
+        readonly mime: string
+        readonly name?: string
+        readonly description?: string
+        readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+      }>
+      readonly agents?: ReadonlyArray<{
+        readonly name: string
+        readonly source?: { readonly start: number; readonly end: number; readonly text: string }
+      }>
+    }
+    readonly delivery: "steer" | "queue"
+    readonly timeCreated: number
+    readonly promotedSeq?: number
+  }
+}["data"]
+
 export type SessionsCompactInput = { readonly sessionID: { readonly sessionID: string }["sessionID"] }
 
 export type SessionsCompactOutput = void
@@ -2511,6 +2638,7 @@ export type CommandsListOutput = {
     readonly name: string
     readonly template: string
     readonly description?: string
+    readonly source?: "command" | "skill"
     readonly agent?: string
     readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string }
     readonly subtask?: boolean

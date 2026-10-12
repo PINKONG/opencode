@@ -101,6 +101,7 @@ type RunFooterViewProps = {
   onBackground?: () => void
   onEditorOpen: (input: { value: string }) => Promise<string | undefined>
   onInputClear: () => void
+  onSlashOpen?: () => void
   onExitRequest?: () => boolean
   onRequestExit?: (fn: (() => boolean) | undefined) => void
   onExit: () => void
@@ -377,6 +378,7 @@ export function RunFooterView(props: RunFooterViewProps) {
     onExitRequest: props.onExitRequest,
     onExit: props.onExit,
     onSkillMenu: openSkillMenu,
+    onSlashOpen: props.onSlashOpen,
     onRows: props.onRows,
     onStatus: props.onStatus,
   })

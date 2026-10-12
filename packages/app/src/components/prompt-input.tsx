@@ -28,6 +28,7 @@ import {
 import { useLayout } from "@/context/layout"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
+import { loadCommands } from "@/context/global-sync/bootstrap"
 import { useComments } from "@/context/comments"
 import { Button } from "@opencode-ai/ui/button"
 import { DockShellForm, DockTray } from "@opencode-ai/ui/dock-surface"
@@ -709,7 +710,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       title: cmd.name,
       description: cmd.description,
       type: "custom" as const,
-      // source: cmd.source,
+      source: cmd.source,
     }))
 
     return [...custom, ...builtin]
@@ -1004,6 +1005,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         atOnInput(atMatch[1])
         setStore({ popover: "at", slashMenu: false, slashMenuQuery: "" })
       } else if (slashMatch) {
+        if (store.popover !== "slash")
+          void loadCommands(sdk().directory, sdk().api.command, sdk().client, sdk().protocol)
+            .then((commands) => sync().set("command", commands))
+            .catch(() => {})
         slashOnInput(slashMatch[1])
         setStore({ popover: "slash", slashMenu: false, slashMenuQuery: "" })
       } else {

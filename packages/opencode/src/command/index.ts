@@ -11,6 +11,7 @@ import PROMPT_REVIEW from "./template/review.txt"
 import PROMPT_BMAD_INIT from "./template/bmad-init.txt"
 import { LegacyEvent } from "@opencode-ai/schema/legacy-event"
 import { Location } from "@opencode-ai/core/location"
+import { BMADManifest } from "@opencode-ai/core/bmad/manifest"
 
 type State = {
   commands: Record<string, Info>
@@ -50,6 +51,7 @@ export const Default = {
 } as const
 
 export interface Interface {
+  readonly reload: () => Effect.Effect<void>
   readonly get: (name: string) => Effect.Effect<Info | undefined>
   readonly list: () => Effect.Effect<Info[]>
 }
@@ -138,7 +140,7 @@ const layer = Layer.effect(
         const dir = item.location === "<built-in>" ? undefined : path.dirname(item.location)
         commands[item.name] = {
           name: item.name,
-          description: item.description,
+          description: item.description?.replace(/\s+/g, " ").trim(),
           source: "skill",
           get template() {
             if (!dir) return item.content
@@ -153,24 +155,41 @@ const layer = Layer.effect(
         }
       }
 
+      if (commands.bmad?.source === "skill" && !commands["bmad-help"]) {
+        commands["bmad-help"] = { ...commands.bmad, name: "bmad-help" }
+      }
+
       return {
         commands,
       }
     })
 
     const state = yield* InstanceState.make<State>((ctx) => init(ctx))
+    const watchers = new Map<string, ReturnType<typeof BMADManifest.watch>>()
+
+    const refresh = Effect.fn("Command.refreshBMAD")(function* () {
+      const ctx = yield* InstanceState.context
+      const project = Location.projectDirectory(ctx.directory, ctx.worktree)
+      const watch = watchers.get(project) ?? BMADManifest.watch(project)
+      watchers.set(project, watch)
+      if (!(yield* Effect.promise(() => watch(true)))) return
+      yield* skill.reload()
+      yield* InstanceState.invalidate(state)
+    })
 
     const get = Effect.fn("Command.get")(function* (name: string) {
+      yield* refresh()
       const s = yield* InstanceState.get(state)
       return s.commands[name]
     })
 
     const list = Effect.fn("Command.list")(function* () {
+      yield* refresh()
       const s = yield* InstanceState.get(state)
       return Object.values(s.commands)
     })
 
-    return Service.of({ get, list })
+    return Service.of({ reload: () => InstanceState.invalidate(state), get, list })
   }),
 )
 

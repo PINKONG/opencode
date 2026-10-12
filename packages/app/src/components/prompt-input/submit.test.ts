@@ -135,6 +135,7 @@ beforeAll(async () => {
   mock.module("@opencode-ai/ui/toast", () => ({
     Toast: { Region: () => null },
     showToast: () => 0,
+    toaster: { dismiss: () => undefined },
   }))
 
   mock.module("@opencode-ai/core/util/encode", () => ({
@@ -531,6 +532,20 @@ describe("prompt submit worktree selection", () => {
       },
     ])
     expect(serverSessionSyncs).toBe(0)
+
+    commands.push({ name: "bmad-agent-analyst" })
+    promptValue = [{ type: "text", content: "/bmad-agent-analyst research topic", start: 0, end: 34 }]
+    await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
+
+    expect(sentCommands[1]).toEqual({
+      sessionID: "session-1",
+      id: expect.stringMatching(/^msg_/),
+      command: "bmad-agent-analyst",
+      arguments: "research topic",
+      agent: "agent",
+      model: { id: "model", providerID: "provider", variant: "high" },
+      files: [],
+    })
   })
 
   test("uses an injected model selection", async () => {

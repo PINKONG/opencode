@@ -654,6 +654,11 @@ export function PromptInputV2Popover(props: {
               <div class="flex min-w-0 flex-1 items-center gap-2">
                 <PromptInputV2SuggestionIcon item={item} />
                 <span class="shrink-0 text-v2-text-text-base">{item.label}</span>
+                <Show when={item.badge}>
+                  <span class="shrink-0 rounded-sm bg-v2-overlay-simple-overlay-hover px-1.5 py-0.5 text-[11px] text-v2-text-text-muted">
+                    {item.badge}
+                  </span>
+                </Show>
                 <Show when={item.description}>
                   <span class="min-w-0 truncate text-v2-text-text-muted">{item.description}</span>
                 </Show>

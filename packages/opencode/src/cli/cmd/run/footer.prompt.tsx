@@ -51,6 +51,10 @@ type SlashOption = RunFooterMenuItem & {
   action?: "skill-menu" | "editor"
 }
 
+export function visibleSlashCommand(item: Pick<RunCommand, "name" | "source">) {
+  return item.source !== "skill" || item.name === "bmad" || item.name.startsWith("bmad-")
+}
+
 type PromptOption = Auto | SlashOption
 
 type MenuMode = false | "mention" | "slash"
@@ -76,6 +80,7 @@ type PromptInput = {
   onExitRequest?: () => boolean
   onExit: () => void
   onSkillMenu: () => void
+  onSlashOpen?: () => void
   onRows: (rows: number) => void
   onStatus: (text: string) => void
 }
@@ -438,7 +443,7 @@ export function createPromptState(input: PromptInput): PromptState {
           ]
         : []),
       ...(input.commands() ?? [])
-        .filter((item) => item.source !== "skill" && !hidden.has(item.name))
+        .filter((item) => visibleSlashCommand(item) && !hidden.has(item.name))
         .map(
           (item) =>
             ({
@@ -657,6 +662,7 @@ export function createPromptState(input: PromptInput): PromptState {
     }
 
     if (slash !== undefined) {
+      input.onSlashOpen?.()
       setAt(0)
       menu.reset()
       setMode("slash")

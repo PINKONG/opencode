@@ -223,6 +223,30 @@ export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S>(sessionLo
         ),
     )
     .add(
+      HttpApiEndpoint.post("session.command", "/api/session/:sessionID/command", {
+        params: { sessionID: Session.ID },
+        payload: Schema.Struct({
+          id: SessionMessage.ID.pipe(Schema.optional),
+          command: Schema.String,
+          arguments: Schema.String.pipe(Schema.optional),
+          files: Schema.Array(PromptInput.FileAttachment).pipe(Schema.optional),
+          agent: Agent.ID.pipe(Schema.optional),
+          model: Model.Ref.pipe(Schema.optional),
+          resume: Schema.Boolean.pipe(Schema.optional),
+        }),
+        success: Schema.Struct({ data: SessionInput.Admitted }),
+        error: [InvalidRequestError, ConflictError, SessionNotFoundError],
+      })
+        .middleware(sessionLocationMiddleware)
+        .annotateMerge(
+          OpenApi.annotations({
+            identifier: "v2.session.command",
+            summary: "Run command",
+            description: "Resolve the current command server-side and durably admit its expanded prompt.",
+          }),
+        ),
+    )
+    .add(
       HttpApiEndpoint.post("session.compact", "/api/session/:sessionID/compact", {
         params: { sessionID: Session.ID },
         success: HttpApiSchema.NoContent,

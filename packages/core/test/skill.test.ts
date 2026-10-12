@@ -39,6 +39,30 @@ description: ${description}
 }
 
 describe("SkillV2", () => {
+  it.live("refreshes project skills after a ready BMAD manifest appears", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const root = path.join(tmp.path, ".agents", "skills")
+          yield* Effect.promise(() => fs.mkdir(root, { recursive: true }))
+          const skill = yield* SkillV2.Service
+          yield* skill.transform((draft) => draft.source({ type: "directory", path: AbsolutePath.make(root) }))
+          expect((yield* skill.list()).some((item) => item.name === "bmad")).toBe(false)
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(root, "bmad"))
+            await write(root, "bmad", "BMAD help")
+            await fs.mkdir(path.join(tmp.path, ".opencode"))
+            await fs.writeFile(path.join(tmp.path, ".opencode", "bmad-managed.json"), '{"phase":"ready"}')
+          })
+          expect((yield* skill.list()).some((item) => item.name === "bmad")).toBe(true)
+        }),
+      ),
+    ),
+  )
+
   it.live("registers sources and resolves later source precedence", () =>
     Effect.acquireRelease(
       Effect.promise(() => tmpdir()),

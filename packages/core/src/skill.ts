@@ -11,6 +11,7 @@ import { PermissionV2 } from "./permission"
 import { AbsolutePath } from "./schema"
 import { SkillDiscovery } from "./skill/discovery"
 import { State } from "./state"
+import { BMADManifest } from "./bmad/manifest"
 
 export const DirectorySource = Skill.DirectorySource
 export type DirectorySource = Skill.DirectorySource
@@ -49,6 +50,7 @@ export type Draft = {
 export interface Interface extends State.Transformable<Draft> {
   readonly sources: () => Effect.Effect<Source[]>
   readonly list: () => Effect.Effect<Info[]>
+  readonly refreshBMAD: (project: string, force?: boolean) => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/Skill") {}
@@ -107,8 +109,31 @@ const layer = Layer.effect(
     // QUESTION(Dax): Should local skill sources invalidate on filesystem watch
     // events, following the reload policy chosen for other context sources?
     const cache = new Map<string, Info[]>()
+    const watchers = new Map<string, ReturnType<typeof BMADManifest.watch>>()
+    const refreshBMAD = Effect.fn("SkillV2.refreshBMAD")(function* (project: string, force = false) {
+      const watch = watchers.get(project) ?? BMADManifest.watch(project)
+      watchers.set(project, watch)
+      if (!(yield* Effect.promise(() => watch(force)))) return
+      cache.delete(
+        Source.key(
+          DirectorySource.make({ type: "directory", path: AbsolutePath.make(path.join(project, ".agents", "skills")) }),
+        ),
+      )
+    })
     const list = Effect.fn("SkillV2.list")(function* () {
       const skills = new Map<string, Info>()
+      yield* Effect.forEach(
+        state
+          .get()
+          .sources.filter(
+            (source): source is DirectorySource =>
+              source.type === "directory" &&
+              path.basename(source.path) === "skills" &&
+              path.basename(path.dirname(source.path)) === ".agents",
+          ),
+        (source) => refreshBMAD(path.dirname(path.dirname(source.path))),
+        { discard: true },
+      )
       for (const source of state.get().sources) {
         const key = Source.key(source)
         const loaded = cache.get(key) ?? (yield* load(source))
@@ -120,11 +145,16 @@ const layer = Layer.effect(
 
     return Service.of({
       transform: state.transform,
-      reload: state.reload,
+      reload: () =>
+        Effect.gen(function* () {
+          yield* state.reload()
+          cache.clear()
+        }),
       sources: Effect.fn("SkillV2.sources")(function* () {
         return state.get().sources
       }),
       list,
+      refreshBMAD,
     })
   }),
 )
