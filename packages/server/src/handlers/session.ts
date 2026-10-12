@@ -1,10 +1,14 @@
 import { SessionV2 } from "@opencode-ai/core/session"
+import { CommandV2 } from "@opencode-ai/core/command"
+import { SkillV2 } from "@opencode-ai/core/skill"
+import { AgentV2 } from "@opencode-ai/core/agent"
 import { DateTime, Effect, Stream } from "effect"
 import { HttpApiBuilder, HttpApiSchema } from "effect/unstable/httpapi"
 import { Api } from "../api"
 import { SessionsCursor } from "@opencode-ai/protocol/groups/session"
 import {
   ConflictError,
+  InvalidRequestError,
   InvalidCursorError,
   MessageNotFoundError,
   ServiceUnavailableError,
@@ -12,6 +16,7 @@ import {
   UnknownError,
 } from "@opencode-ai/protocol/errors"
 import { AbsolutePath } from "@opencode-ai/core/schema"
+import { Location } from "@opencode-ai/core/location"
 
 const DefaultSessionsLimit = 50
 const DefaultSessionHistoryLimit = 50
@@ -161,6 +166,93 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
                   Effect.fail(
                     new ConflictError({
                       message: `Prompt message ID conflicts with an existing durable record: ${error.messageID}`,
+                      resource: error.messageID,
+                    }),
+                  ),
+                ),
+              ),
+          }
+        }),
+      )
+      .handle(
+        "session.command",
+        Effect.fn(function* (ctx) {
+          const current = yield* session
+            .get(ctx.params.sessionID)
+            .pipe(
+              Effect.catchTag("Session.NotFoundError", (error) =>
+                Effect.fail(
+                  new SessionNotFoundError({
+                    sessionID: error.sessionID,
+                    message: `Session not found: ${error.sessionID}`,
+                  }),
+                ),
+              ),
+            )
+          const location = yield* Location.Service
+          const skills = yield* SkillV2.Service
+          yield* skills.refreshBMAD(Location.projectDirectory(location.directory, location.project.directory), true)
+          const commands = yield* CommandV2.Service
+          const command = yield* commands.get(ctx.payload.command)
+          if (!command) return yield* new InvalidRequestError({ message: `Command not found: ${ctx.payload.command}` })
+          if (command.source === "skill") {
+            const agents = yield* AgentV2.Service
+            const agent = yield* agents.resolve(ctx.payload.agent ?? current.agent)
+            if (!agent) return yield* new InvalidRequestError({ message: "Selected agent is unavailable" })
+            const name = command.name === "bmad-help" ? "bmad" : command.name
+            if (!(yield* skills.list()).some((item) => item.name === name && SkillV2.available([item], agent).length))
+              return yield* new InvalidRequestError({ message: `Skill unavailable for agent: ${name}` })
+          }
+          if (ctx.payload.agent)
+            yield* session
+              .switchAgent({ sessionID: ctx.params.sessionID, agent: ctx.payload.agent })
+              .pipe(
+                Effect.catchTag("Session.NotFoundError", (error) =>
+                  Effect.fail(
+                    new SessionNotFoundError({
+                      sessionID: error.sessionID,
+                      message: `Session not found: ${error.sessionID}`,
+                    }),
+                  ),
+                ),
+              )
+          if (ctx.payload.model)
+            yield* session
+              .switchModel({ sessionID: ctx.params.sessionID, model: ctx.payload.model })
+              .pipe(
+                Effect.catchTag("Session.NotFoundError", (error) =>
+                  Effect.fail(
+                    new SessionNotFoundError({
+                      sessionID: error.sessionID,
+                      message: `Session not found: ${error.sessionID}`,
+                    }),
+                  ),
+                ),
+              )
+          return {
+            data: yield* session
+              .prompt({
+                sessionID: ctx.params.sessionID,
+                id: ctx.payload.id,
+                prompt: {
+                  text: CommandV2.expand(command.template, ctx.payload.arguments ?? ""),
+                  files: ctx.payload.files,
+                },
+                resume: ctx.payload.resume,
+              })
+              .pipe(
+                Effect.catchTag("Session.NotFoundError", (error) =>
+                  Effect.fail(
+                    new SessionNotFoundError({
+                      sessionID: error.sessionID,
+                      message: `Session not found: ${error.sessionID}`,
+                    }),
+                  ),
+                ),
+                Effect.catchTag("Session.PromptConflictError", (error) =>
+                  Effect.fail(
+                    new ConflictError({
+                      message: `Prompt message ID conflicts: ${error.messageID}`,
                       resource: error.messageID,
                     }),
                   ),

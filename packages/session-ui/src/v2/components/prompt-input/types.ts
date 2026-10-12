@@ -99,6 +99,7 @@ export type PromptInputV2Suggestion = {
   title?: string
   trigger?: string
   description?: string
+  badge?: string
   path?: string
   keybind?: string[]
   recent?: boolean

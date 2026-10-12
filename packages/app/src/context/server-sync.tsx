@@ -26,6 +26,7 @@ import {
   loadReferencesQuery,
 } from "./global-sync/bootstrap"
 import { createChildStoreManager } from "./global-sync/child-store"
+import { refreshCommandsOnIdle } from "./global-sync/command-refresh"
 import { applyDirectoryEvent, applyGlobalEvent } from "./global-sync/event-reducer"
 import { estimateRootSessionTotal, loadRootSessions, loadRootSessionsV1 } from "./global-sync/session-load"
 import { trimSessions } from "./global-sync/session-trim"
@@ -618,6 +619,12 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
         void queryClient.fetchQuery(queryOptionsApi.references(key))
       },
     })
+    if (children.active(key))
+      void refreshCommandsOnIdle(event, () =>
+        loadCommands(key, serverSDK.api.command, sdkFor(key), serverSDK.protocol)
+          .then((commands) => setStore("command", commands))
+          .catch(() => {}),
+      )
   })
 
   onCleanup(unsub)

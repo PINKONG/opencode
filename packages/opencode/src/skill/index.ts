@@ -17,6 +17,8 @@ import { Glob } from "@opencode-ai/core/util/glob"
 import { Discovery } from "./discovery"
 import { isRecord } from "@/util/record"
 import { escapeHtml } from "@/util/html"
+import { BMADManifest } from "@opencode-ai/core/bmad/manifest"
+import { Location } from "@opencode-ai/core/location"
 
 const CLAUDE_EXTERNAL_DIR = ".claude"
 const AGENTS_EXTERNAL_DIR = ".agents"
@@ -95,6 +97,7 @@ type ScanState = {
 }
 
 export interface Interface {
+  readonly reload: () => Effect.Effect<void>
   readonly get: (name: string) => Effect.Effect<Info | undefined>
   readonly require: (name: string) => Effect.Effect<Info, NotFoundError>
   readonly all: () => Effect.Effect<Info[]>
@@ -285,13 +288,25 @@ const layer = Layer.effect(
         return s
       }),
     )
+    const watchers = new Map<string, ReturnType<typeof BMADManifest.watch>>()
+    const refresh = Effect.fn("Skill.refreshBMAD")(function* () {
+      const ctx = yield* InstanceState.context
+      const project = Location.projectDirectory(ctx.directory, ctx.worktree)
+      const watch = watchers.get(project) ?? BMADManifest.watch(project)
+      watchers.set(project, watch)
+      if (!(yield* Effect.promise(() => watch()))) return
+      yield* InstanceState.invalidate(discovered)
+      yield* InstanceState.invalidate(state)
+    })
 
     const get = Effect.fn("Skill.get")(function* (name: string) {
+      yield* refresh()
       const s = yield* InstanceState.get(state)
       return s.skills[name]
     })
 
     const require = Effect.fn("Skill.require")(function* (name: string) {
+      yield* refresh()
       const s = yield* InstanceState.get(state)
       const info = s.skills[name]
       if (info) return info
@@ -299,22 +314,36 @@ const layer = Layer.effect(
     })
 
     const all = Effect.fn("Skill.all")(function* () {
+      yield* refresh()
       const s = yield* InstanceState.get(state)
       return Object.values(s.skills)
     })
 
     const dirs = Effect.fn("Skill.dirs")(function* () {
+      yield* refresh()
       return (yield* InstanceState.get(discovered)).dirs
     })
 
     const available = Effect.fn("Skill.available")(function* (agent?: Agent.Info) {
+      yield* refresh()
       const s = yield* InstanceState.get(state)
       const list = Object.values(s.skills).toSorted((a, b) => a.name.localeCompare(b.name))
       if (!agent) return list
       return list.filter((skill) => Permission.evaluate("skill", skill.name, agent.permission).action !== "deny")
     })
 
-    return Service.of({ get, require, all, dirs, available })
+    return Service.of({
+      reload: () =>
+        Effect.gen(function* () {
+          yield* InstanceState.invalidate(discovered)
+          yield* InstanceState.invalidate(state)
+        }),
+      get,
+      require,
+      all,
+      dirs,
+      available,
+    })
   }),
 )
 

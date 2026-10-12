@@ -24,6 +24,7 @@ import { type ImageAttachmentPart, usePrompt } from "@/context/prompt"
 import { usePlatform } from "@/context/platform"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
+import { loadCommands } from "@/context/global-sync/bootstrap"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { showToast } from "@/utils/toast"
 import { PromptInputV2, type PromptInputV2Suggestion } from "@opencode-ai/session-ui/v2/prompt-input"
@@ -296,6 +297,7 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
       title: item.name,
       description: item.description,
       type: "custom" as const,
+      source: item.source,
     })),
     ...command.options
       .filter((item) => !item.disabled && !item.id.startsWith("suggested.") && item.slash)
@@ -315,6 +317,7 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
       trigger: item.trigger,
       title: item.title,
       description: item.description,
+      badge: "source" in item && item.source === "skill" ? language.t("prompt.slash.badge.skill") : undefined,
       keybind: command.keybindParts(item.id),
     })),
   )
@@ -409,6 +412,19 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
     },
   })
   Object.defineProperty(controller, "model", { get: () => props.controls.model })
+
+  createEffect(
+    on(
+      () => controller.state.popover.type,
+      (type, previous) => {
+        if (type !== "command-inline" && type !== "command-menu") return
+        if (previous === "command-inline" || previous === "command-menu") return
+        void loadCommands(sdk().directory, sdk().api.command, sdk().client, sdk().protocol)
+          .then((commands) => sync().set("command", commands))
+          .catch(() => {})
+      },
+    ),
+  )
 
   command.register("prompt-input", () => [
     {

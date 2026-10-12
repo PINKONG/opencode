@@ -70,6 +70,7 @@ const it = testEffect(
       Layer.succeed(
         Skill.Service,
         Skill.Service.of({
+          reload: () => Effect.void,
           get: (name) => Effect.succeed(skills.find((skill) => skill.name === name)),
           require: (name) => {
             const info = skills.find((skill) => skill.name === name)
@@ -89,20 +90,22 @@ describe("session.system", () => {
   it.effect("environment tolerates missing workspace directory when loading references", () =>
     Effect.gen(function* () {
       const prompt = yield* SystemPrompt.Service
-      const output = yield* prompt.environment({
-        providerID: "test",
-        api: { id: "test-model" },
-      } as Provider.Model).pipe(
-        Effect.provideService(InstanceRef, {
-          directory: "/tmp/wiscode-missing-workspace",
-          worktree: "/tmp/wiscode-missing-workspace",
-          project: {
-            id: "proj_missing",
+      const output = yield* prompt
+        .environment({
+          providerID: "test",
+          api: { id: "test-model" },
+        } as Provider.Model)
+        .pipe(
+          Effect.provideService(InstanceRef, {
+            directory: "/tmp/wiscode-missing-workspace",
             worktree: "/tmp/wiscode-missing-workspace",
-            vcs: "git",
-          },
-        } as InstanceContext),
-      )
+            project: {
+              id: "proj_missing",
+              worktree: "/tmp/wiscode-missing-workspace",
+              vcs: "git",
+            },
+          } as InstanceContext),
+        )
 
       expect(output.join("\n")).toContain("Working directory: /tmp/wiscode-missing-workspace")
     }),

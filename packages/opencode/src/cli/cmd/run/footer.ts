@@ -97,6 +97,7 @@ type RunFooterOptions = {
   onEditorOpen: (input: { value: string }) => Promise<string | undefined>
   onExit?: () => void
   onSubagentSelect?: (sessionID: string | undefined) => void
+  onSlashOpen?: () => void
   treeSitterClient?: TreeSitterClient
 }
 
@@ -332,6 +333,7 @@ export class RunFooter implements FooterApi {
               onBackground: options.onBackground,
               onEditorOpen: options.onEditorOpen,
               onInputClear: footer.handleInputClear,
+              onSlashOpen: options.onSlashOpen,
               onExitRequest: footer.handleExit,
               onRequestExit: footer.setRequestExitHandler,
               onExit: () => footer.close(),

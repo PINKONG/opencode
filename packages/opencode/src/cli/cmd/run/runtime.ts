@@ -362,6 +362,9 @@ async function runInteractiveRuntime(input: RunRuntimeInput, deps: RunRuntimeDep
         sessionID,
       })
     },
+    onSlashOpen: () => {
+      void loadCatalog()
+    },
   })
   const footer = shell.footer
   const rememberLocal = (commit: StreamCommit, after?: LocalReplayAnchor) => {
