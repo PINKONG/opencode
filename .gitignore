@@ -55,3 +55,5 @@ packages/desktop/resources/rg
 /packages/desktop/resources/uv-LICENSE-MIT
 /packages/desktop/resources/bmad/
 /artifacts/
+/.agents
+/_bmad
