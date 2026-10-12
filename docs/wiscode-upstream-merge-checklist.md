@@ -4,7 +4,7 @@
 
 目标只有两个：
 - 吃到上游更新
-- 不破坏 WisCode 现有品牌、配置隔离和发布链路
+- 不破坏 WisCode 现有品牌、配置隔离、BMAD 集成和发布链路
 
 开始任何一次 upstream merge 前，先通读：
 - [docs/wiscode-fork-delta.md](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-fork-delta.md)
@@ -167,6 +167,18 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 - [packages/opencode/src/project/project.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/project/project.ts) 的 project 初始化订阅逻辑没有反向要求 slash `/init` 可见
 - [packages/opencode/src/server/routes/instance/session.ts](/Volumes/EXTENSION/works/morewis/opencode/packages/opencode/src/server/routes/instance/session.ts) 与 HTTP API 兼容入口可保留，但不能等价为重新开放内置 slash command
 
+### 8. BMAD 与内嵌 uv 必须作为发行能力保留
+
+每次同步上游 OpenCode 都要保护这条跨包链路：
+- `third_party/bmad/SOURCE.json`、vendored 技能与最小补丁保持固定快照；`third_party/uv/` 的各平台离线构建归档及校验、CLI/桌面资源复制逻辑不能丢。
+- `wiscode bmad init`、`/bmad-init` 继续使用内嵌 uv，在项目 `.agents/skills/` 初始化技能，通过 `.opencode/bmad-managed.json` 管理 WisCode 拥有的文件；保留用户改动、升级冲突与删除/迁移确认语义。不要退回 `npx skills` 或系统 uv 兜底。
+- CLI 和 V2/Web 的 `/` 补全与执行继续从当前项目实际发现的 BMAD 技能派生，`/skills` 仍可访问；自定义/内置/MCP 同名命令优先，`/bmad-help` 是 `bmad` 的兼容别名，`/bmad-init` 不能被技能覆盖。执行时由服务端重解析技能并检查 agent 权限，不信任客户端缓存正文。
+- 初始化成功后，管理清单变化必须使该项目的技能和命令缓存失效；其他项目不受影响。agent shell 的 `uv run` 也必须命中内嵌 uv，而不只初始化器能找到它。
+
+高风险落点：`packages/opencode/src/bmad/`、`packages/core/src/bmad/`、`packages/opencode/src/command/index.ts`、`packages/core/src/command.ts`、`packages/server/src/handlers/session.ts`、CLI/Web 命令展示与提交、`packages/opencode/script/build.ts`、桌面构建脚本和资源配置。
+
+同步 OpenCode **不自动更新 BMAD**。不要在 merge、构建或启动时拉取 BMAD `main`；需升级时另行选择提交，运行 `script/update-bmad.ts`，审查补丁并通过 [BMAD 集成设计](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-10-bmad-integration.md)中的升级门禁。
+
 ## 合并过程中必须做的事
 
 ### 1. 冲突清完后，先找残留品牌/路径风险
@@ -185,6 +197,9 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 - `x-opencode-embed-session`
 - `Command.Default.INIT`
 - `/init`
+- `bmad-init`
+- `WISCODE_BUNDLED_UV_PATH`
+- `bmad-managed.json`
 
 ### 2. OpenAPI / SDK 改动必须成套处理
 
@@ -278,6 +293,18 @@ cd packages/opencode && bun test test/config/config.test.ts test/server/httpapi-
 cd packages/opencode && bun test test/server/httpapi-session.test.ts test/server/httpapi-instance.legacy.test.ts
 ```
 
+### 2.1 BMAD 常驻回归门禁
+
+每次上游同步都要运行 BMAD 初始化、缓存刷新和斜杠命令的聚焦测试，而不只在冲突文件包含 `bmad` 时运行：
+
+```bash
+cd packages/opencode && bun test test/bmad test/command/bmad-refresh.test.ts test/cli/run/bmad-slash.test.ts
+cd packages/core && bun test test/bmad-manifest.test.ts test/command.test.ts test/skill.test.ts
+cd packages/app && bun test --conditions=browser --preload ./happydom.ts ./src/context/global-sync/command-refresh.test.ts ./src/components/prompt-input/submit.test.ts
+```
+
+`test/bmad/vendor-update.test.ts` 还要求约定位置的本地 BMAD checkout，且端到端测试需要 uv；运行前确认前置条件，不得把缺失导致的跳过当成验收通过。若合并触及 V2 Protocol/Server 命令契约，还须从 `packages/client` 执行 `bun run generate`，并对受影响的 `core`、`protocol`、`server`、`client` 包运行 `bun typecheck`，检查生成客户端和 Web 提交路径。
+
 ### 3. 桌面端冒烟验证
 
 这一步不能省。
@@ -309,11 +336,15 @@ CLI / TUI 场景至少确认：
 - 使用 `/exit` 退出后的 epilogue ASCII logo 显示 WisCode，`Continue` 命令显示 `wiscode -s ...`
 - `packages/tui/src/logo.ts` 的主 `logo.text` 仍为 `wiscode`
 
+BMAD 场景至少在临时项目确认：`/bmad-init` 或 `wiscode bmad init --project-root <临时项目>` 返回 `ready`，生成 `.agents/skills/` 与 `_bmad/`；`/skills` 和 CLI、V2/Web 的 `/` 补全出现已安装的 BMAD 技能，`/bmad-agent-analyst` 能实际执行，`/bmad-help` 可用；重跑初始化后无需重启即可刷新入口。确认未安装的技能不出现、同名用户命令优先，并在 agent shell 中核对 `uv` 来自内嵌资源。
+
 ### 4. 构建物最小验证
 
 如果本次同步涉及桌面、CLI、更新器或安装链路，至少做一项：
 - 本机构建成功
 - 或对应平台已做一次手工验证
+
+每个待发布版本还必须检查最终 CLI 和桌面安装产物（不是仅检查源码或中间 `resources/` 目录）：目标平台的 BMAD 快照、uv 可执行文件与许可证齐全，资源解析路径正确；用产物在临时项目完成一次初始化和后续 `uv run`。Windows 需在 Windows 环境验证，不能用 macOS 交叉构建代替。离线构建不得临时下载 BMAD 或 uv；首次初始化所需 Python/依赖仍可能联网，二者不要混淆。
 
 如果本次同步涉及 sidecar embed / 浏览器访问链路，构建后额外确认：
 - `packages/desktop/out/main/chunks` 中存在 `index-*.html`
