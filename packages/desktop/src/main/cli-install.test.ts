@@ -17,8 +17,8 @@ describe("electron cli install path", () => {
     expect(src).toContain('XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? userDataPath')
     expect(src).toContain('OPENCODE_CLIENT: "desktop"')
     expect(src).toContain("WISCODE_BUNDLED_NODE_PATH")
-    expect(src).toContain("resolveBundledNodePath")
-    expect(src).toContain('join(app.getAppPath(), "resources", executable)')
+    expect(src).toContain("resolveBundledResourcePath")
+    expect(src).toContain('join(app.getAppPath(), "resources", relative)')
   })
 
   test("exposes install-cli over ipc and syncs cli on startup", () => {
@@ -32,6 +32,8 @@ describe("electron cli install path", () => {
     expect(cli).toContain('path.join(os.homedir(), ".cache", "wiscode", "bin")')
     expect(cli).not.toContain('path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "wiscode", "bin")')
     expect(cli).not.toContain("cliSyncDone")
+    expect(cli).toContain("installCliResources(resources, path.dirname(getCliInstallPath()))")
+    expect(cli).toContain("hasCliResources(path.dirname(getCliInstallPath()))")
   })
 
   test("windows installer overwrites bundled cli and repairs PATH", () => {
@@ -40,6 +42,9 @@ describe("electron cli install path", () => {
     expect(nsis).toContain('$INSTDIR\\resources\\wiscode-cli.exe')
     expect(nsis).toContain('$WisCodeCliDir\\wiscode.exe')
     expect(nsis).toContain('WriteRegExpandStr HKCU "Environment" "Path"')
+    expect(nsis).toContain(String.raw`$INSTDIR\resources\uv.exe`)
+    expect(nsis).toContain(String.raw`$INSTDIR\resources\bmad`)
+    expect(nsis).toContain(String.raw`$WisCodeCliDir\bmad`)
     expect(nsis).toContain("!macro customUnInstall")
   })
 })

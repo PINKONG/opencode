@@ -27,6 +27,8 @@ import { WebCommand } from "./cli/cmd/web"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { DbCommand } from "./cli/cmd/db"
+import { BmadCommand } from "./cli/cmd/bmad"
+import { prependBundledUvToPath } from "./bmad/resources"
 import { errorMessage } from "./util/error"
 import { isRecord } from "./util/record"
 import { PluginCommand } from "./cli/cmd/plug"
@@ -66,6 +68,7 @@ const cli = yargs(args)
     type: "boolean",
   })
   .middleware(async (opts) => {
+    prependBundledUvToPath()
     if (opts.printLogs) process.env.OPENCODE_PRINT_LOGS = "1"
     if (opts.logLevel) process.env.OPENCODE_LOG_LEVEL = opts.logLevel
     if (opts.pure) {
@@ -103,6 +106,7 @@ const cli = yargs(args)
   .command(SessionCommand)
   .command(PluginCommand)
   .command(DbCommand)
+  .command(BmadCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

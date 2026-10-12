@@ -29,6 +29,8 @@ describe("cli command branding", () => {
     expect(script).toContain('mv "$tmp_dir/wiscode-cli" "${INSTALL_DIR}/wiscode"')
     expect(script).toContain('chmod 755 "${INSTALL_DIR}/wiscode"')
     expect(script).toContain('cp "$binary_path" "${INSTALL_DIR}/wiscode"')
+    expect(script).toContain('cp "$resource_dir/$uv_name" "${INSTALL_DIR}/$uv_name"')
+    expect(script).toContain('cp -R "$resource_dir/bmad" "${INSTALL_DIR}/bmad"')
     expect(script).toContain('echo -e "wiscode')
   })
 })

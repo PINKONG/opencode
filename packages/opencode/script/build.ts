@@ -5,6 +5,7 @@ import fs from "fs"
 import path from "path"
 import { fileURLToPath } from "url"
 import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
+import { copyUvForTarget, verifyVendoredUvArchives } from "./uv-assets"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -177,6 +178,7 @@ const targets = singleFlag
     })
   : allTargets
 
+await verifyVendoredUvArchives()
 await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
@@ -243,6 +245,14 @@ for (const item of targets) {
       ...(item.os === "linux" ? { "process.env.OPENTUI_LIBC": JSON.stringify(item.abi ?? "glibc") } : {}),
     },
   })
+
+  const uvTarget = [
+    item.os === "win32" ? "windows" : item.os,
+    item.arch,
+    item.abi === "musl" ? "musl" : undefined,
+  ].filter(Boolean).join("-")
+  await copyUvForTarget(uvTarget, `dist/${name}/bin/${item.os === "win32" ? "uv.exe" : "uv"}`)
+  await fs.promises.cp(path.resolve(dir, "../../third_party/bmad"), `dist/${name}/bin/bmad`, { recursive: true })
 
   const binaryPath = `dist/${name}/bin/${cli}`
   // Embedding the bundle invalidates the linker's ad-hoc signature on macOS.

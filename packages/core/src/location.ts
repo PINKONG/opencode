@@ -1,4 +1,5 @@
 import { Context, Effect, Layer } from "effect"
+import path from "node:path"
 import { Info, Ref, response } from "@opencode-ai/schema/location"
 import { Project } from "./project"
 import { LayerNode } from "./effect/layer-node"
@@ -13,6 +14,10 @@ export interface Interface extends Info {
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Location") {}
+
+export function projectDirectory(directory: string, root: string) {
+  return root === path.parse(root).root ? directory : root
+}
 
 export const node = LayerNode.unbound(Service, tags.values.location)
 

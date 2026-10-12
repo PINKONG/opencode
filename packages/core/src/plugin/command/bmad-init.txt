@@ -1,0 +1,5 @@
+Initialize or update BMAD in the current project at `${path}`. The agent platform is fixed to WisCode/OpenCode; do not ask the user to choose one or to install BMAD or uv.
+
+Run the bundled CLI from WISCODE_CLI_PATH (or `wiscode` when running the standalone CLI): `wiscode bmad init --project-root "${path}" $ARGUMENTS`. Use the shell syntax appropriate for this OS when reading WISCODE_CLI_PATH. Never run `npx skills`, copy BMAD files yourself, or use a system uv as a fallback.
+
+Parse the command's JSON stdout. If status is `ready`, report the result. If status is `questions`, ask each question, then write the answers as JSON to a temporary file and rerun with `--interactive --answers <file>`; remove the temporary file afterward. If status is `needs-confirmation`, describe the exact proposed deletion or migration and obtain explicit approval before rerunning with `--confirm <confirmation>` (preserve the same `--interactive --answers` options). If no confirmation token is present, report that manual review is required. For `conflict` or `error`, report the paths and reason without changing the project yourself.

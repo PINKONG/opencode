@@ -100,7 +100,7 @@ const getBase = (appId: string): Configuration => ({
     {
       from: "resources/",
       to: ".",
-      filter: ["wiscode-cli", "wiscode-cli.exe", "wiscode-node", "wiscode-node.exe", "rg", "rg.exe"],
+      filter: ["wiscode-cli", "wiscode-cli.exe", "wiscode-node", "wiscode-node.exe", "rg", "rg.exe", "uv", "uv.exe", "uv-LICENSE-MIT", "bmad/**"],
     },
   ],
   mac: {

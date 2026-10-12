@@ -34,7 +34,9 @@ describe("electron builder config", () => {
   })
 
   test("ships both cli and node sidecars", () => {
-    expect(config).toContain('filter: ["wiscode-cli", "wiscode-cli.exe", "wiscode-node", "wiscode-node.exe", "rg", "rg.exe"]')
+    expect(config).toContain('filter: ["wiscode-cli", "wiscode-cli.exe", "wiscode-node", "wiscode-node.exe", "rg", "rg.exe", "uv", "uv.exe", "uv-LICENSE-MIT", "bmad/**"]')
+    expect(config).toContain('"bmad/**"')
+    expect(config).toContain('"uv.exe"')
     expect(config).toContain('"rg", "rg.exe"')
   })
 })

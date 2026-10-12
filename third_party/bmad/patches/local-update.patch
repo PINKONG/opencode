@@ -1,0 +1,36 @@
+diff --git a/skills/bmad/scripts/setup.py b/skills/bmad/scripts/setup.py
+--- a/skills/bmad/scripts/setup.py
++++ b/skills/bmad/scripts/setup.py
+@@ -1091,6 +1091,7 @@ def next_step(
+     unmet: list[dict[str, object]],
+     *,
+     update_available: bool = False,
++    local_update_available: bool = False,
+     setup_owed: bool = False,
+     module: str | None = None,
+ ) -> str | None:
+@@ -1104,6 +1105,8 @@ def next_step(
+     outdated = any(entry["state"] in UPDATE_FIXES and entry["channel"] == "skills-cli" for entry in unmet)
+     if outdated or update_available:
+         return "npx skills update"
++    if local_update_available:
++        return "wiscode bmad init"
+     if setup_owed:
+         return "bmad setup" if module is None else f"bmad setup {module}"
+     return None
+@@ -1775,7 +1778,14 @@ def status_report(
+     next_command = next_step(
+         installation.missing_records,
+         unmet,
+-        update_available="newer-available" in update_states,
++        update_available=any(
++            state == "newer-available" and not installed.parsed.update_source.startswith("file:")
++            for installed, state in zip(scoped, update_states)
++        ),
++        local_update_available=any(
++            state == "newer-available" and installed.parsed.update_source.startswith("file:")
++            for installed, state in zip(scoped, update_states)
++        ),
+         setup_owed=setup_owed,
+         module=code,
+     )

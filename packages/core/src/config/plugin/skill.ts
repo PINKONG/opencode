@@ -17,6 +17,14 @@ export const Plugin = define({
     const location = yield* Location.Service
     yield* ctx.skill.transform(
       Effect.fn(function* (draft) {
+        if (process.env.OPENCODE_DISABLE_EXTERNAL_SKILLS !== "1") {
+          draft.source(
+            SkillV2.DirectorySource.make({
+              type: "directory",
+              path: AbsolutePath.make(path.join(global.home, ".agents", "skills")),
+            }),
+          )
+        }
         const entries = yield* config.entries()
         const directories = entries.flatMap((entry) => (entry.type === "directory" ? [entry.path] : []))
         const items = entries.flatMap((entry) => (entry.type === "document" ? (entry.info.skills ?? []) : []))
@@ -43,6 +51,21 @@ export const Plugin = define({
               path: AbsolutePath.make(path.isAbsolute(expanded) ? expanded : path.join(location.directory, expanded)),
             }),
           )
+        }
+        if (process.env.OPENCODE_DISABLE_EXTERNAL_SKILLS !== "1") {
+          const roots: string[] = []
+          for (let current: string = location.directory; ; current = path.dirname(current)) {
+            roots.push(current)
+            if (current === location.project.directory || current === path.dirname(current)) break
+          }
+          for (const root of roots.reverse()) {
+            draft.source(
+              SkillV2.DirectorySource.make({
+                type: "directory",
+                path: AbsolutePath.make(path.join(root, ".agents", "skills")),
+              }),
+            )
+          }
         }
       }),
     )

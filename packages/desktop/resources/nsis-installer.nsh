@@ -37,6 +37,22 @@ Var WisCodeToken
     DetailPrint "WisCode: WARNING - wiscode-cli binary not found in $INSTDIR"
   ${EndIf}
 
+  ${If} ${FileExists} "$INSTDIR\resources\uv.exe"
+    CopyFiles /SILENT "$INSTDIR\resources\uv.exe" "$WisCodeCliDir\uv.exe"
+    CopyFiles /SILENT "$INSTDIR\resources\uv-LICENSE-MIT" "$WisCodeCliDir\uv-LICENSE-MIT"
+  ${Else}
+    DetailPrint "WisCode: WARNING - bundled uv not found in $INSTDIR\resources"
+  ${EndIf}
+  ${If} ${FileExists} "$INSTDIR\resources\bmad\SOURCE.json"
+    RMDir /r "$WisCodeCliDir\bmad"
+    ExecWait '"$SYSDIR\xcopy.exe" "$INSTDIR\resources\bmad" "$WisCodeCliDir\bmad" /E /I /Y' $0
+    ${If} $0 != 0
+      DetailPrint "WisCode: WARNING - failed to copy BMAD resources (xcopy exit $0)"
+    ${EndIf}
+  ${Else}
+    DetailPrint "WisCode: WARNING - bundled BMAD not found in $INSTDIR\resources"
+  ${EndIf}
+
   ReadRegStr $WisCodePathCurrent HKCU "Environment" "Path"
   ${If} "$WisCodePathCurrent" == ""
     WriteRegExpandStr HKCU "Environment" "Path" "$WisCodeCliDir"
@@ -60,6 +76,9 @@ Var WisCodeToken
   StrCpy $WisCodeCliDir "$PROFILE\.wiscode\bin"
   DetailPrint "WisCode: removing CLI from $WisCodeCliDir"
   Delete "$WisCodeCliDir\wiscode.exe"
+  Delete "$WisCodeCliDir\uv.exe"
+  Delete "$WisCodeCliDir\uv-LICENSE-MIT"
+  RMDir /r "$WisCodeCliDir\bmad"
   RMDir "$WisCodeCliDir"
 
   ReadRegStr $WisCodePathCurrent HKCU "Environment" "Path"

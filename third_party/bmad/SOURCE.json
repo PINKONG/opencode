@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/bmad-code-org/BMAD-METHOD",
+  "branch": "main",
+  "commit": "bda3c5929f672019b90f39a3ea27259d35d00974",
+  "version": "6.13.0-next",
+  "paths": ["LICENSE", "skills"],
+  "patches": ["patches/local-update.patch"]
+}

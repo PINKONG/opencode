@@ -42,6 +42,25 @@ describe("CommandPlugin.Plugin", () => {
         description: "review changes [commit|branch|pr], defaults to uncommitted",
         subtask: true,
       })
+      expect(yield* command.get("bmad-init")).toMatchObject({
+        name: "bmad-init",
+      })
+      expect((yield* command.get("bmad-init"))?.template).toContain("wiscode bmad init")
+      expect((yield* command.get("bmad-init"))?.template).toContain("WISCODE_CLI_PATH")
+      expect((yield* command.get("bmad-init"))?.template).toContain("--confirm")
+      expect((yield* command.get("bmad-init"))?.template).not.toContain("${path}")
+    }),
+  )
+
+  it.effect("initializes BMAD in the opened directory outside a Git project", () =>
+    Effect.gen(function* () {
+      const command = yield* CommandV2.Service
+      yield* CommandPlugin.Plugin.effect(host({
+        command: { transform: command.transform, reload: command.reload },
+      })).pipe(Effect.provideService(Location.Service,
+        Location.Service.of(location({ directory }, { projectDirectory: AbsolutePath.make("/") }))))
+
+      expect((yield* command.get("bmad-init"))?.template).toContain(`--project-root "${directory}"`)
     }),
   )
 })

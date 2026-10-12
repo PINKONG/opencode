@@ -115,6 +115,12 @@ Write-Host "==> copy sidecar"
 $resources = Join-Path $Root "packages\desktop\resources"
 New-Item -ItemType Directory -Force $resources | Out-Null
 Copy-Item $bin (Join-Path $resources "wiscode-cli.exe") -Force
+$binDir = Split-Path $bin -Parent
+Copy-Item (Join-Path $binDir "uv.exe") (Join-Path $resources "uv.exe") -Force
+Copy-Item (Join-Path $binDir "uv-LICENSE-MIT") (Join-Path $resources "uv-LICENSE-MIT") -Force
+$bmadDest = Join-Path $resources "bmad"
+New-Item -ItemType Directory -Force $bmadDest | Out-Null
+Copy-Item (Join-Path $binDir "bmad\*") $bmadDest -Recurse -Force
 Copy-Item $rg (Join-Path $resources "rg.exe") -Force
 New-Item -ItemType Directory -Force (Join-Path $Root "packages\desktop\native") | Out-Null
 

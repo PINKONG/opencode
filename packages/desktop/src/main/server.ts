@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { delimiter, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { app, utilityProcess } from "electron"
 import type { Details } from "electron"
@@ -70,18 +70,26 @@ export function setSidecarLanConfig(config: SidecarLanConfig) {
 
 export function preferAppEnv(userDataPath: string) {
   const shell = process.platform === "win32" ? null : getUserShell()
-  const bundledNode = resolveBundledNodePath()
-  Object.assign(
-    process.env,
-    mergeShellEnv(shell ? loadShellEnv(shell, getLogger()) : null, {
+  const bundledNode = resolveBundledResourcePath(process.platform === "win32" ? "wiscode-node.exe" : "wiscode-node")
+  const bundledCLI = resolveBundledResourcePath(process.platform === "win32" ? "wiscode-cli.exe" : "wiscode-cli")
+  const bundledUv = resolveBundledResourcePath(process.platform === "win32" ? "uv.exe" : "uv")
+  const bundledBMAD = resolveBundledResourcePath(join("bmad", "skills"))
+  const env = mergeShellEnv(shell ? loadShellEnv(shell, getLogger()) : null, {
       ...process.env,
       OPENCODE_EXPERIMENTAL_ICON_DISCOVERY: "true",
       OPENCODE_EXPERIMENTAL_FILEWATCHER: "true",
       OPENCODE_CLIENT: "desktop",
       XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? userDataPath,
       ...(existsSync(bundledNode) ? { WISCODE_BUNDLED_NODE_PATH: bundledNode } : {}),
-    }),
-  )
+      ...(existsSync(bundledCLI) ? { WISCODE_CLI_PATH: bundledCLI } : {}),
+      ...(existsSync(bundledUv) ? { WISCODE_BUNDLED_UV_PATH: bundledUv } : {}),
+      ...(existsSync(bundledBMAD) ? { WISCODE_BMAD_SKILLS_PATH: bundledBMAD } : {}),
+    })
+  if (existsSync(bundledUv)) {
+    const key = Object.keys(env).find((item) => item.toLowerCase() === "path") ?? "PATH"
+    env[key] = `${dirname(bundledUv)}${delimiter}${env[key] ?? ""}`
+  }
+  Object.assign(process.env, env)
 }
 
 export async function spawnLocalServer(
@@ -213,14 +221,13 @@ export async function spawnLocalServer(
   }
 }
 
-function resolveBundledNodePath() {
-  const executable = process.platform === "win32" ? "wiscode-node.exe" : "wiscode-node"
-  if (app.isPackaged) return join(process.resourcesPath, executable)
+function resolveBundledResourcePath(relative: string) {
+  if (app.isPackaged) return join(process.resourcesPath, relative)
   const candidates = [
-    join(app.getAppPath(), "resources", executable),
-    join(app.getAppPath(), "..", "resources", executable),
-    join(app.getAppPath(), "..", "..", "resources", executable),
-    join(process.cwd(), "resources", executable),
+    join(app.getAppPath(), "resources", relative),
+    join(app.getAppPath(), "..", "resources", relative),
+    join(app.getAppPath(), "..", "..", "resources", relative),
+    join(process.cwd(), "resources", relative),
   ]
   return candidates.find((item) => existsSync(item)) ?? candidates[0]
 }

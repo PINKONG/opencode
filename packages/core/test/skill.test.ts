@@ -48,11 +48,14 @@ describe("SkillV2", () => {
         Effect.gen(function* () {
           const first = path.join(tmp.path, "first")
           const second = path.join(tmp.path, "second")
+          const project = path.join(tmp.path, "project")
           yield* Effect.promise(async () => {
             await fs.mkdir(path.join(first, "review"), { recursive: true })
             await fs.mkdir(path.join(second, "review"), { recursive: true })
+            await fs.mkdir(path.join(project, "review"), { recursive: true })
             await write(first, "review", "First")
             await write(second, "review", "Second")
+            await write(project, "review", "Project")
             await fs.writeFile(path.join(first, "foo.md"), "---\nslash: true\n---\n# foo")
           })
 
@@ -61,15 +64,18 @@ describe("SkillV2", () => {
             editor.source({ type: "directory", path: AbsolutePath.make(first) })
             editor.source({ type: "directory", path: AbsolutePath.make(first) })
             editor.source({ type: "directory", path: AbsolutePath.make(second) })
+            editor.source({ type: "directory", path: AbsolutePath.make(project) })
             expect(editor.list()).toEqual([
               { type: "directory", path: AbsolutePath.make(first) },
               { type: "directory", path: AbsolutePath.make(second) },
+              { type: "directory", path: AbsolutePath.make(project) },
             ])
           })
 
           expect(yield* skill.sources()).toEqual([
             { type: "directory", path: AbsolutePath.make(first) },
             { type: "directory", path: AbsolutePath.make(second) },
+            { type: "directory", path: AbsolutePath.make(project) },
           ])
           expect(yield* skill.list()).toEqual([
             SkillV2.Info.make({
@@ -80,8 +86,8 @@ describe("SkillV2", () => {
             }),
             {
               name: "review",
-              description: "Second",
-              location: AbsolutePath.make(path.join(second, "review", "SKILL.md")),
+              description: "Project",
+              location: AbsolutePath.make(path.join(project, "review", "SKILL.md")),
               content: "# review",
             },
           ])

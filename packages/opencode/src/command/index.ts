@@ -8,7 +8,9 @@ import { Config } from "@/config/config"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
 import PROMPT_REVIEW from "./template/review.txt"
+import PROMPT_BMAD_INIT from "./template/bmad-init.txt"
 import { LegacyEvent } from "@opencode-ai/schema/legacy-event"
+import { Location } from "@opencode-ai/core/location"
 
 type State = {
   commands: Record<string, Info>
@@ -75,6 +77,16 @@ const layer = Layer.effect(
         },
         subtask: true,
         hints: hints(PROMPT_REVIEW),
+      }
+
+      commands["bmad-init"] = {
+        name: "bmad-init",
+        description: "initialize or update embedded BMAD",
+        source: "command",
+        get template() {
+          return PROMPT_BMAD_INIT.replaceAll("${path}", Location.projectDirectory(ctx.directory, ctx.worktree))
+        },
+        hints: hints(PROMPT_BMAD_INIT),
       }
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {

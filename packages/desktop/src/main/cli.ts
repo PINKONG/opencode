@@ -3,6 +3,7 @@ import { execFile, spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import { hasCliResources, installCliResources } from "./cli-resources"
 
 const CLI_INSTALL_DIR = ".wiscode/bin"
 const CLI_BINARY_NAME = "wiscode"
@@ -134,19 +135,24 @@ function cliVersion(cliPath: string) {
 export async function installCli() {
   const sidecar = getBundledCliPath()
   if (!existsSync(sidecar)) throw new Error(`Bundled CLI not found: ${sidecar}`)
+  const resources = path.dirname(sidecar)
+  if (!hasCliResources(resources)) throw new Error(`Bundled CLI resources not found: ${resources}`)
 
   if (process.platform === "win32") {
     installCliWindows(sidecar)
+    installCliResources(resources, path.dirname(getCliInstallPath()))
     return getCliInstallPath()
   }
 
   installCliUnix(sidecar)
+  installCliResources(resources, path.dirname(getCliInstallPath()))
   return getCliInstallPath()
 }
 
 export async function syncCli() {
   if (!app.isPackaged) return
-  if ((await cliVersion(getCliInstallPath())) === app.getVersion()) return
+  if ((await cliVersion(getCliInstallPath())) === app.getVersion() &&
+    hasCliResources(path.dirname(getCliInstallPath()))) return
   await installCli()
 }
 

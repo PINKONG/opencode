@@ -227,7 +227,7 @@ check_version() {
 
         if [[ "$installed_version" != "$specific_version" ]]; then
             print_message info "${MUTED}Installed version: ${NC}$installed_version."
-        else
+        elif [[ -f "${INSTALL_DIR}/bmad/SOURCE.json" && -f "${INSTALL_DIR}/bmad/skills/bmad/SKILL.md" && ( -f "${INSTALL_DIR}/uv" || -f "${INSTALL_DIR}/uv.exe" ) ]]; then
             print_message info "${MUTED}Version ${NC}$specific_version${MUTED} already installed"
             exit 0
         fi
@@ -324,6 +324,25 @@ download_with_progress() {
     return $ret
 }
 
+install_resources() {
+    local resource_dir=$1
+    local uv_name=uv
+    if [ -f "$resource_dir/uv.exe" ]; then
+        uv_name=uv.exe
+    fi
+    if [ ! -f "$resource_dir/$uv_name" ] || [ ! -f "$resource_dir/uv-LICENSE-MIT" ] || [ ! -f "$resource_dir/bmad/SOURCE.json" ] || [ ! -f "$resource_dir/bmad/skills/bmad/SKILL.md" ]; then
+        print_message error "Bundled uv or BMAD resources are missing beside the CLI binary: $resource_dir"
+        return 1
+    fi
+    cp "$resource_dir/$uv_name" "${INSTALL_DIR}/$uv_name"
+    chmod 755 "${INSTALL_DIR}/$uv_name"
+    cp "$resource_dir/uv-LICENSE-MIT" "${INSTALL_DIR}/uv-LICENSE-MIT"
+    if [ -d "${INSTALL_DIR}/bmad" ]; then
+        rm -r "${INSTALL_DIR}/bmad"
+    fi
+    cp -R "$resource_dir/bmad" "${INSTALL_DIR}/bmad"
+}
+
 download_and_install() {
     print_message info "\n${MUTED}Installing ${NC}wiscode ${MUTED}version: ${NC}$specific_version"
     local tmp_dir="${TMPDIR:-/tmp}/opencode_install_$$"
@@ -340,6 +359,7 @@ download_and_install() {
         unzip -q "$tmp_dir/$filename" -d "$tmp_dir"
     fi
 
+    install_resources "$tmp_dir"
     mv "$tmp_dir/wiscode-cli" "${INSTALL_DIR}/wiscode"
     chmod 755 "${INSTALL_DIR}/wiscode"
     rm -rf "$tmp_dir"
@@ -347,6 +367,9 @@ download_and_install() {
 
 install_from_binary() {
     print_message info "\n${MUTED}Installing ${NC}wiscode ${MUTED}from: ${NC}$binary_path"
+    local resource_dir
+    resource_dir=$(dirname "$binary_path")
+    install_resources "$resource_dir"
     cp "$binary_path" "${INSTALL_DIR}/wiscode"
     chmod 755 "${INSTALL_DIR}/wiscode"
 }

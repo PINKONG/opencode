@@ -71,6 +71,11 @@ echo "==> copy sidecar"
 mkdir -p resources
 cp "${bin}" "resources/wiscode-cli"
 chmod +x "resources/wiscode-cli"
+cp "$(dirname "${bin}")/uv" "resources/uv"
+chmod +x "resources/uv"
+cp "$(dirname "${bin}")/uv-LICENSE-MIT" "resources/uv-LICENSE-MIT"
+mkdir -p resources/bmad
+cp -R "$(dirname "${bin}")/bmad/." "resources/bmad/"
 cp "${rg}" "resources/rg"
 chmod +x "resources/rg"
 mkdir -p native

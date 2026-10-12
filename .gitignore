@@ -50,4 +50,8 @@ packages/desktop/src-tauri/gen/schemas/acl-manifests.json
 /packages/desktop/resources/ripgrep-cache
 packages/desktop/resources/rg.exe
 packages/desktop/resources/rg
+/packages/desktop/resources/uv
+/packages/desktop/resources/uv.exe
+/packages/desktop/resources/uv-LICENSE-MIT
+/packages/desktop/resources/bmad/
 /artifacts/
