@@ -28,7 +28,7 @@ manage MCP (Model Context Protocol) servers
 
 Commands:
   wiscode mcp add [name]     add an MCP server
-  wiscode mcp list           list MCP servers and their status                        [aliases: ls]
+  wiscode mcp list           list MCP servers and their status                         [aliases: ls]
   wiscode mcp auth [name]    authenticate with an OAuth-enabled MCP server
   wiscode mcp logout [name]  remove OAuth credentials for an MCP server
   wiscode mcp debug <name>   debug OAuth connection for an MCP server
@@ -94,8 +94,7 @@ Options:
       --title        title for the session (uses truncated prompt if no value provided)     [string]
       --attach       attach to a running wiscode server (e.g., http://localhost:4096)       [string]
   -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]
-  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'wiscode')
-                                                                                            [string]
+  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'wiscode')[string]
       --dir          directory to run in, path on remote server if attaching                [string]
       --port         port for the local server (defaults to random port if no value provided)
                                                                                             [number]
@@ -141,7 +140,7 @@ exports[`wiscode CLI help-text snapshots every documented command emits stable h
 manage AI providers and credentials
 
 Commands:
-  wiscode providers list               list providers and credentials                 [aliases: ls]
+  wiscode providers list               list providers and credentials                  [aliases: ls]
   wiscode providers login [url]        log in to a provider
   wiscode providers logout [provider]  log out from a configured provider
 
@@ -390,7 +389,6 @@ database tools
 Commands:
   wiscode db [query]     open an interactive sqlite3 shell or run a query                  [default]
   wiscode db path        print the database path
-  wiscode db migrate     migrate JSON data to SQLite (merges with existing data)
 
 Positionals:
   query  SQL query to execute                                                               [string]

@@ -347,5 +347,4 @@ const { runPromise } = makeRuntime(Service, AppNodeBuilder.build(node))
 export const latest = (...args: Parameters<Interface["latest"]>) => runPromise((s) => s.latest(...args))
 export const method = () => runPromise((s) => s.method())
 export const upgrade = (...args: Parameters<Interface["upgrade"]>) => runPromise((s) => s.upgrade(...args))
-
 export * as Installation from "."

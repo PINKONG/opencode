@@ -43,6 +43,7 @@ export const UpgradeCommand = {
       }
     }
     prompts.log.info("Using method: " + method)
+
     const target = args.target ? args.target.replace(/^v/, "") : await Installation.latest()
 
     if (InstallationVersion === target) {
