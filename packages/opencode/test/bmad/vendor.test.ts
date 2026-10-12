@@ -5,7 +5,7 @@ const vendor = path.resolve(import.meta.dirname, "../../../../third_party/bmad")
 
 test("BMAD vendor snapshot is pinned and includes its license and setup runtime", async () => {
   const source = await Bun.file(path.join(vendor, "SOURCE.json")).json()
-  expect(source.commit).toBe("bda3c5929f672019b90f39a3ea27259d35d00974")
+  expect(source.commit).toBe("9f1987169a2e5626e5ccb31bb9cee051fdb3df20")
   expect(source.version).toBe("6.13.0-next")
   expect(await Bun.file(path.join(vendor, "LICENSE")).exists()).toBe(true)
   expect(await Bun.file(path.join(vendor, "skills/bmad/scripts/setup.py")).exists()).toBe(true)
