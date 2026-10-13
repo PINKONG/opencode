@@ -50,7 +50,7 @@ it.live("refreshes command and skill caches after a ready BMAD manifest appears"
             path.join(dir, ".agents", "skills", "bmad", "SKILL.md"),
             "---\nname: bmad\ndescription: BMAD help.\n---\n\n# BMAD\n",
           )
-          await Bun.write(path.join(dir, ".opencode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
+          await Bun.write(path.join(dir, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
         })
         expect((yield* command.list()).find((item) => item.name === "bmad")?.source).toBe("skill")
       }),
@@ -69,10 +69,29 @@ it.live("refreshes direct skill discovery after a ready BMAD manifest appears", 
             path.join(dir, ".agents", "skills", "bmad", "SKILL.md"),
             "---\nname: bmad\ndescription: BMAD help.\n---\n\n# BMAD\n",
           )
-          await Bun.write(path.join(dir, ".opencode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
+          await Bun.write(path.join(dir, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
         })
         expect((yield* skill.all()).some((item) => item.name === "bmad")).toBe(true)
       }),
     { git: true },
+  ),
+)
+
+it.live("discovers BMAD commands after init in a non-git directory", () =>
+  provideTmpdirInstance(
+    (dir) =>
+      Effect.gen(function* () {
+        const command = yield* Command.Service
+        expect((yield* command.list()).some((item) => item.name === "bmad-agent-analyst")).toBe(false)
+        yield* Effect.promise(async () => {
+          await Bun.write(
+            path.join(dir, ".agents", "skills", "bmad-agent-analyst", "SKILL.md"),
+            "---\nname: bmad-agent-analyst\ndescription: Analyst\n---\n\n# Analyst\n",
+          )
+          await Bun.write(path.join(dir, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
+        })
+        expect((yield* command.list()).find((item) => item.name === "bmad-agent-analyst")?.source).toBe("skill")
+      }),
+    { git: false },
   ),
 )

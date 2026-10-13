@@ -52,7 +52,8 @@ export async function initBMAD(input: Input): Promise<Result> {
   }
 
   const root = path.join(project, ".agents", "skills")
-  const manifestPath = path.join(project, ".opencode", "bmad-managed.json")
+  const manifestPath = path.join(project, ".wiscode", "bmad-managed.json")
+  const legacyPath = path.join(project, ".opencode", "bmad-managed.json")
   const managementDir = await lstat(path.dirname(manifestPath)).catch(() => undefined)
   if (managementDir && !managementDir.isDirectory()) {
     return { status: "conflict", message: `BMAD management directory is not a plain directory: ${path.dirname(manifestPath)}` }
@@ -61,8 +62,19 @@ export async function initBMAD(input: Input): Promise<Result> {
   if (managementFile && !managementFile.isFile()) {
     return { status: "conflict", message: `BMAD management manifest is not a plain file: ${manifestPath}` }
   }
-  const manifest = await readManifest(manifestPath)
-  if (manifest === "invalid") return { status: "conflict", message: `Invalid BMAD management manifest: ${manifestPath}` }
+  const legacyFile = await lstat(legacyPath).catch(() => undefined)
+  if (legacyFile && !(await lstat(path.dirname(legacyPath))).isDirectory()) {
+    return { status: "conflict", message: `Legacy BMAD management directory is not a plain directory: ${path.dirname(legacyPath)}` }
+  }
+  if (legacyFile && !legacyFile.isFile()) {
+    return { status: "conflict", message: `Legacy BMAD management manifest is not a plain file: ${legacyPath}` }
+  }
+  if (managementFile && legacyFile) {
+    return { status: "conflict", message: "Both WisCode and legacy BMAD management manifests exist", paths: [manifestPath, legacyPath] }
+  }
+  const currentPath = legacyFile ? legacyPath : manifestPath
+  const manifest = await readManifest(currentPath)
+  if (manifest === "invalid") return { status: "conflict", message: `Invalid BMAD management manifest: ${currentPath}` }
   const files = await selectedFiles(input.source, input.updateSource ?? input.source, modules)
   if (!Array.isArray(files)) return files
   const conflict = await validateTargets(root, files, manifest)
@@ -120,8 +132,9 @@ export async function initBMAD(input: Input): Promise<Result> {
     }
   }
 
-  await mkdir(path.dirname(manifestPath), { recursive: true })
-  const lockPath = path.join(path.dirname(manifestPath), "bmad.lock")
+  const storagePath = legacyFile ? legacyPath : manifestPath
+  await mkdir(path.dirname(storagePath), { recursive: true })
+  const lockPath = path.join(path.dirname(storagePath), "bmad.lock")
   const lock = await open(lockPath, "wx").catch(() => undefined)
   if (!lock) return { status: "conflict", message: `BMAD initialization already running: ${lockPath}` }
   try {
@@ -143,7 +156,7 @@ export async function initBMAD(input: Input): Promise<Result> {
         if (error.code !== "ENOTEMPTY" && error.code !== "ENOENT") throw error
       })
     }
-    await saveManifest(manifestPath, next)
+    await saveManifest(storagePath, next)
     if (input.answers?.outputFolder && !(await accessible(path.join(project, "_bmad", "config.toml")))) {
       await mkdir(path.join(project, "_bmad"), { recursive: true })
       await writeFile(path.join(project, "_bmad", "config.toml"), `[core]\noutput_folder = ${JSON.stringify(input.answers.outputFolder)}\n`)
@@ -160,7 +173,8 @@ export async function initBMAD(input: Input): Promise<Result> {
       const response = await runSetup(input.uv, project, path.join(root, "bmad"), root,
         answers.length ? ["--module-answers", answerFile] : [])
       if (!response.ok) return { status: "error", message: response.message }
-      await saveManifest(manifestPath, { ...next, phase: "ready" })
+      await saveManifest(storagePath, { ...next, phase: "ready" })
+      if (legacyFile) await rename(legacyPath, manifestPath)
       return { status: "ready", setup: response.value as Record<string, unknown>, files: files.length }
     } finally {
       await rm(temp, { recursive: true, force: true })

@@ -12,6 +12,7 @@ import { AbsolutePath } from "./schema"
 import { SkillDiscovery } from "./skill/discovery"
 import { State } from "./state"
 import { BMADManifest } from "./bmad/manifest"
+import { Location } from "./location"
 
 export const DirectorySource = Skill.DirectorySource
 export type DirectorySource = Skill.DirectorySource
@@ -60,6 +61,7 @@ const layer = Layer.effect(
   Effect.gen(function* () {
     const discovery = yield* SkillDiscovery.Service
     const fs = yield* FSUtil.Service
+    const location = yield* Location.Service
 
     const state = State.create<Data, Draft>({
       initial: () => ({ sources: [] }),
@@ -71,6 +73,27 @@ const layer = Layer.effect(
         list: () => draft.sources as Source[],
       }),
     })
+
+    const projectSources: string[] = []
+    if (process.env.OPENCODE_DISABLE_EXTERNAL_SKILLS !== "1") {
+      const project = Location.projectDirectory(location.directory, location.project.directory)
+      const roots: string[] = []
+      for (let current: string = location.directory; ; current = path.dirname(current)) {
+        roots.push(current)
+        if (current === project || current === path.dirname(current)) break
+      }
+      projectSources.push(...roots.toReversed().map((root) => path.join(root, ".agents", "skills")))
+      yield* state.transform((draft) => {
+        for (const directory of projectSources) {
+          draft.source(
+            DirectorySource.make({
+              type: "directory",
+              path: AbsolutePath.make(directory),
+            }),
+          )
+        }
+      })
+    }
 
     const load = Effect.fn("SkillV2.load")(function* (source: Source) {
       const skills: Info[] = []
@@ -122,6 +145,7 @@ const layer = Layer.effect(
     })
     const list = Effect.fn("SkillV2.list")(function* () {
       const skills = new Map<string, Info>()
+      const sources = state.get().sources
       yield* Effect.forEach(
         state
           .get()
@@ -134,7 +158,9 @@ const layer = Layer.effect(
         (source) => refreshBMAD(path.dirname(path.dirname(source.path))),
         { discard: true },
       )
-      for (const source of state.get().sources) {
+      // Project skills keep precedence over global and configured sources.
+      for (const source of [...sources.filter((item) => item.type !== "directory" || !projectSources.includes(item.path)),
+        ...projectSources.flatMap((directory) => sources.filter((item) => item.type === "directory" && item.path === directory))]) {
         const key = Source.key(source)
         const loaded = cache.get(key) ?? (yield* load(source))
         cache.set(key, loaded)
@@ -159,4 +185,4 @@ const layer = Layer.effect(
   }),
 )
 
-export const node = makeLocationNode({ service: Service, layer, deps: [SkillDiscovery.node, FSUtil.node] })
+export const node = makeLocationNode({ service: Service, layer, deps: [SkillDiscovery.node, FSUtil.node, Location.node] })

@@ -12,6 +12,8 @@ test.skipIf(!uv)("quick initialization installs Core Tools and Method into the p
   try {
     const result = await initBMAD({ project, source, uv })
     expect(result.status).toBe("ready")
+    expect(await Bun.file(path.join(project, ".wiscode/bmad-managed.json")).exists()).toBe(true)
+    expect(await Bun.file(path.join(project, ".opencode/bmad-managed.json")).exists()).toBe(false)
     expect(await Bun.file(path.join(project, ".agents/skills/bmad/SKILL.md")).exists()).toBe(true)
     expect(await Bun.file(path.join(project, ".agents/skills/bmod-method/bmod.toml")).exists()).toBe(true)
     expect(await Bun.file(path.join(project, ".agents/skills/bmod-toolsmith/bmod.toml")).exists()).toBe(false)
@@ -205,7 +207,7 @@ test.skipIf(!uv)("linked management directory is rejected before writing", async
   const project = await mkdtemp(path.join(os.tmpdir(), "wiscode-bmad-"))
   const external = await mkdtemp(path.join(os.tmpdir(), "wiscode-bmad-external-"))
   try {
-    await symlink(external, path.join(project, ".opencode"), "dir")
+    await symlink(external, path.join(project, ".wiscode"), "dir")
     const result = await initBMAD({ project, source, uv })
     expect(result.status).toBe("conflict")
     expect(await Bun.file(path.join(external, "bmad-managed.json")).exists()).toBe(false)
@@ -227,11 +229,38 @@ test.skipIf(!uv)("a new source commit updates managed files even when module ver
     const result = await initBMAD({ project, source: updated, uv, sourceCommit: "second" })
     expect(result.status).toBe("ready")
     expect(await Bun.file(path.join(project, ".agents/skills/bmad/SKILL.md")).text()).toContain("Updated snapshot.")
-    expect(await Bun.file(path.join(project, ".opencode/bmad-managed.json")).json()).toMatchObject({ commit: "second" })
+    expect(await Bun.file(path.join(project, ".wiscode/bmad-managed.json")).json()).toMatchObject({ commit: "second" })
     expect(await Bun.file(path.join(project, "_bmad/custom/my-notes.md")).text()).toBe("keep\n")
   } finally {
     await rm(project, { recursive: true, force: true })
     await rm(updated, { recursive: true, force: true })
+  }
+}, 120_000)
+
+test.skipIf(!uv)("reinitialization migrates the legacy BMAD manifest without taking over skills", async () => {
+  const project = await mkdtemp(path.join(os.tmpdir(), "wiscode-bmad-"))
+  try {
+    expect((await initBMAD({ project, source, uv })).status).toBe("ready")
+    await mkdir(path.join(project, ".opencode"), { recursive: true })
+    await rename(path.join(project, ".wiscode/bmad-managed.json"), path.join(project, ".opencode/bmad-managed.json"))
+    expect((await initBMAD({ project, source, uv })).status).toBe("ready")
+    expect(await Bun.file(path.join(project, ".wiscode/bmad-managed.json")).exists()).toBe(true)
+    expect(await Bun.file(path.join(project, ".opencode/bmad-managed.json")).exists()).toBe(false)
+  } finally {
+    await rm(project, { recursive: true, force: true })
+  }
+}, 120_000)
+
+test.skipIf(!uv)("two BMAD manifests require review before writing skills", async () => {
+  const project = await mkdtemp(path.join(os.tmpdir(), "wiscode-bmad-"))
+  try {
+    expect((await initBMAD({ project, source, uv })).status).toBe("ready")
+    await Bun.write(path.join(project, ".opencode/bmad-managed.json"), "{}")
+    const result = await initBMAD({ project, source, uv })
+    expect(result.status).toBe("conflict")
+    expect(await Bun.file(path.join(project, ".opencode/bmad-managed.json")).text()).toBe("{}")
+  } finally {
+    await rm(project, { recursive: true, force: true })
   }
 }, 120_000)
 

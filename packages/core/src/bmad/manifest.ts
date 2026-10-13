@@ -5,11 +5,25 @@ import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 
 export function watch(project: string) {
-  const file = path.join(project, ".opencode", "bmad-managed.json")
+  const files = [".wiscode", ".opencode"].map((directory) => path.join(project, directory, "bmad-managed.json"))
   let fingerprint: string | null | undefined
   let metadata: string | undefined
 
   return async (force = false) => {
+    const present = await Promise.all(
+      files.map(async (item) => ({
+        item,
+        exists: await stat(item).then(
+          () => true,
+          (error: NodeJS.ErrnoException) => {
+            if (error.code === "ENOENT") return false
+            throw error
+          },
+        ),
+      })),
+    )
+    if (present.every((item) => item.exists)) throw new Error(`Both BMAD management manifests exist: ${files.join(", ")}`)
+    const file = present.find((item) => item.exists)?.item ?? files[0]
     const info = await stat(file).catch((error: NodeJS.ErrnoException) => {
       if (error.code === "ENOENT") return undefined
       throw error
@@ -20,7 +34,7 @@ export function watch(project: string) {
       metadata = undefined
       return false
     }
-    const next = `${info.dev}:${info.ino}:${info.mtimeMs}:${info.size}`
+    const next = `${file}:${info.dev}:${info.ino}:${info.mtimeMs}:${info.size}`
     if (!force && next === metadata) return false
     const bytes = await readFile(file)
     const value: unknown = JSON.parse(bytes.toString("utf8"))

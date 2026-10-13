@@ -52,21 +52,6 @@ export const Plugin = define({
             }),
           )
         }
-        if (process.env.OPENCODE_DISABLE_EXTERNAL_SKILLS !== "1") {
-          const roots: string[] = []
-          for (let current: string = location.directory; ; current = path.dirname(current)) {
-            roots.push(current)
-            if (current === location.project.directory || current === path.dirname(current)) break
-          }
-          for (const root of roots.reverse()) {
-            draft.source(
-              SkillV2.DirectorySource.make({
-                type: "directory",
-                path: AbsolutePath.make(path.join(root, ".agents", "skills")),
-              }),
-            )
-          }
-        }
       }),
     )
   }),

@@ -171,7 +171,7 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 
 每次同步上游 OpenCode 都要保护这条跨包链路：
 - `third_party/bmad/SOURCE.json`、vendored 技能与最小补丁保持固定快照；`third_party/uv/` 的各平台离线构建归档及校验、CLI/桌面资源复制逻辑不能丢。
-- `wiscode bmad init`、`/bmad-init` 继续使用内嵌 uv，在项目 `.agents/skills/` 初始化技能，通过 `.opencode/bmad-managed.json` 管理 WisCode 拥有的文件；保留用户改动、升级冲突与删除/迁移确认语义。不要退回 `npx skills` 或系统 uv 兜底。
+- `wiscode bmad init`、`/bmad-init` 继续使用内嵌 uv，在项目 `.agents/skills/` 初始化技能，通过 `.wiscode/bmad-managed.json` 管理 WisCode 拥有的文件；兼容旧 `.opencode/bmad-managed.json` 并安全迁移，保留用户改动、升级冲突与删除/迁移确认语义。不要退回 `npx skills` 或系统 uv 兜底。
 - CLI 和 V2/Web 的 `/` 补全与执行继续从当前项目实际发现的 BMAD 技能派生，`/skills` 仍可访问；自定义/内置/MCP 同名命令优先，`/bmad-help` 是 `bmad` 的兼容别名，`/bmad-init` 不能被技能覆盖。执行时由服务端重解析技能并检查 agent 权限，不信任客户端缓存正文。
 - 初始化成功后，管理清单变化必须使该项目的技能和命令缓存失效；其他项目不受影响。agent shell 的 `uv run` 也必须命中内嵌 uv，而不只初始化器能找到它。
 

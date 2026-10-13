@@ -114,11 +114,43 @@ describe("v2 location HttpApi", () => {
       path.join(tmp.path, ".agents", "skills", "bmad", "SKILL.md"),
       "---\nname: bmad\ndescription: BMAD help\n---\n# Help",
     )
-    await Bun.write(path.join(tmp.path, ".opencode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
+    await Bun.write(path.join(tmp.path, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
     const second = await request("/api/command", tmp.path)
     expect(second.status).toBe(200)
     expect(((await second.json()) as { data: { name: string; source?: string }[] }).data).toContainEqual(
       expect.objectContaining({ name: "bmad", source: "skill" }),
+    )
+  })
+
+  test("lists BMAD commands for a non-git project", async () => {
+    await using tmp = await tmpdir()
+    await Bun.write(
+      path.join(tmp.path, ".agents", "skills", "bmad-agent-analyst", "SKILL.md"),
+      "---\nname: bmad-agent-analyst\ndescription: Analyst\n---\n# Analyst",
+    )
+    await Bun.write(path.join(tmp.path, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
+    const response = await request("/api/command", tmp.path)
+    expect(response.status).toBe(200)
+    expect(((await response.json()) as { data: { name: string }[] }).data).toContainEqual(
+      expect.objectContaining({ name: "bmad-agent-analyst" }),
+    )
+  })
+
+  test("prefers a project BMAD skill over a configured skill with the same name", async () => {
+    await using tmp = await tmpdir()
+    await Bun.write(path.join(tmp.path, "wiscode.json"), JSON.stringify({ skills: ["other-skills"] }))
+    await Bun.write(
+      path.join(tmp.path, "other-skills", "bmad-agent-analyst", "SKILL.md"),
+      "---\nname: bmad-agent-analyst\ndescription: Configured\n---\n# Configured",
+    )
+    await Bun.write(
+      path.join(tmp.path, ".agents", "skills", "bmad-agent-analyst", "SKILL.md"),
+      "---\nname: bmad-agent-analyst\ndescription: Project\n---\n# Project",
+    )
+    const response = await request("/api/skill", tmp.path)
+    expect(response.status).toBe(200)
+    expect(((await response.json()) as { data: { name: string; description?: string }[] }).data).toContainEqual(
+      expect.objectContaining({ name: "bmad-agent-analyst", description: "Project" }),
     )
   })
 
@@ -129,7 +161,7 @@ describe("v2 location HttpApi", () => {
       path.join(first.path, ".agents", "skills", "bmad", "SKILL.md"),
       "---\nname: bmad\ndescription: BMAD help\n---\n# Help",
     )
-    await Bun.write(path.join(first.path, ".opencode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
+    await Bun.write(path.join(first.path, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
 
     const installed = await request("/api/command", first.path)
     const untouched = await request("/api/command", second.path)

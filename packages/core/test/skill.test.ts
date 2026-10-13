@@ -9,6 +9,8 @@ import { FSUtil } from "@opencode-ai/core/fs-util"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { SkillV2 } from "@opencode-ai/core/skill"
 import { SkillDiscovery } from "@opencode-ai/core/skill/discovery"
+import { Location } from "@opencode-ai/core/location"
+import { ProjectV2 } from "@opencode-ai/core/project"
 import { tmpdir } from "./fixture/tmpdir"
 import { testEffect } from "./lib/effect"
 
@@ -24,7 +26,13 @@ const discovery = Layer.succeed(
   }),
 )
 const it = testEffect(
-  AppNodeBuilder.build(LayerNode.group([SkillV2.node, AgentV2.node]), [[SkillDiscovery.node, discovery]]),
+  AppNodeBuilder.build(LayerNode.group([SkillV2.node, AgentV2.node]), [
+    [SkillDiscovery.node, discovery],
+    [Location.node, Layer.succeed(Location.Service, Location.Service.of({
+      directory: AbsolutePath.make(path.resolve("/nonexistent/skill-test")),
+      project: { id: ProjectV2.ID.global, directory: AbsolutePath.make(path.parse(process.cwd()).root) },
+    }))],
+  ]),
 )
 
 function write(directory: string, name: string, description: string) {
@@ -90,6 +98,7 @@ describe("SkillV2", () => {
             editor.source({ type: "directory", path: AbsolutePath.make(second) })
             editor.source({ type: "directory", path: AbsolutePath.make(project) })
             expect(editor.list()).toEqual([
+              { type: "directory", path: AbsolutePath.make("/nonexistent/skill-test/.agents/skills") },
               { type: "directory", path: AbsolutePath.make(first) },
               { type: "directory", path: AbsolutePath.make(second) },
               { type: "directory", path: AbsolutePath.make(project) },
@@ -97,6 +106,7 @@ describe("SkillV2", () => {
           })
 
           expect(yield* skill.sources()).toEqual([
+            { type: "directory", path: AbsolutePath.make("/nonexistent/skill-test/.agents/skills") },
             { type: "directory", path: AbsolutePath.make(first) },
             { type: "directory", path: AbsolutePath.make(second) },
             { type: "directory", path: AbsolutePath.make(project) },
