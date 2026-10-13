@@ -29,6 +29,10 @@ function removeLineRange(input: string) {
   return hashIndex !== -1 ? input.substring(0, hashIndex) : input
 }
 
+export function visibleSlashCommand(item: { name: string; source?: string }) {
+  return item.source !== "skill" || item.name === "bmad" || item.name.startsWith("bmad-")
+}
+
 function extractLineRange(input: string) {
   const hashIndex = input.lastIndexOf("#")
   if (hashIndex === -1) {
@@ -448,7 +452,7 @@ export function Autocomplete(props: {
     const results: AutocompleteOption[] = [...slashes()]
 
     for (const serverCommand of sync.data.command) {
-      if (serverCommand.source === "skill") continue
+      if (!visibleSlashCommand(serverCommand)) continue
       const label = serverCommand.source === "mcp" ? ":mcp" : ""
       results.push({
         display: "/" + serverCommand.name + label,
@@ -645,6 +649,15 @@ export function Autocomplete(props: {
       visible: mode,
       index: props.input().cursorOffset,
     })
+    if (mode !== "/") return
+    const workspace = project.workspace.current()
+    void sdk.client.command
+      .list({ workspace })
+      .then((result) => {
+        if (project.workspace.current() !== workspace || !result.data) return
+        sync.set("command", result.data)
+      })
+      .catch(() => undefined)
   }
 
   function hide() {

@@ -172,10 +172,10 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 每次同步上游 OpenCode 都要保护这条跨包链路：
 - `third_party/bmad/SOURCE.json`、vendored 技能与最小补丁保持固定快照；`third_party/uv/` 的各平台离线构建归档及校验、CLI/桌面资源复制逻辑不能丢。
 - `wiscode bmad init`、`/bmad-init` 继续使用内嵌 uv，在项目 `.agents/skills/` 初始化技能，通过 `.wiscode/bmad-managed.json` 管理 WisCode 拥有的文件；兼容旧 `.opencode/bmad-managed.json` 并安全迁移，保留用户改动、升级冲突与删除/迁移确认语义。不要退回 `npx skills` 或系统 uv 兜底。
-- CLI 和 V2/Web 的 `/` 补全与执行继续从当前项目实际发现的 BMAD 技能派生，`/skills` 仍可访问；自定义/内置/MCP 同名命令优先，`/bmad-help` 是 `bmad` 的兼容别名，`/bmad-init` 不能被技能覆盖。执行时由服务端重解析技能并检查 agent 权限，不信任客户端缓存正文。
+- 默认 `wiscode` TUI、`wiscode --mini` 和 V2/Web 是三条独立的 `/` 补全路径，均须从当前项目实际发现的 BMAD 技能派生并可执行；普通技能仍只在 `/skills` 中显示。自定义/内置/MCP 同名命令优先，`/bmad-help` 是 `bmad` 的兼容别名，`/bmad-init` 不能被技能覆盖。执行时由服务端重解析技能并检查 agent 权限，不信任客户端缓存正文。尤其检查默认 TUI 的 `packages/tui/src/component/prompt/autocomplete.tsx`，不要恢复过滤全部 `source: "skill"` 命令的旧逻辑。
 - 初始化成功后，管理清单变化必须使该项目的技能和命令缓存失效；其他项目不受影响。agent shell 的 `uv run` 也必须命中内嵌 uv，而不只初始化器能找到它。
 
-高风险落点：`packages/opencode/src/bmad/`、`packages/core/src/bmad/`、`packages/opencode/src/command/index.ts`、`packages/core/src/command.ts`、`packages/server/src/handlers/session.ts`、CLI/Web 命令展示与提交、`packages/opencode/script/build.ts`、桌面构建脚本和资源配置。
+高风险落点：`packages/opencode/src/bmad/`、`packages/core/src/bmad/`、`packages/opencode/src/command/index.ts`、`packages/core/src/command.ts`、`packages/server/src/handlers/session.ts`、`packages/tui/src/component/prompt/autocomplete.tsx`、`packages/opencode/src/cli/cmd/run/footer.prompt.tsx`、Web 命令展示与提交、`packages/opencode/script/build.ts`、桌面构建脚本和资源配置。
 
 同步 OpenCode **不自动更新 BMAD**。不要在 merge、构建或启动时拉取 BMAD `main`；需升级时另行选择提交，运行 `script/update-bmad.ts`，审查补丁并通过 [BMAD 集成设计](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-10-bmad-integration.md)中的升级门禁。
 
@@ -300,6 +300,7 @@ cd packages/opencode && bun test test/server/httpapi-session.test.ts test/server
 ```bash
 cd packages/opencode && bun test test/bmad test/command/bmad-refresh.test.ts test/cli/run/bmad-slash.test.ts
 cd packages/core && bun test test/bmad-manifest.test.ts test/command.test.ts test/skill.test.ts
+cd packages/tui && bun test test/prompt/slash-command.test.ts
 cd packages/app && bun test --conditions=browser --preload ./happydom.ts ./src/context/global-sync/command-refresh.test.ts ./src/components/prompt-input/submit.test.ts
 ```
 
@@ -336,7 +337,7 @@ CLI / TUI 场景至少确认：
 - 使用 `/exit` 退出后的 epilogue ASCII logo 显示 WisCode，`Continue` 命令显示 `wiscode -s ...`
 - `packages/tui/src/logo.ts` 的主 `logo.text` 仍为 `wiscode`
 
-BMAD 场景至少在临时项目确认：`/bmad-init` 或 `wiscode bmad init --project-root <临时项目>` 返回 `ready`，生成 `.agents/skills/` 与 `_bmad/`；`/skills` 和 CLI、V2/Web 的 `/` 补全出现已安装的 BMAD 技能，`/bmad-agent-analyst` 能实际执行，`/bmad-help` 可用；重跑初始化后无需重启即可刷新入口。确认未安装的技能不出现、同名用户命令优先，并在 agent shell 中核对 `uv` 来自内嵌资源。
+BMAD 场景至少在临时项目确认：`/bmad-init` 或 `wiscode bmad init --project-root <临时项目>` 返回 `ready`，生成 `.agents/skills/` 与 `_bmad/`。在**同一目录**分别打开默认 `wiscode` TUI、`wiscode --mini` 和 V2/Web，输入 `/b`，确认三处都出现已安装的 BMAD 技能（不只 `/bmad-init`），`/skills` 仍可访问，且 `/bmad-agent-analyst` 能实际执行、`/bmad-help` 可用；重跑初始化后无需重启即可刷新入口。确认未安装的技能不出现、同名用户命令优先，并在 agent shell 中核对 `uv` 来自内嵌资源。不要用 Web 或 `--mini` 的通过结果代替默认 TUI 验收。
 
 ### 4. 构建物最小验证
 
