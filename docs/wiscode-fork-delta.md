@@ -241,11 +241,11 @@
 
 - 发行物内置固定提交的 BMAD 技能快照和目标平台的 uv；用户无需自行安装 BMAD 或 uv，`wiscode bmad init` 与 `/bmad-init` 能在指定项目初始化。
 - 技能落在项目 `.agents/skills/`，所有权记录在 `.wiscode/bmad-managed.json`；旧 `.opencode/bmad-managed.json` 只用于兼容读取和安全迁移。用户文件、确认协议和项目定制不能被升级过程无条件覆盖。
-- CLI 与 V2/Web 从实际发现的 `bmad`、`bmad-*` 技能派生斜杠入口；`/bmad-help` 仅作 `bmad` 的兼容别名。已有同名命令优先，`/bmad-init` 不得被覆盖；列表和服务端执行都按当前项目及权限解析。
-- 成功初始化后刷新该项目的技能/命令缓存；BMAD 脚本和 agent shell 使用随发行物内嵌的 uv。
+- BMAD 通过原生技能发现和 `/skills` 访问，不再把 `bmad`、`bmad-*` 技能桥接为普通斜杠命令，也不提供 `/bmad-help` 兼容别名。`/bmad-init` 仍是 WisCode 内置初始化命令，不能被技能覆盖。
+- 成功初始化后刷新该项目的技能缓存；BMAD 脚本和 agent shell 使用随发行物内嵌的 uv。
 - 合并 OpenCode 上游不等于升级 BMAD。`third_party/bmad/SOURCE.json` 固定快照；只有单独运行并验证 `script/update-bmad.ts` 才能变更 BMAD 来源或补丁。打包不能联网拉取浮动的 BMAD `main`。
 
-典型落点：`third_party/bmad/`、`third_party/uv/`、`packages/opencode/src/bmad/`、`packages/core/src/bmad/manifest.ts`、`packages/opencode/src/command/index.ts`、`packages/core/src/command.ts`、`packages/server/src/handlers/session.ts`、CLI/桌面构建脚本及 Web 命令提交链路。详见 [BMAD 集成设计](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-10-bmad-integration.md)和[斜杠兼容设计](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-11-bmad-slash-commands-design.md)。
+典型落点：`third_party/bmad/`、`third_party/uv/`、`packages/opencode/src/bmad/`、`packages/core/src/bmad/manifest.ts`、`packages/opencode/src/command/index.ts`、CLI/桌面构建脚本及 Web 技能发现链路。旧的斜杠兼容方案保留在[历史设计记录](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-11-bmad-slash-commands-design.md)，不再作为当前行为规范。
 
 ## 11. Sidecar 浏览器访问与 iframe 嵌入链路
 
@@ -400,7 +400,7 @@
 8. 桌面标题栏、知识库、设置页、模型选择是否做过冒烟验证
 9. 全局配置目录是否仍为 `~/.config/wiscode`，且 `~/.config/wiscode/wiscode.json` 的 MCP 配置可生效
 10. 内置 `/init` slash command 是否仍保持屏蔽（未重新出现在默认命令列表）
-11. BMAD 快照、内嵌 uv、`/bmad-init`、项目技能发现和 CLI/V2/Web 斜杠执行是否仍完整
+11. BMAD 快照、内嵌 uv、`/bmad-init`、项目技能发现和 `/skills` 访问是否仍完整，普通 `/` 补全未重新暴露 BMAD 技能
 
 ## 17. 维护规则
 

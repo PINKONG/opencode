@@ -199,9 +199,8 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
             const agents = yield* AgentV2.Service
             const agent = yield* agents.resolve(ctx.payload.agent ?? current.agent)
             if (!agent) return yield* new InvalidRequestError({ message: "Selected agent is unavailable" })
-            const name = command.name === "bmad-help" ? "bmad" : command.name
-            if (!(yield* skills.list()).some((item) => item.name === name && SkillV2.available([item], agent).length))
-              return yield* new InvalidRequestError({ message: `Skill unavailable for agent: ${name}` })
+            if (!(yield* skills.list()).some((item) => item.name === command.name && SkillV2.available([item], agent).length))
+              return yield* new InvalidRequestError({ message: `Skill unavailable for agent: ${command.name}` })
           }
           if (ctx.payload.agent)
             yield* session

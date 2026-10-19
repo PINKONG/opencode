@@ -31,7 +31,7 @@ const promotedDrafts: Array<{ draftID: string; server: string; sessionId: string
 const sentPrompts: string[] = []
 const promptInputs: unknown[] = []
 const sentCommands: unknown[] = []
-const commands: Array<{ name: string }> = []
+const commands: Array<{ name: string; source?: "command" | "mcp" | "skill" }> = []
 let serverSessionSyncs = 0
 
 let params: { id?: string } = {}
@@ -533,19 +533,17 @@ describe("prompt submit worktree selection", () => {
     ])
     expect(serverSessionSyncs).toBe(0)
 
-    commands.push({ name: "bmad-agent-analyst" })
+    commands.push({ name: "bmad-agent-analyst", source: "skill" })
     promptValue = [{ type: "text", content: "/bmad-agent-analyst research topic", start: 0, end: 34 }]
     await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
 
-    expect(sentCommands[1]).toEqual({
-      sessionID: "session-1",
-      id: expect.stringMatching(/^msg_/),
-      command: "bmad-agent-analyst",
-      arguments: "research topic",
-      agent: "agent",
-      model: { id: "model", providerID: "provider", variant: "high" },
-      files: [],
-    })
+    expect(sentCommands).toHaveLength(1)
+
+    commands.push({ name: "review-skill", source: "skill" })
+    promptValue = [{ type: "text", content: "/review-skill research topic", start: 0, end: 28 }]
+    await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
+
+    expect(sentCommands).toHaveLength(1)
   })
 
   test("uses an injected model selection", async () => {

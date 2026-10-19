@@ -76,7 +76,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
 
   const [head, ...tail] = text.split(" ")
   const cmd = head?.startsWith("/") ? head.slice(1) : undefined
-  if (cmd && input.sync.data.command.find((item) => item.name === cmd)) {
+  if (cmd && input.sync.data.command.find((item) => item.name === cmd && item.source !== "skill")) {
     setBusy()
     try {
       if (!(await wait())) {
@@ -512,7 +512,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     if (text.startsWith("/")) {
       const [cmdName, ...args] = text.split(" ")
       const commandName = cmdName.slice(1)
-      const customCommand = sync().data.command.find((c) => c.name === commandName)
+      const customCommand = sync().data.command.find((c) => c.name === commandName && c.source !== "skill")
       if (customCommand) {
         clearInput()
         const messageID = Identifier.ascending("message")

@@ -30,7 +30,7 @@ function removeLineRange(input: string) {
 }
 
 export function visibleSlashCommand(item: { name: string; source?: string }) {
-  return item.source !== "skill" || item.name === "bmad" || item.name.startsWith("bmad-")
+  return item.source !== "skill"
 }
 
 function extractLineRange(input: string) {

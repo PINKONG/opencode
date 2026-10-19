@@ -79,12 +79,8 @@ afterEach(async () => {
 })
 
 describe("v2 location HttpApi", () => {
-  test("rejects a BMAD command denied by the selected agent", async () => {
+  test("does not expose BMAD skills as V2 commands", async () => {
     await using tmp = await tmpdir({ git: true })
-    await Bun.write(
-      path.join(tmp.path, "wiscode.json"),
-      JSON.stringify({ agents: { build: { permissions: [{ action: "skill", resource: "bmad", effect: "deny" }] } } }),
-    )
     await Bun.write(
       path.join(tmp.path, ".agents", "skills", "bmad", "SKILL.md"),
       "---\nname: bmad\ndescription: BMAD help\n---\n# Help",
@@ -102,10 +98,10 @@ describe("v2 location HttpApi", () => {
       body: JSON.stringify({ command: "bmad", agent: "build", resume: false }),
     })
     expect(result.status).toBe(400)
-    expect(JSON.stringify(await result.json())).toContain("Skill unavailable for agent: bmad")
+    expect(JSON.stringify(await result.json())).toContain("Command not found: bmad")
   })
 
-  test("refreshes BMAD commands after a ready manifest is written", async () => {
+  test("does not add BMAD skills to commands after a ready manifest is written", async () => {
     await using tmp = await tmpdir({ git: true })
     const first = await request("/api/command", tmp.path)
     expect(first.status).toBe(200)
@@ -117,12 +113,10 @@ describe("v2 location HttpApi", () => {
     await Bun.write(path.join(tmp.path, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
     const second = await request("/api/command", tmp.path)
     expect(second.status).toBe(200)
-    expect(((await second.json()) as { data: { name: string; source?: string }[] }).data).toContainEqual(
-      expect.objectContaining({ name: "bmad", source: "skill" }),
-    )
+    expect(((await second.json()) as { data: { name: string }[] }).data.some((item) => item.name === "bmad")).toBe(false)
   })
 
-  test("lists BMAD commands for a non-git project", async () => {
+  test("does not list BMAD skills as commands for a non-git project", async () => {
     await using tmp = await tmpdir()
     await Bun.write(
       path.join(tmp.path, ".agents", "skills", "bmad-agent-analyst", "SKILL.md"),
@@ -131,9 +125,7 @@ describe("v2 location HttpApi", () => {
     await Bun.write(path.join(tmp.path, ".wiscode", "bmad-managed.json"), '{"phase":"ready","commit":"one"}')
     const response = await request("/api/command", tmp.path)
     expect(response.status).toBe(200)
-    expect(((await response.json()) as { data: { name: string }[] }).data).toContainEqual(
-      expect.objectContaining({ name: "bmad-agent-analyst" }),
-    )
+    expect(((await response.json()) as { data: { name: string }[] }).data.some((item) => item.name === "bmad-agent-analyst")).toBe(false)
   })
 
   test("prefers a project BMAD skill over a configured skill with the same name", async () => {
@@ -154,7 +146,7 @@ describe("v2 location HttpApi", () => {
     )
   })
 
-  test("does not expose one project's BMAD commands in another project", async () => {
+  test("does not expose one project's BMAD skills as commands in another project", async () => {
     await using first = await tmpdir({ git: true })
     await using second = await tmpdir({ git: true })
     await Bun.write(
@@ -167,15 +159,13 @@ describe("v2 location HttpApi", () => {
     const untouched = await request("/api/command", second.path)
     expect(installed.status).toBe(200)
     expect(untouched.status).toBe(200)
-    expect(((await installed.json()) as { data: { name: string }[] }).data.some((item) => item.name === "bmad")).toBe(
-      true,
-    )
+    expect(((await installed.json()) as { data: { name: string }[] }).data.some((item) => item.name === "bmad")).toBe(false)
     expect(((await untouched.json()) as { data: { name: string }[] }).data.some((item) => item.name === "bmad")).toBe(
       false,
     )
   })
 
-  test("admits a discovered BMAD command through the V2 session endpoint", async () => {
+  test("does not admit a discovered BMAD skill through the V2 session endpoint", async () => {
     await using tmp = await tmpdir({ git: true })
     const skill = path.join(tmp.path, ".agents", "skills", "bmad")
     await Bun.write(path.join(skill, "SKILL.md"), "---\nname: bmad\ndescription: BMAD help\n---\n# Help\n")
@@ -191,25 +181,12 @@ describe("v2 location HttpApi", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ command: "bmad", arguments: "next steps", resume: false }),
     })
-    expect(response.status).toBe(200)
-    const admitted = (await response.json()) as { data: { prompt: { text: string } } }
-    expect(admitted.data.prompt.text).toContain("# Help")
-    expect(admitted.data.prompt.text).toContain(`Base directory for this skill: ${skill}`)
-    expect(admitted.data.prompt.text).toContain("next steps")
-    const missing = await request(`/api/session/${session.data.id}/command`, tmp.path, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ command: "bmad-missing", resume: false }),
-    })
-    expect(missing.status).toBe(400)
+    expect(response.status).toBe(400)
+    expect(JSON.stringify(await response.json())).toContain("Command not found: bmad")
   })
 
   test("preserves command attachments and selected agent and model", async () => {
     await using tmp = await tmpdir({ git: true })
-    await Bun.write(
-      path.join(tmp.path, ".agents", "skills", "bmad", "SKILL.md"),
-      "---\nname: bmad\ndescription: BMAD help\n---\n# Help\n",
-    )
     const created = await request("/api/session", tmp.path, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -220,7 +197,7 @@ describe("v2 location HttpApi", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        command: "bmad",
+        command: "review",
         agent: "build",
         model: { providerID: "test", id: "model", variant: "fast" },
         files: [{ uri: "data:text/plain;base64,aGVsbG8=", name: "notes.txt" }],

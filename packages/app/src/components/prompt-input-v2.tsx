@@ -291,7 +291,7 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
     })),
   ])
   const slashCommands = createMemo(() => [
-    ...sync().data.command.map((item) => ({
+    ...sync().data.command.filter((item) => item.source !== "skill").map((item) => ({
       id: `custom.${item.name}`,
       trigger: item.name,
       title: item.name,

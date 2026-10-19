@@ -52,7 +52,7 @@ type SlashOption = RunFooterMenuItem & {
 }
 
 export function visibleSlashCommand(item: Pick<RunCommand, "name" | "source">) {
-  return item.source !== "skill" || item.name === "bmad" || item.name.startsWith("bmad-")
+  return item.source !== "skill"
 }
 
 type PromptOption = Auto | SlashOption

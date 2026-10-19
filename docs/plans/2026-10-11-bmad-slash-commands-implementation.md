@@ -1,4 +1,8 @@
-# BMAD Slash Commands Implementation Plan
+# BMAD Slash Commands Implementation Plan (Historical)
+
+> Superseded: BMAD skills are no longer exposed as ordinary slash commands. Keep this document only as the implementation record for the removed compatibility bridge.
+
+The current behavior is documented in `docs/wiscode-fork-delta.md` and `docs/wiscode-upstream-merge-checklist.md`.
 
 > Use the reviewed design in `2026-10-11-bmad-slash-commands-design.md`. Do not commit before manual verification.
 

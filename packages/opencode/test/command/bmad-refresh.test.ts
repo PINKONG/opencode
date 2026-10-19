@@ -33,13 +33,13 @@ it.live("rebuilds project skills and commands in the same layer", () =>
         yield* skill.reload()
         yield* command.reload()
         expect((yield* command.get("bmad"))?.source).toBe("skill")
-        expect((yield* command.get("bmad-help"))?.template).toBe((yield* command.get("bmad"))?.template)
+        expect(yield* command.get("bmad-help")).toBeUndefined()
       }),
     { git: true },
   ),
 )
 
-it.live("refreshes command and skill caches after a ready BMAD manifest appears", () =>
+it.live("keeps V1 skill commands available for the skills menu after init", () =>
   provideTmpdirInstance(
     (dir) =>
       Effect.gen(function* () {
@@ -77,7 +77,7 @@ it.live("refreshes direct skill discovery after a ready BMAD manifest appears", 
   ),
 )
 
-it.live("discovers BMAD commands after init in a non-git directory", () =>
+it.live("keeps BMAD skills out of commands after init in a non-git directory", () =>
   provideTmpdirInstance(
     (dir) =>
       Effect.gen(function* () {

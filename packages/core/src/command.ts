@@ -4,8 +4,6 @@ import { makeLocationNode } from "./effect/app-node"
 import { Context, Effect, Layer, Types } from "effect"
 import { Command } from "@opencode-ai/schema/command"
 import { State } from "./state"
-import { SkillV2 } from "./skill"
-import path from "path"
 
 export const Info = Command.Info
 export type Info = Command.Info
@@ -45,8 +43,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/v2
 
 const layer = Layer.effect(
   Service,
-  Effect.gen(function* () {
-    const skill = yield* SkillV2.Service
+  Effect.sync(() => {
     const state = State.create<Data, Draft>({
       initial: () => ({ commands: new Map() }),
       draft: (draft) => ({
@@ -64,41 +61,15 @@ const layer = Layer.effect(
       }),
     })
 
-    const derived = Effect.fn("CommandV2.derived")(function* () {
-      const found = (yield* skill.list()).filter((item) => item.name === "bmad" || item.name.startsWith("bmad-"))
-      const commands = found.map((item) =>
-        Command.Info.make({
-          name: item.name,
-          description: item.description?.replace(/\s+/g, " ").trim(),
-          source: "skill",
-          template: [
-            item.content,
-            "",
-            `Base directory for this skill: ${path.dirname(item.location)}`,
-            "Relative paths in this skill (e.g., scripts/, references/) are relative to this base directory.",
-          ].join("\n"),
-        }),
-      )
-      const bmad = commands.find((item) => item.name === "bmad")
-      if (bmad && !state.get().commands.has("bmad") && !commands.some((item) => item.name === "bmad-help"))
-        commands.push(Command.Info.make({ ...bmad, name: "bmad-help" }))
-      return commands
-    })
-
     return Service.of({
       reload: state.reload,
       transform: state.transform,
-      get: Effect.fn("CommandV2.get")(function* (name) {
-        return state.get().commands.get(name) ?? (yield* derived()).find((item) => item.name === name)
-      }),
-      list: Effect.fn("CommandV2.list")(function* () {
-        const registered = state.get().commands
-        return [...registered.values(), ...(yield* derived()).filter((item) => !registered.has(item.name))]
-      }),
+      get: Effect.fn("CommandV2.get")((name) => Effect.succeed(state.get().commands.get(name))),
+      list: Effect.fn("CommandV2.list")(() => Effect.succeed(Array.from(state.get().commands.values()))),
     })
   }),
 )
 
 export const locationLayer = layer
 
-export const node = makeLocationNode({ service: Service, layer, deps: [SkillV2.node] })
+export const node = makeLocationNode({ service: Service, layer, deps: [] })

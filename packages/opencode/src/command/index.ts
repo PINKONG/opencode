@@ -155,10 +155,6 @@ const layer = Layer.effect(
         }
       }
 
-      if (commands.bmad?.source === "skill" && !commands["bmad-help"]) {
-        commands["bmad-help"] = { ...commands.bmad, name: "bmad-help" }
-      }
-
       return {
         commands,
       }
