@@ -12,6 +12,9 @@ describe("dialog update", () => {
   })
 
   test("skipping a WisCode version hides it until a newer one ships", () => {
+    expect(updateTarget({ current: "1.4.2", latest: "2.0.0" })).toBeUndefined()
+    expect(updateTarget({ current: "1.4.2", latest: "1.4.1" })).toBeUndefined()
+    expect(updateTarget({ current: "1.9.0", latest: "1.10.0" })).toEqual({ type: "latest", version: "1.10.0" })
     expect(visibleNotice({ type: "available", version: "1.4.2" }, {})).toEqual({
       type: "available",
       version: "1.4.2",

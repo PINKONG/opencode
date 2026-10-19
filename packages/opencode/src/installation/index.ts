@@ -78,6 +78,12 @@ export class UpgradeFailedError extends Schema.TaggedErrorClass<UpgradeFailedErr
   }
 }
 
+export function isUpdate(current: string, latest: string) {
+  if (!semver.valid(latest)) return false
+  if (!semver.valid(current)) return semver.major(latest) === 1
+  return semver.major(latest) === semver.major(current) && semver.gt(latest, current)
+}
+
 const GitHubRelease = Schema.Struct({ tag_name: Schema.String })
 const NpmPackage = Schema.Struct({ version: Schema.String })
 const BrewFormula = Schema.Struct({ versions: Schema.Struct({ stable: Schema.String }) })
@@ -291,6 +297,9 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
             break
           case "bun":
             upgradeResult = yield* run(["bun", "install", "-g", `${npm}@${target}`])
+            break
+          case "yarn":
+            upgradeResult = yield* run(["yarn", "global", "add", `${npm}@${target}`])
             break
           case "brew": {
             const formula = yield* getBrewFormula()
