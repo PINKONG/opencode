@@ -84,8 +84,8 @@ import type {
   GlobalConfigGetResponses,
   GlobalConfigUpdateErrors,
   GlobalConfigUpdateResponses,
-  GlobalDiagnosticsCleanupErrors,
-  GlobalDiagnosticsCleanupResponses,
+  GlobalDiagnosticsClearErrors,
+  GlobalDiagnosticsClearResponses,
   GlobalDiagnosticsStatusErrors,
   GlobalDiagnosticsStatusResponses,
   GlobalDisposeErrors,
@@ -1430,12 +1430,12 @@ export class Diagnostics extends HeyApiClient {
   /**
    * Clear diagnostic logs
    */
-  public cleanup<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+  public clear<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).post<
-      GlobalDiagnosticsCleanupResponses,
-      GlobalDiagnosticsCleanupErrors,
+      GlobalDiagnosticsClearResponses,
+      GlobalDiagnosticsClearErrors,
       ThrowOnError
-    >({ url: "/global/diagnostics/cleanup", ...options })
+    >({ url: "/global/diagnostics/clear", ...options })
   }
 }
 

@@ -95,11 +95,13 @@ describe("global HttpApi", () => {
     }),
   )
 
-  it.live("clears current diagnostic files on explicit request", () =>
+  it.live("clears current diagnostic files only at the clear endpoint", () =>
     Effect.gen(function* () {
-      const response = yield* HttpClientRequest.post(GlobalPaths.diagnosticsCleanup).pipe(HttpClient.execute)
+      const response = yield* HttpClientRequest.post("/global/diagnostics/clear").pipe(HttpClient.execute)
       expect(response.status).toBe(200)
       expect(yield* response.json).toEqual({ root: "/tmp/wiscode-diagnostics", deleted: 2, skipped: 0 })
+      const old = yield* HttpClientRequest.post("/global/diagnostics/cleanup").pipe(HttpClient.execute)
+      expect(old.status).toBe(404)
     }),
   )
 

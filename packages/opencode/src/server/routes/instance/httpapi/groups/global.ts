@@ -75,14 +75,14 @@ const DiagnosticStatus = Schema.Struct({
   maxTotalBytes: Schema.Number,
 })
 
-const DiagnosticCleanupResult = Schema.Struct({ root: Schema.String, deleted: NonNegativeInt, skipped: NonNegativeInt })
+const DiagnosticClearResult = Schema.Struct({ root: Schema.String, deleted: NonNegativeInt, skipped: NonNegativeInt })
 
 export const GlobalPaths = {
   health: "/global/health",
   event: "/global/event",
   config: "/global/config",
   diagnostics: "/global/diagnostics",
-  diagnosticsCleanup: "/global/diagnostics/cleanup",
+  diagnosticsClear: "/global/diagnostics/clear",
   dispose: "/global/dispose",
   upgrade: "/global/upgrade",
 } as const
@@ -133,10 +133,10 @@ export const GlobalApi = HttpApi.make("global").add(
       }).annotateMerge(
         OpenApi.annotations({ identifier: "global.diagnostics.status", summary: "Get diagnostic status" }),
       ),
-      HttpApiEndpoint.post("diagnosticsCleanup", GlobalPaths.diagnosticsCleanup, {
-        success: described(DiagnosticCleanupResult, "Diagnostic log clear result"),
+      HttpApiEndpoint.post("diagnosticsClear", GlobalPaths.diagnosticsClear, {
+        success: described(DiagnosticClearResult, "Diagnostic log clear result"),
       }).annotateMerge(
-        OpenApi.annotations({ identifier: "global.diagnostics.cleanup", summary: "Clear diagnostic logs" }),
+        OpenApi.annotations({ identifier: "global.diagnostics.clear", summary: "Clear diagnostic logs" }),
       ),
       HttpApiEndpoint.post("dispose", GlobalPaths.dispose, {
         success: described(Schema.Boolean, "Global disposed"),

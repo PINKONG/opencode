@@ -96,7 +96,7 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
       return { root: diagnostics.root(), ...diagnostics.config() }
     })
 
-    const diagnosticsCleanup = Effect.fn("GlobalHttpApi.diagnosticsCleanup")(function* () {
+    const diagnosticsClear = Effect.fn("GlobalHttpApi.diagnosticsClear")(function* () {
       const result = yield* diagnostics.clear()
       return { root: diagnostics.root(), ...result }
     })
@@ -141,7 +141,7 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
       .handle("configGet", configGet)
       .handle("configUpdate", configUpdate)
       .handle("diagnosticsStatus", diagnosticsStatus)
-      .handle("diagnosticsCleanup", diagnosticsCleanup)
+      .handle("diagnosticsClear", diagnosticsClear)
       .handle("dispose", dispose)
       .handle("upgrade", upgrade)
   }),

@@ -44,10 +44,23 @@ const CleanupCommand = effectCmd({
   }),
 })
 
+const ClearCommand = effectCmd({
+  command: "clear",
+  describe: "delete all local diagnostic logs, including today's files",
+  instance: false,
+  builder: (yargs) => yargs.option("yes", { type: "boolean", default: false, describe: "confirm all log deletion" }),
+  handler: Effect.fn("Cli.diagnostics.clear")(function* (args) {
+    if (!args.yes) return yield* fail("diagnostics clear requires --yes because it deletes all logs")
+    const diagnostics = yield* DiagnosticTrace.Service
+    const result = yield* diagnostics.clear()
+    console.log(JSON.stringify({ root: diagnostics.root(), ...result }))
+  }),
+})
+
 export const DiagnosticsCommand = effectCmd({
   command: "diagnostics",
-  describe: "inspect and clean up local diagnostic logs",
+  describe: "inspect and manage local diagnostic logs",
   instance: false,
-  builder: (yargs) => yargs.command(StatusCommand).command(CleanupCommand).demandCommand(),
+  builder: (yargs) => yargs.command(StatusCommand).command(CleanupCommand).command(ClearCommand).demandCommand(),
   handler: Effect.fn("Cli.diagnostics")(function* () {}),
 })

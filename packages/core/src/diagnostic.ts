@@ -64,7 +64,7 @@ export interface Interface {
   readonly close: (sessionId?: string) => Effect.Effect<void>
   readonly closeAll: () => Effect.Effect<void>
   readonly root: () => string
-  readonly cleanup: (input?: { light?: boolean }) => Effect.Effect<void>
+  readonly cleanup: () => Effect.Effect<void>
   readonly clear: () => Effect.Effect<{ deleted: number; skipped: number }>
 }
 
@@ -159,6 +159,10 @@ function makeLayer(options: NodeOptions = {}) {
 
       const reportFailure = (message: string, error: unknown) => {
         void Effect.runPromise(Effect.logError(`${message}: ${String(error)}`))
+      }
+
+      const reportContention = (message: string, error: Flock.TimeoutError) => {
+        void Effect.runPromise(Effect.logWarning(`${message}: ${error.message}`))
       }
 
       const flushDrops = (key?: string) => {
@@ -343,7 +347,7 @@ function makeLayer(options: NodeOptions = {}) {
         })
 
       let cleaning = Promise.resolve()
-      const cleanup: Interface["cleanup"] = (input = {}) =>
+      const cleanup: Interface["cleanup"] = () =>
         Effect.promise(() => {
           const next = cleaning.then(async () => {
             await Effect.runPromise(flush())
@@ -385,9 +389,7 @@ function makeLayer(options: NodeOptions = {}) {
                 }
               }
               candidates.sort((a, b) => a.date.localeCompare(b.date) || a.mtimeMs - b.mtimeMs)
-              let visited = 0
               for (const candidate of candidates) {
-                if (++visited > 1000 && input.light) break
                 const expired = cutoff !== undefined && candidate.date < cutoff
                 if (!expired && total <= current.maxTotalBytes) continue
                 let lease: Awaited<ReturnType<typeof Flock.acquire>> | undefined
@@ -414,6 +416,10 @@ function makeLayer(options: NodeOptions = {}) {
                   await fs.unlink(candidate.file)
                   total -= stat.size
                 } catch (error) {
+                  if (error instanceof Flock.TimeoutError) {
+                    reportContention("Diagnostic cleanup skipped busy stream", error)
+                    continue
+                  }
                   reportFailure("Diagnostic cleanup failed", error)
                 } finally {
                   await lease
@@ -486,7 +492,8 @@ function makeLayer(options: NodeOptions = {}) {
                   }
                 } catch (error) {
                   skipped += remaining
-                  reportFailure("Diagnostic clear failed", error)
+                  if (error instanceof Flock.TimeoutError) reportContention("Diagnostic clear skipped busy stream", error)
+                  else reportFailure("Diagnostic clear failed", error)
                 } finally {
                   await lease?.release().catch((error) => reportFailure("Diagnostic clear lock release failed", error))
                 }

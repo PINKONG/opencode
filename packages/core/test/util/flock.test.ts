@@ -173,6 +173,7 @@ describe("util.flock", () => {
       }).catch((err) => err)
 
       expect(err).toBeInstanceOf(Error)
+      expect(err).toBeInstanceOf(Flock.TimeoutError)
       if (!(err instanceof Error)) throw err
       expect(err.message).toContain("Timed out waiting for lock")
       expect(seen.length).toBeGreaterThan(0)

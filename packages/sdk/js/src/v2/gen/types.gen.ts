@@ -7376,23 +7376,23 @@ export type GlobalDiagnosticsStatusResponses = {
 
 export type GlobalDiagnosticsStatusResponse = GlobalDiagnosticsStatusResponses[keyof GlobalDiagnosticsStatusResponses]
 
-export type GlobalDiagnosticsCleanupData = {
+export type GlobalDiagnosticsClearData = {
   body?: never
   path?: never
   query?: never
-  url: "/global/diagnostics/cleanup"
+  url: "/global/diagnostics/clear"
 }
 
-export type GlobalDiagnosticsCleanupErrors = {
+export type GlobalDiagnosticsClearErrors = {
   /**
    * Bad request
    */
   400: BadRequestError
 }
 
-export type GlobalDiagnosticsCleanupError = GlobalDiagnosticsCleanupErrors[keyof GlobalDiagnosticsCleanupErrors]
+export type GlobalDiagnosticsClearError = GlobalDiagnosticsClearErrors[keyof GlobalDiagnosticsClearErrors]
 
-export type GlobalDiagnosticsCleanupResponses = {
+export type GlobalDiagnosticsClearResponses = {
   /**
    * Diagnostic log clear result
    */
@@ -7403,8 +7403,7 @@ export type GlobalDiagnosticsCleanupResponses = {
   }
 }
 
-export type GlobalDiagnosticsCleanupResponse =
-  GlobalDiagnosticsCleanupResponses[keyof GlobalDiagnosticsCleanupResponses]
+export type GlobalDiagnosticsClearResponse = GlobalDiagnosticsClearResponses[keyof GlobalDiagnosticsClearResponses]
 
 export type GlobalDisposeData = {
   body?: never

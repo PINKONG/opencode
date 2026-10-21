@@ -10,6 +10,13 @@ export type FlockGlobal = {
 }
 
 export namespace Flock {
+  export class TimeoutError extends Error {
+    constructor(key: string) {
+      super(`Timed out waiting for lock: ${key}`)
+      this.name = "TimeoutError"
+    }
+  }
+
   let global: FlockGlobal | undefined
 
   export function setGlobal(g: FlockGlobal) {
@@ -290,7 +297,7 @@ export namespace Flock {
       }
 
       if (mono() > stop) {
-        throw new Error(`Timed out waiting for lock: ${input.key}`)
+        throw new TimeoutError(input.key)
       }
 
       attempt += 1

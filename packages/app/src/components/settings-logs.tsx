@@ -42,7 +42,7 @@ function useLogs() {
       const result = await cleanupDiagnosticLogs({
         confirm: () => window.confirm(language.t("settings.logs.cleanup.confirm")),
         cleanup: async () => {
-          const response = await serverSdk().client.global.diagnostics.cleanup()
+          const response = await serverSdk().client.global.diagnostics.clear()
           if (!response.data) throw new Error(String(response.error ?? language.t("settings.logs.cleanup.unavailable")))
           return response.data
         },
