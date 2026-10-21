@@ -19,6 +19,8 @@ import { authorizationLayer } from "../../src/server/routes/instance/httpapi/mid
 import { schemaErrorLayer } from "../../src/server/routes/instance/httpapi/middleware/schema-error"
 import { testEffect } from "../lib/effect"
 
+let ensuredRoots = 0
+
 const diagnostic = {
   configure: () => Effect.void,
   config: () => ({ enabled: false, rawPayloads: false, streaming: false, retentionDays: 14, maxTotalBytes: 0 }),
@@ -34,6 +36,7 @@ const diagnostic = {
   close: () => Effect.void,
   closeAll: () => Effect.void,
   root: () => "/tmp/wiscode-diagnostics",
+  ensureRoot: () => Effect.sync(() => ensuredRoots++),
   cleanup: () => Effect.void,
   clear: () => Effect.succeed({ deleted: 2, skipped: 0 }),
 }
@@ -87,11 +90,13 @@ describe("global HttpApi", () => {
       ).toBe(true)
     }),
   )
-  it.live("reports the local diagnostic directory", () =>
+  it.live("ensures the local diagnostic directory exists before reporting it", () =>
     Effect.gen(function* () {
+      ensuredRoots = 0
       const response = yield* HttpClientRequest.get(GlobalPaths.diagnostics).pipe(HttpClient.execute)
       expect(response.status).toBe(200)
       expect(yield* response.json).toMatchObject({ root: "/tmp/wiscode-diagnostics", enabled: false })
+      expect(ensuredRoots).toBe(1)
     }),
   )
 

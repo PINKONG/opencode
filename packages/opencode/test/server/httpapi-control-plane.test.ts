@@ -37,6 +37,7 @@ const diagnostic = {
   close: () => Effect.void,
   closeAll: () => Effect.void,
   root: () => "",
+  ensureRoot: () => Effect.void,
   cleanup: () => Effect.void,
 }
 

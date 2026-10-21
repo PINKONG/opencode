@@ -93,6 +93,7 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
     const diagnosticsStatus = Effect.fn("GlobalHttpApi.diagnosticsStatus")(function* () {
       const info = yield* config.getGlobal()
       yield* diagnostics.configure(diagnosticConfig(info.diagnostics))
+      yield* diagnostics.ensureRoot()
       return { root: diagnostics.root(), ...diagnostics.config() }
     })
 

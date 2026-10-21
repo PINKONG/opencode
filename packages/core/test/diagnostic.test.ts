@@ -53,6 +53,21 @@ describe("DiagnosticTrace", () => {
     await expect(fs.readdir(path.join(tmp.path, "log", "diagnostics"))).rejects.toThrow()
   })
 
+  test("creates the diagnostic root on demand", async () => {
+    await using tmp = await tmpdir()
+    const root = path.join(tmp.path, "log", "diagnostics")
+
+    await run(
+      tmp.path,
+      Effect.gen(function* () {
+        const service = yield* DiagnosticTrace.Service
+        yield* service.ensureRoot()
+      }),
+    )
+
+    expect((await fs.stat(root)).isDirectory()).toBe(true)
+  })
+
   test("uses independent explicit task and turn contexts", async () => {
     await using tmp = await tmpdir()
     const [first, second] = await run(

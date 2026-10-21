@@ -64,6 +64,7 @@ export interface Interface {
   readonly close: (sessionId?: string) => Effect.Effect<void>
   readonly closeAll: () => Effect.Effect<void>
   readonly root: () => string
+  readonly ensureRoot: () => Effect.Effect<void>
   readonly cleanup: () => Effect.Effect<void>
   readonly clear: () => Effect.Effect<{ deleted: number; skipped: number }>
 }
@@ -549,6 +550,7 @@ function makeLayer(options: NodeOptions = {}) {
         close: flush,
         closeAll: () => flush(),
         root: () => root,
+        ensureRoot: () => filesystem.ensureDir(root).pipe(Effect.orDie),
         cleanup,
         clear,
       })

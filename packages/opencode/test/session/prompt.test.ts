@@ -106,6 +106,7 @@ const diagnosticTrace = Layer.succeed(
     close: () => Effect.void,
     closeAll: () => Effect.void,
     root: () => "/tmp/wiscode-diagnostic-test",
+    ensureRoot: () => Effect.void,
     cleanup: () => Effect.void,
     clear: () => Effect.succeed({ deleted: 0, skipped: 0 }),
   }),
