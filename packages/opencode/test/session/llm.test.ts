@@ -3,9 +3,11 @@ import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import path from "path"
+import fs from "fs/promises"
 import { tool, type ModelMessage } from "ai"
 import { Cause, Effect, Exit, Fiber, Layer, Stream } from "effect"
 import { InstanceRef } from "../../src/effect/instance-ref"
+import { TestInstance } from "../fixture/fixture"
 import { HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import z from "zod"
 import { LLM } from "../../src/session/llm"
@@ -28,6 +30,9 @@ import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { LayerNodePlatform } from "@opencode-ai/core/effect/app-node-platform"
 import { ProviderError } from "@/provider/error"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { Global } from "@opencode-ai/core/global"
+import { Plugin } from "@/plugin"
 
 type ConfigModel = NonNullable<NonNullable<ConfigV1.Info["provider"]>[string]["models"]>[string]
 
@@ -753,6 +758,220 @@ function createEventResponse(chunks: unknown[], includeDone = false) {
 }
 
 describe("session.llm.stream", () => {
+  it.instance(
+    "captures actual provider request and response in raw diagnostic mode",
+    () =>
+      Effect.gen(function* () {
+        const fixture = yield* TestInstance
+        const request = waitRequest(
+          "/chat/completions",
+          new Response(createChatStream("wire-reply"), {
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+        )
+        const requestAfterDisable = waitRequest(
+          "/chat/completions",
+          new Response(createChatStream("private-output-after-disable"), {
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+        )
+        const model = yield* Provider.use.getModel(
+          ProviderV2.ID.make("vivgrid"),
+          ModelV2.ID.make("gemini-3.1-pro-preview"),
+        )
+        const agent = { name: "test", mode: "primary", options: {}, permission: [] } satisfies Agent.Info
+        const sessionID = SessionID.make("ses_wire_diagnostic")
+        const user = {
+          id: MessageID.make("msg_wire_diagnostic"),
+          sessionID,
+          role: "user",
+          time: { created: Date.now() },
+          agent: agent.name,
+          model: { providerID: ProviderV2.ID.make("vivgrid"), modelID: model.id },
+        } satisfies SessionV1.User
+        const layer = AppNodeBuilder.build(LayerNode.group([LLM.node, DiagnosticTrace.node, Plugin.node]), [
+          [
+            Global.node,
+            Global.layerWith({
+              log: path.join(fixture.directory, "log"),
+              state: path.join(fixture.directory, "state"),
+            }),
+          ],
+        ])
+        const ctx = yield* InstanceRef
+        if (!ctx) return yield* Effect.die("missing instance context")
+        const root = yield* Effect.promise(() =>
+          Effect.runPromise(
+            Effect.gen(function* () {
+              const diagnostics = yield* DiagnosticTrace.Service
+              yield* Plugin.Service.use((svc) => svc.init())
+              yield* diagnostics.configure({
+                enabled: true,
+                rawPayloads: true,
+                streaming: false,
+                retentionDays: 14,
+                maxTotalBytes: 1024 * 1024,
+              })
+              const trace = diagnostics.startTask({ sessionId: sessionID, runtime: { sessionEngine: "legacy-v1" } })
+              const events = yield* LLM.Service.use((svc) =>
+                svc
+                  .stream({
+                    user,
+                    sessionID,
+                    model,
+                    agent,
+                    system: ["system-secret"],
+                    messages: [{ role: "user", content: "request-secret" }],
+                    tools: {},
+                    diagnostic: trace,
+                  })
+                  .pipe(Stream.runCollect),
+              )
+              expect(Array.from(events).map((event) => event.type)).toContain("finish")
+              expect(diagnostics.config().enabled).toBe(true)
+              yield* diagnostics.flush(sessionID)
+              yield* diagnostics.configure({ ...diagnostics.config(), rawPayloads: false })
+              const nextTrace = diagnostics.startTask({ sessionId: sessionID, runtime: { sessionEngine: "legacy-v1" } })
+              yield* LLM.Service.use((svc) => svc.stream({
+                user: { ...user, id: MessageID.make("msg_after_raw_disabled") }, sessionID, model, agent,
+                system: ["private-system-after-disable"],
+                messages: [{ role: "user", content: "private-request-after-disable" }],
+                tools: {}, diagnostic: nextTrace,
+              }).pipe(Stream.runDrain))
+              yield* diagnostics.flush(sessionID)
+              return diagnostics.root()
+            }).pipe(Effect.provide(layer), Effect.provideService(InstanceRef, ctx)),
+          ),
+        )
+        yield* Effect.promise(() => request)
+        yield* Effect.promise(() => requestAfterDisable)
+        const rows = (yield* Effect.promise(() =>
+          fs.readFile(path.join(root, new Date().toISOString().slice(0, 10), "ses_wire_diagnostic.jsonl"), "utf8"),
+        ))
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line))
+        const completed = rows.find((row) => row.event === "llm.request.completed")
+        expect(completed).toBeDefined()
+        expect(completed.payload.raw.providerRequest.headers.authorization).toContain("test-key")
+        expect(completed.payload.raw.providerRequest.body).toContain("request-secret")
+        expect(completed.payload.raw.providerResponse.body).toContain("wire-reply")
+        expect(completed.payload.summary.normalizedResponse).toMatchObject({ textBytes: 10, toolCallCount: 0 })
+        expect(completed.payload.summary.timing.timeToFirstTokenMs).toBeGreaterThanOrEqual(0)
+        expect(completed.payload.raw.normalizedResponse.text).toBe("wire-reply")
+        const afterDisable = rows.find((row) => row.event === "llm.request.completed" && row.payload.summary.userMessageId === "msg_after_raw_disabled")
+        expect(afterDisable).toBeDefined()
+        expect(afterDisable?.payload.raw).toBeUndefined()
+        expect(JSON.stringify(rows.filter((row) => row.traceId === afterDisable?.traceId))).not.toContain("private-request-after-disable")
+        expect(JSON.stringify(rows.filter((row) => row.traceId === afterDisable?.traceId))).not.toContain("private-output-after-disable")
+      }),
+    {
+      config: () => ({
+        enabled_providers: ["vivgrid"],
+        provider: { vivgrid: { options: { apiKey: "test-key", baseURL: `${state.server!.url.origin}/v1` } } },
+      }),
+    },
+  )
+
+  it.instance(
+    "captures native transport request and response in raw diagnostic mode",
+    () =>
+      Effect.gen(function* () {
+        const fixture = yield* TestInstance
+        const model = loadFixture("openai", "gpt-5.2").model
+        const request = waitRequest(
+          "/responses",
+          createEventResponse(
+            [
+              { type: "response.created", response: { id: "resp-native-wire" } },
+              {
+                type: "response.output_item.added",
+                item: { type: "message", id: "item-native-wire", status: "in_progress" },
+              },
+              { type: "response.output_text.delta", item_id: "item-native-wire", delta: "native-wire-reply" },
+              {
+                type: "response.completed",
+                response: { incomplete_details: null, usage: { input_tokens: 1, output_tokens: 1 } },
+              },
+            ],
+            true,
+          ),
+        )
+        const resolved = yield* Provider.use.getModel(ProviderV2.ID.openai, ModelV2.ID.make(model.id))
+        const sessionID = SessionID.make("ses_native_wire_diagnostic")
+        const agent = { name: "test", mode: "primary", options: {}, permission: [] } satisfies Agent.Info
+        const layer = AppNodeBuilder.build(LayerNode.group([LLM.node, DiagnosticTrace.node, Plugin.node]), [
+          [
+            Global.node,
+            Global.layerWith({
+              log: path.join(fixture.directory, "log"),
+              state: path.join(fixture.directory, "state"),
+            }),
+          ],
+          [RuntimeFlags.node, RuntimeFlags.layer({ experimentalNativeLlm: true })],
+        ])
+        const ctx = yield* InstanceRef
+        if (!ctx) return yield* Effect.die("missing instance context")
+        const root = yield* Effect.promise(() =>
+          Effect.runPromise(
+            Effect.gen(function* () {
+              const diagnostics = yield* DiagnosticTrace.Service
+              yield* Plugin.Service.use((svc) => svc.init())
+              yield* diagnostics.configure({
+                enabled: true,
+                rawPayloads: true,
+                streaming: false,
+                retentionDays: 14,
+                maxTotalBytes: 1024 * 1024,
+              })
+              const trace = diagnostics.startTask({ sessionId: sessionID, runtime: { sessionEngine: "legacy-v1" } })
+              const events = yield* LLM.Service.use((svc) =>
+                svc
+                  .stream({
+                    user: {
+                      id: MessageID.make("msg_native_wire_diagnostic"),
+                      sessionID,
+                      role: "user",
+                      time: { created: Date.now() },
+                      agent: agent.name,
+                      model: { providerID: ProviderV2.ID.openai, modelID: resolved.id },
+                    },
+                    sessionID,
+                    model: resolved,
+                    agent,
+                    system: ["native-system-secret"],
+                    messages: [{ role: "user", content: "native-request-secret" }],
+                    tools: {},
+                    diagnostic: trace,
+                  })
+                  .pipe(Stream.runCollect),
+              )
+              expect(Array.from(events).map((event) => event.type)).toContain("finish")
+              yield* diagnostics.flush(sessionID)
+              return diagnostics.root()
+            }).pipe(Effect.provide(layer), Effect.provideService(InstanceRef, ctx)),
+          ),
+        )
+        yield* Effect.promise(() => request)
+        const rows = (yield* Effect.promise(() =>
+          fs.readFile(path.join(root, new Date().toISOString().slice(0, 10), `${sessionID}.jsonl`), "utf8"),
+        ))
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line))
+        const completed = rows.find((row) => row.event === "llm.request.completed")
+        expect(completed).toBeDefined()
+        expect(completed.payload.summary.usage.cost).toMatchObject({ currency: "USD", estimated: true })
+        expect(completed.payload.raw.providerRequest.headers.authorization).toContain("test-openai-key")
+        expect(completed.payload.raw.providerRequest.body).toContain("native-request-secret")
+        expect(completed.payload.raw.providerResponse.body).toContain("native-wire-reply")
+      }),
+    {
+      config: () => openAIConfig(loadFixture("openai", "gpt-5.2").model, `${state.server!.url.origin}/v1`),
+      timeout: 15_000,
+    },
+  )
+
   const vivgridFixture = { providerID: "vivgrid", modelID: "gemini-3.1-pro-preview" }
   const opencodeFixture = { providerID: "opencode-test", modelID: vivgridFixture.modelID }
 

@@ -33,6 +33,15 @@ export const Info = Schema.Struct({
   $schema: Schema.optional(Schema.String).annotate({
     description: "JSON schema reference for configuration validation",
   }),
+  diagnostics: Schema.Struct({
+    enabled: Schema.Boolean.pipe(Schema.optional),
+    rawPayloads: Schema.Boolean.pipe(Schema.optional),
+    streaming: Schema.Boolean.pipe(Schema.optional),
+    retentionDays: NonNegativeInt.pipe(Schema.optional),
+    maxTotalBytes: PositiveInt.pipe(Schema.optional),
+  })
+    .pipe(Schema.optional)
+    .annotate({ description: "Global local-only diagnostic trace settings" }),
   shell: Schema.optional(Schema.String).annotate({ description: "Default shell to use for terminal and bash tool" }),
   logLevel: Schema.optional(LogLevelRef).annotate({ description: "Log level" }),
   server: Schema.optional(ConfigServerV1.Server).annotate({

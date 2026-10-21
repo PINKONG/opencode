@@ -835,6 +835,7 @@ export const RunCommand = effectCmd({
           if (args.command) {
             const result = await client.session.command({
               sessionID,
+              diagnosticSurface: "cli",
               agent,
               model: args.model,
               command: args.command,
@@ -853,6 +854,7 @@ export const RunCommand = effectCmd({
           const model = pick(args.model)
           const result = await client.session.prompt({
             sessionID,
+            diagnosticSurface: "cli",
             agent,
             model,
             variant: args.variant,

@@ -882,6 +882,7 @@ export const githubRun = Effect.fn("Cli.github.run")(function* (args: { event?: 
           const prompt = sessionPrompt
           const result = yield* prompt.prompt({
             sessionID: session.id,
+            diagnosticSurface: "background",
             messageID: MessageID.ascending(),
             variant,
             model: {
@@ -930,6 +931,7 @@ export const githubRun = Effect.fn("Cli.github.run")(function* (args: { event?: 
           console.log("Requesting summary from agent...")
           const summary = yield* prompt.prompt({
             sessionID: session.id,
+            diagnosticSurface: "background",
             messageID: MessageID.ascending(),
             variant,
             model: {

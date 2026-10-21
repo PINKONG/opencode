@@ -327,10 +327,11 @@ Before starting the next implementation phase, confirm the following are true:
 
 The next plan must then connect the service to the actual global diagnostics settings, followed by shared LLM/Tool/Plugin/MCP/knowledge boundaries and finally Legacy `SessionPrompt`. That boundary-integration plan must test that knowledge adapter events nested under MCP/tool transport events use `parentEventId` and readers aggregate by call tree to avoid counting one retrieval twice. Any `HttpApi` changes require `bun run generate` from `packages/client`; generated files must never be edited directly.
 
-**Step 4: Commit the foundation in one reviewable unit**
+**Step 4: Commit the remaining Core foundation**
 
 ```bash
-git add packages/schema/src/diagnostic.ts packages/schema/src/index.ts packages/schema/test/diagnostic.test.ts \
-  packages/core/src/diagnostic.ts packages/core/test/diagnostic.test.ts
+git add packages/core/src/diagnostic.ts packages/core/test/diagnostic.test.ts
 git commit -m "feat(core): add diagnostic trace foundation"
 ```
+
+Task 1's schema commit and this Core commit are intentionally separate reviewable units. Do not stage or commit the pre-existing `bun.lock` change.

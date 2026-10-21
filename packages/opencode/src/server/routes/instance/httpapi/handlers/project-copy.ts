@@ -3,6 +3,8 @@ import { Provider } from "@/provider/provider"
 import { LLM } from "@/session/llm"
 import { MessageID, SessionID } from "@/session/schema"
 import { Slug } from "@opencode-ai/core/util/slug"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { Config } from "@/config/config"
 import { LLMEvent } from "@opencode-ai/llm"
 import { Effect, Stream } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
@@ -21,6 +23,8 @@ export const projectCopyHandlers = HttpApiBuilder.group(InstanceHttpApi, "projec
   Effect.gen(function* () {
     const llm = yield* LLM.Service
     const provider = yield* Provider.Service
+    const diagnostics = yield* DiagnosticTrace.Service
+    const config = yield* Config.Service
 
     const generateName = Effect.fn("ProjectCopyHttpApi.generateName")(function* (context: string | undefined) {
       const text = context?.trim()
@@ -31,6 +35,18 @@ export const projectCopyHandlers = HttpApiBuilder.group(InstanceHttpApi, "projec
         (yield* provider.getSmallModel(fallback.providerID)) ??
         (yield* provider.getModel(fallback.providerID, fallback.modelID))
       const sessionID = SessionID.descending()
+      const global = yield* config.getGlobal()
+      yield* diagnostics.configure({
+        enabled: global.diagnostics?.enabled ?? false,
+        rawPayloads: global.diagnostics?.rawPayloads ?? false,
+        streaming: global.diagnostics?.streaming ?? false,
+        retentionDays: global.diagnostics?.retentionDays ?? 14,
+        maxTotalBytes: global.diagnostics?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
+      })
+      const trace = diagnostics.startTask({
+        sessionId: sessionID,
+        runtime: { sessionEngine: "legacy-v1", surface: "web" },
+      })
       const result = yield* llm
         .stream({
           agent: COPY_NAME_AGENT,
@@ -48,6 +64,9 @@ export const projectCopyHandlers = HttpApiBuilder.group(InstanceHttpApi, "projec
           model,
           sessionID,
           retries: 2,
+          diagnostic: trace,
+          diagnosticService: diagnostics,
+          querySource: "auxiliary",
           messages: [{ role: "user", content: `Generate a short 2-3 word name that describes this task:\n${text}` }],
         })
         .pipe(

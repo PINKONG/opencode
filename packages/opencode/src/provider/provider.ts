@@ -1247,7 +1247,7 @@ export interface Interface {
   readonly list: () => Effect.Effect<Record<ProviderV2.ID, Info>>
   readonly getProvider: (providerID: ProviderV2.ID) => Effect.Effect<Info>
   readonly getModel: (providerID: ProviderV2.ID, modelID: ModelV2.ID) => Effect.Effect<Model, ModelNotFoundError>
-  readonly getLanguage: (model: Model) => Effect.Effect<LanguageModelV3, ModelNotFoundError>
+  readonly getLanguage: (model: Model, options?: { wrapFetch: (base: typeof fetch) => typeof fetch }) => Effect.Effect<LanguageModelV3, ModelNotFoundError>
   readonly closest: (
     providerID: ProviderV2.ID,
     query: string[],
@@ -1782,7 +1782,7 @@ const layer = Layer.effect(
 
     const list = Effect.fn("Provider.list")(() => InstanceState.use(state, (s) => s.providers))
 
-    async function resolveSDK(model: Model, s: State, envs: Record<string, string | undefined>) {
+    async function resolveSDK(model: Model, s: State, envs: Record<string, string | undefined>, wrapFetch?: (base: typeof fetch) => typeof fetch) {
       try {
         const provider = s.providers[model.providerID]
         const options = { ...provider.options }
@@ -1844,9 +1844,10 @@ const layer = Layer.effect(
           }),
         )
         const existing = s.sdk.get(key)
-        if (existing) return existing
+        if (existing && !wrapFetch) return existing
 
-        options["fetch"] = timeoutFetch(options)
+        const baseFetch = Object.assign(timeoutFetch(options), { preconnect: () => {} })
+        options["fetch"] = wrapFetch ? wrapFetch(baseFetch) : baseFetch
         delete options["chunkTimeout"]
         delete options["headerTimeout"]
 
@@ -1857,7 +1858,7 @@ const layer = Layer.effect(
             name: model.providerID,
             ...options,
           })
-          s.sdk.set(key, loaded)
+          if (!wrapFetch) s.sdk.set(key, loaded)
           return loaded as SDK
         }
 
@@ -1880,7 +1881,7 @@ const layer = Layer.effect(
           name: model.providerID,
           ...options,
         })
-        s.sdk.set(key, loaded)
+        if (!wrapFetch) s.sdk.set(key, loaded)
         return loaded as SDK
       } catch (e) {
         throw new InitError({ providerID: model.providerID, cause: e })
@@ -1915,16 +1916,16 @@ const layer = Layer.effect(
       return info
     })
 
-    const getLanguage = Effect.fn("Provider.getLanguage")(function* (model: Model) {
+    const getLanguage = Effect.fn("Provider.getLanguage")(function* (model: Model, options?: { wrapFetch: (base: typeof fetch) => typeof fetch }) {
       const s = yield* InstanceState.get(state)
       const envs = yield* env.all()
       const key = `${model.providerID}/${model.id}`
-      if (s.models.has(key)) return s.models.get(key)!
+      if (!options && s.models.has(key)) return s.models.get(key)!
 
       const provider = s.providers[model.providerID]
       return yield* EffectPromise.refineRejection(
         async () => {
-          const sdk = await resolveSDK(model, s, envs)
+          const sdk = await resolveSDK(model, s, envs, options?.wrapFetch)
           const language = s.modelLoaders[model.providerID]
             ? await s.modelLoaders[model.providerID](
                 sdk,
@@ -1936,7 +1937,7 @@ const layer = Layer.effect(
                 model,
               )
             : sdk.languageModel(model.api.id)
-          s.models.set(key, language)
+          if (!options) s.models.set(key, language)
           return language
         },
         (cause) =>

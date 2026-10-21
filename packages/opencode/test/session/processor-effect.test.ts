@@ -13,7 +13,7 @@ import { Provider } from "@/provider/provider"
 import { Session } from "@/session/session"
 import { LLM } from "../../src/session/llm"
 import { MessageV2 } from "../../src/session/message-v2"
-import { SessionProcessor } from "../../src/session/processor"
+import { SessionProcessor, diagnosticStepSummary } from "../../src/session/processor"
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
 import { SessionStatus } from "../../src/session/status"
 import { SessionSummary } from "../../src/session/summary"
@@ -26,6 +26,7 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { SessionProjector } from "@opencode-ai/core/session/projector"
 import { LLMEvent } from "@opencode-ai/llm"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
 
 const summary = Layer.succeed(
   SessionSummary.Service,
@@ -166,6 +167,7 @@ const assistant = Effect.fn("TestSession.assistant")(function* (
 })
 
 const root = LayerNode.group([
+  DiagnosticTrace.node,
   SessionProcessor.node,
   Session.node,
   SessionProjector.node,
@@ -185,6 +187,28 @@ const env = LayerNode.compile(
 )
 
 const it = testEffect(env)
+
+it.live("diagnostic billed step links the persisted assistant part", () =>
+  Effect.sync(() => {
+    expect(
+      diagnosticStepSummary({
+        assistantMessageId: "msg_assistant",
+        userMessageId: "msg_user",
+        partId: "prt_saved",
+        step: 2,
+        reason: "stop",
+        tokens: { total: 15, input: 11, output: 4, reasoning: 0, cache: { read: 0, write: 0 } },
+        cost: 0.02,
+      }),
+    ).toMatchObject({
+      messageId: "msg_assistant",
+      userMessageId: "msg_user",
+      partId: "prt_saved",
+      usageRole: "step-billed",
+      usage: { inputTokens: 11, outputTokens: 4, cost: { amount: 0.02 } },
+    })
+  }),
+)
 
 const providerErrorLLM = Layer.succeed(
   LLM.Service,
@@ -242,6 +266,7 @@ it.live("session.processor effect tests capture llm input cleanly", () =>
     ({ dir, llm }) =>
       Effect.gen(function* () {
         const database = yield* Database.Service
+        const diagnostics = yield* DiagnosticTrace.Service
         const { processors, session, provider } = yield* boot()
 
         yield* llm.text("hello")
@@ -249,6 +274,7 @@ it.live("session.processor effect tests capture llm input cleanly", () =>
         const chat = yield* session.create({})
         const parent = yield* user(chat.id, "hi")
         const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
+        const trace = diagnostics.startTask({ sessionId: chat.id })
         const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
         const handle = yield* processors.create({
           assistantMessage: msg,
@@ -271,10 +297,37 @@ it.live("session.processor effect tests capture llm input cleanly", () =>
           system: [],
           messages: [{ role: "user", content: "hi" }],
           tools: {},
+          diagnostic: trace,
+          diagnosticService: diagnostics,
         } satisfies LLM.StreamInput
 
+        yield* diagnostics.configure({
+          enabled: true,
+          rawPayloads: false,
+          streaming: false,
+          retentionDays: 14,
+          maxTotalBytes: 1024 * 1024,
+        })
         const value = yield* handle.process(input)
+        expect(diagnostics.config().enabled).toBe(true)
         const parts = yield* MessageV2.parts(msg.id)
+        expect(parts.map((part) => part.type)).toContain("step-finish")
+        yield* diagnostics.flush(chat.id)
+        const lines = yield* Effect.promise(() =>
+          Bun.file(path.join(diagnostics.root(), new Date().toISOString().slice(0, 10), `${chat.id}.jsonl`)).text(),
+        )
+        const rows = lines
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line))
+        const steps = rows.filter((row) => row.event === "llm.step.completed")
+        expect(rows.map((row) => row.event)).toContain("llm.step.completed")
+        expect(steps[0].payload.summary.messageId).toBe(msg.id)
+        expect(steps[0].payload.summary.userMessageId).toBe(parent.id)
+        expect(parts.some((part) => part.id === steps[0].payload.summary.partId && part.type === "step-finish")).toBe(
+          true,
+        )
+        expect(steps[0].turnId).toBeDefined()
         const calls = yield* llm.calls
 
         expect(value).toBe("continue")
@@ -1074,12 +1127,21 @@ itProviderError.live("session.processor effect tests fail provider-executed erro
     (dir) =>
       Effect.gen(function* () {
         const { processors, session, provider } = yield* boot()
+        const diagnostics = yield* DiagnosticTrace.Service
         const events = yield* EventV2Bridge.Service
 
         const chat = yield* session.create({})
         const parent = yield* user(chat.id, "provider tool error")
         const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
         const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
+        yield* diagnostics.configure({
+          enabled: true,
+          rawPayloads: false,
+          streaming: false,
+          retentionDays: 14,
+          maxTotalBytes: 1024 * 1024,
+        })
+        const trace = diagnostics.startTask({ sessionId: chat.id })
         const seen: string[] = []
         const off = yield* events.listen((event) => {
           seen.push(event.type)
@@ -1102,8 +1164,26 @@ itProviderError.live("session.processor effect tests fail provider-executed erro
           system: [],
           messages: [{ role: "user", content: "provider tool error" }],
           tools: {},
+          diagnostic: trace,
+          diagnosticService: diagnostics,
         })
         yield* off
+
+        yield* diagnostics.flush(chat.id)
+        const logged = (yield* Effect.promise(() =>
+          Bun.file(path.join(diagnostics.root(), new Date().toISOString().slice(0, 10), `${chat.id}.jsonl`)).text(),
+        ))
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line))
+        expect(logged.filter((row) => row.event.startsWith("tool.")).map((row) => row.event)).toEqual([
+          "tool.started",
+          "tool.failed",
+        ])
+        expect(logged.find((row) => row.event === "tool.started")?.payload.summary).toMatchObject({
+          toolKind: "provider",
+          permission: { requested: false },
+        })
 
         const parts = yield* MessageV2.parts(msg.id)
         const call = parts.find((part): part is SessionV1.ToolPart => part.type === "tool")

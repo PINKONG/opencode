@@ -22,6 +22,7 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { buildPrompt } from "@opencode-ai/core/session/compaction"
 import { SessionCompactionEvent } from "@opencode-ai/schema/session-compaction-event"
+import type { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
 
 export const Event = SessionCompactionEvent
 
@@ -174,6 +175,7 @@ export interface Interface {
     sessionID: SessionID
     auto: boolean
     overflow?: boolean
+    diagnostic?: DiagnosticTrace.TraceContext
   }) => Effect.Effect<"continue" | "stop">
   readonly create: (input: {
     sessionID: SessionID
@@ -322,6 +324,7 @@ const layer = Layer.effect(
       sessionID: SessionID
       auto: boolean
       overflow?: boolean
+      diagnostic?: DiagnosticTrace.TraceContext
     }) {
       const parent = input.messages.findLast((m) => m.info.id === input.parentID)
       if (!parent || parent.info.role !== "user") {
@@ -423,6 +426,8 @@ const layer = Layer.effect(
         model,
       })
       const result = yield* processor.process({
+        diagnostic: input.diagnostic,
+        querySource: "compaction",
         user: userMessage,
         agent,
         sessionID: input.sessionID,

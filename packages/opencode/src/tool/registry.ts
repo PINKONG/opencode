@@ -137,6 +137,7 @@ const layer = Layer.effect(
             : Schema.Unknown
           return {
             id,
+            source: "plugin",
             parameters,
             jsonSchema,
             description: def.description,

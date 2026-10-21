@@ -525,6 +525,7 @@ export function make(input: {
               input.sdk.session.prompt(
                 {
                   sessionID: current.id,
+                  diagnosticSurface: "acp",
                   model: {
                     providerID: selected.providerID,
                     modelID: selected.modelID,
@@ -552,6 +553,7 @@ export function make(input: {
                 {
                   sessionID: current.id,
                   command: known.name,
+                  diagnosticSurface: "acp",
                   arguments: command.args,
                   model: `${selected.providerID}/${selected.modelID}`,
                   ...(variant ? { variant } : {}),

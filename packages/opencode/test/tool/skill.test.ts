@@ -12,6 +12,8 @@ import { ToolRegistry } from "@/tool/registry"
 import { disposeAllInstances, TestInstance } from "../fixture/fixture"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { testEffect } from "../lib/effect"
+import type { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { Diagnostic } from "@opencode-ai/schema"
 
 const baseCtx: Omit<Tool.Context, "ask"> = {
   sessionID: SessionID.make("ses_test"),
@@ -71,8 +73,17 @@ Use this skill.
       expect(tool.description).not.toContain("Skill for tool tests.")
 
       const requests: Array<Omit<PermissionV1.Request, "id" | "sessionID" | "tool">> = []
+      const loaded: Array<{ event: string; turnId?: string }> = []
+      const turnId = Diagnostic.TurnID.make("turn_skill_test")
       const ctx: Tool.Context = {
         ...baseCtx,
+        extra: { diagnostic: {
+          context: { sessionId: baseCtx.sessionID },
+          activeTurn: () => ({ turnId }),
+          service: {
+            emit: (context, event) => Effect.sync(() => { loaded.push({ event, turnId: context?.turnId }) }),
+          } satisfies Pick<DiagnosticTrace.Interface, "emit">,
+        } },
         ask: (req) =>
           Effect.sync(() => {
             requests.push(req)
@@ -90,6 +101,7 @@ Use this skill.
       expect(result.output).toContain(`<skill_content name="tool-skill">`)
       expect(result.output).toContain(`Base directory for this skill: ${skill}`)
       expect(result.output).toContain(`<file>${file}</file>`)
+      expect(loaded).toEqual([{ event: "context.source.loaded", turnId }])
     }),
   )
 

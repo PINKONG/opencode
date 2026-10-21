@@ -1,6 +1,6 @@
 import path from "path"
 import fs from "fs/promises"
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Effect, Layer, Schema } from "effect"
 import { FastCheck } from "effect/testing"
 import { Config } from "@opencode-ai/core/config"
@@ -52,6 +52,24 @@ const provider = {
 }
 
 describe("Config", () => {
+  test("diagnostic settings remain absent when not configured", () => {
+    const config = Schema.decodeUnknownSync(ConfigV1.Info)({})
+
+    expect(config.diagnostics).toBeUndefined()
+  })
+
+  test("diagnostic settings allow disabling age retention while keeping the size cap", () => {
+    const config = Schema.decodeUnknownSync(ConfigV1.Info)({
+      diagnostics: { enabled: true, retentionDays: 0, maxTotalBytes: 1024 },
+    })
+
+    expect(config.diagnostics).toEqual({
+      enabled: true,
+      retentionDays: 0,
+      maxTotalBytes: 1024,
+    })
+  })
+
   it.effect("returns the latest defined scalar from priority-ordered documents", () =>
     Effect.sync(() => {
       const entries = [

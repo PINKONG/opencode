@@ -8,6 +8,8 @@ import { AbsolutePath } from "@opencode-ai/core/schema"
 import { SessionV2 } from "@opencode-ai/core/session"
 import { Auth } from "../../src/auth"
 import { Config } from "../../src/config/config"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { Diagnostic } from "@opencode-ai/schema"
 import { Installation } from "../../src/installation"
 import { ServerAuth } from "../../src/server/auth"
 import { RootHttpApi } from "../../src/server/routes/instance/httpapi/api"
@@ -24,6 +26,19 @@ const input = MoveSession.Input.make({
   moveChanges: true,
 })
 const called = Ref.makeUnsafe<MoveSession.Input | undefined>(undefined)
+const diagnostic = {
+  configure: () => Effect.void,
+  config: () => ({ enabled: false, rawPayloads: false, streaming: false, retentionDays: 14, maxTotalBytes: 0 }),
+  startTask: () => ({}),
+  startTurn: (context: DiagnosticTrace.TraceContext) => ({ ...context, turnId: Diagnostic.TurnID.create(), attempt: 1 }),
+  emit: () => Effect.void,
+  complete: () => Effect.void,
+  flush: () => Effect.void,
+  close: () => Effect.void,
+  closeAll: () => Effect.void,
+  root: () => "",
+  cleanup: () => Effect.void,
+}
 
 const apiLayer = HttpRouter.serve(
   HttpApiBuilder.layer(RootHttpApi).pipe(
@@ -38,6 +53,7 @@ const apiLayer = HttpRouter.serve(
   Layer.provideMerge(NodeHttpServer.layerTest),
   Layer.provide(Layer.mock(Auth.Service)({})),
   Layer.provide(Layer.mock(Config.Service)({})),
+  Layer.provide(Layer.mock(DiagnosticTrace.Service)(diagnostic)),
   Layer.provide(Layer.mock(Installation.Service)({})),
   Layer.provide(
     Layer.mock(MoveSession.Service)({

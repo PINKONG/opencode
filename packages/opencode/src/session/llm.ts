@@ -4,7 +4,7 @@ import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { Provider } from "@/provider/provider"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { serviceUse } from "@opencode-ai/core/effect/service-use"
-import { Context, Effect, Layer } from "effect"
+import { Cause, Context, Effect, Exit, Layer } from "effect"
 import * as Stream from "effect/Stream"
 import { streamText, wrapLanguageModel, type ModelMessage, type Tool } from "ai"
 import type { LLMEvent } from "@opencode-ai/llm"
@@ -29,6 +29,10 @@ import * as OtelTracer from "@effect/opentelemetry/Tracer"
 import { LLMAISDK } from "./llm/ai-sdk"
 import { LLMNativeRuntime } from "./llm/native-runtime"
 import { LLMRequestPrep } from "./llm/request"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { Diagnostic } from "@opencode-ai/schema"
+import { createWireCapture } from "@/provider/recording-fetch"
+import { Session } from "./session"
 
 export const OUTPUT_TOKEN_MAX = ProviderTransform.OUTPUT_TOKEN_MAX
 
@@ -45,10 +49,17 @@ export type StreamInput = {
   tools: Record<string, Tool>
   retries?: number
   toolChoice?: "auto" | "required" | "none"
+  diagnostic?: DiagnosticTrace.TraceContext
+  diagnosticService?: DiagnosticTrace.Interface
+  onTurn?: (context: DiagnosticTrace.TraceContext) => void
+  querySource?: Diagnostic.QuerySource
+  attempt?: number
+  assistantMessageID?: string
 }
 
 export type StreamRequest = StreamInput & {
   abort: AbortSignal
+  wire?: ReturnType<typeof createWireCapture>
 }
 
 export interface Interface {
@@ -70,6 +81,7 @@ const live: Layer.Layer<
   | EventV2Bridge.Service
   | LLMClientService
   | RuntimeFlags.Service
+  | DiagnosticTrace.Service
 > = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -81,6 +93,7 @@ const live: Layer.Layer<
     const events = yield* EventV2Bridge.Service
     const llmClient = yield* LLMClient.Service
     const flags = yield* RuntimeFlags.Service
+    const defaultDiagnostics = yield* DiagnosticTrace.Service
 
     const run = Effect.fn("LLM.run")(function* (input: StreamRequest) {
       yield* Effect.logInfo("stream", {
@@ -94,7 +107,7 @@ const live: Layer.Layer<
 
       const [language, cfg, item, info] = yield* Effect.all(
         [
-          provider.getLanguage(input.model),
+          provider.getLanguage(input.model, input.wire ? { wrapFetch: input.wire.wrap } : undefined),
           config.get(),
           provider.getProvider(input.model.providerID),
           auth.get(input.model.providerID),
@@ -239,6 +252,7 @@ const live: Layer.Layer<
           providerOptions: prepared.params.options,
           headers: prepared.headers,
           abort: input.abort,
+          wire: input.wire,
         })
         if (native.type === "supported") {
           yield* Effect.logInfo("llm runtime selected", {
@@ -358,24 +372,213 @@ const live: Layer.Layer<
       Stream.scoped(
         Stream.unwrap(
           Effect.gen(function* () {
+            const diagnostics = input.diagnosticService ?? defaultDiagnostics
+            const context = input.diagnostic
+              ? diagnostics.startTurn(input.diagnostic, { attempt: input.attempt })
+              : undefined
+            if (context) input.onTurn?.(context)
+            const started = performance.now()
+            const wire =
+              context && diagnostics.config().enabled && diagnostics.config().rawPayloads
+                ? createWireCapture()
+                : undefined
+            if (context) {
+              yield* diagnostics.emit(context, "llm.request.started", {
+                summary: {
+                  provider: input.model.providerID,
+                  model: input.model.id,
+                  querySource: input.querySource ?? (input.parentSessionID ? "subagent" : "main"),
+                  messageCount: input.messages.length,
+                  toolCount: Object.keys(input.tools).length,
+                  attempt: context.attempt,
+                  messageId: input.assistantMessageID,
+                  userMessageId: input.user.id,
+                },
+                raw: () => ({
+                  wiscodeRequest: { system: input.system, messages: input.messages, tools: Object.keys(input.tools) },
+                }),
+              })
+            }
+            let terminal = false
             const ctrl = yield* Effect.acquireRelease(
               Effect.sync(() => new AbortController()),
-              (ctrl) => Effect.sync(() => ctrl.abort()),
+              (ctrl) =>
+                Effect.sync(() => {
+                  ctrl.abort()
+                }),
             )
 
-            const result = yield* run({ ...input, abort: ctrl.signal })
+            const failed = (cause: Cause.Cause<unknown>) => {
+              if (!context || terminal) return Effect.void
+              terminal = true
+              const outcome = diagnosticStreamExit(Exit.failCause(cause))
+              return diagnostics.complete(
+                context,
+                outcome.event,
+                {
+                  summary: {
+                    provider: input.model.providerID,
+                    model: input.model.id,
+                    error: DiagnosticTrace.errorInfo(Cause.squash(cause), "provider"),
+                    attempt: context.attempt,
+                  },
+                  ...(wire
+                    ? {
+                        raw: async () => {
+                          const exchanges = await wire.exchanges()
+                          return {
+                            providerRequest: exchanges.at(-1)?.request,
+                            providerResponse: exchanges.at(-1)?.response,
+                            providerExchanges: exchanges,
+                          }
+                        },
+                      }
+                    : {}),
+                },
+                { status: outcome.status, durationMs: performance.now() - started },
+              )
+            }
+            const result = yield* run({ ...input, abort: ctrl.signal, wire }).pipe(Effect.tapCause(failed))
 
-            if (result.type === "native") return result.stream
+            let chunk = 0
+            let firstTokenMs: number | undefined
+            let textBytes = 0
+            let reasoningBytes = 0
+            let toolCallCount = 0
+            const textParts: string[] = []
+            const reasoningParts: string[] = []
+            const toolCalls: Array<{ id: string; name: string; input: unknown }> = []
+            const observe = (source: Stream.Stream<LLMEvent, unknown>) =>
+              source.pipe(
+                Stream.tap((event) => {
+                  if (!context) return Effect.void
+                  if (terminal) return Effect.void
+                  if (
+                    event.type === "text-delta" ||
+                    event.type === "reasoning-delta" ||
+                    event.type === "tool-input-delta"
+                  ) {
+                    firstTokenMs ??= performance.now() - started
+                    if (event.type === "text-delta") {
+                      textBytes += Buffer.byteLength(event.text, "utf8")
+                      if (wire) textParts.push(event.text)
+                    }
+                    if (event.type === "reasoning-delta") {
+                      reasoningBytes += Buffer.byteLength(event.text, "utf8")
+                      if (wire) reasoningParts.push(event.text)
+                    }
+                  }
+                  if (event.type === "tool-call") {
+                    toolCallCount++
+                    if (wire) toolCalls.push({ id: event.id, name: event.name, input: event.input })
+                  }
+                  const record = diagnosticLLMEvent(event, chunk++)
+                  if (!record) return Effect.void
+                  const terminalEvent =
+                    record.event === "llm.request.completed" || record.event === "llm.request.failed"
+                  if (terminalEvent) terminal = true
+                  const billed =
+                    (event.type === "finish" || event.type === "step-finish") && event.usage && input.model.cost
+                      ? Session.getUsage({ model: input.model, usage: event.usage, metadata: event.providerMetadata })
+                          .cost
+                      : undefined
+                  const payload = {
+                    summary: {
+                      ...record.summary,
+                      ...(billed === undefined || (event.type !== "finish" && event.type !== "step-finish")
+                        ? {}
+                        : {
+                            usage: { ...event.usage, cost: { amount: billed, currency: "USD", estimated: true } },
+                          }),
+                      querySource: input.querySource ?? (input.parentSessionID ? "subagent" : "main"),
+                      attempt: context.attempt,
+                      messageId: input.assistantMessageID,
+                      userMessageId: input.user.id,
+                      ...(terminalEvent
+                        ? {
+                            normalizedResponse: { textBytes, reasoningBytes, toolCallCount },
+                            timing: {
+                              ...(firstTokenMs === undefined ? {} : { timeToFirstTokenMs: firstTokenMs }),
+                              streamMs: performance.now() - started,
+                            },
+                            genAi: {
+                              system: input.model.providerID,
+                              requestModel: input.model.id,
+                              operationName: "chat",
+                            },
+                          }
+                        : {}),
+                    },
+                    ...(terminalEvent && wire
+                      ? {
+                          raw: async () => {
+                            const exchanges = await wire.exchanges()
+                            return {
+                              wiscodeRequest: {
+                                system: input.system,
+                                messages: input.messages,
+                                tools: Object.keys(input.tools),
+                              },
+                              providerRequest: exchanges.at(-1)?.request,
+                              providerResponse: exchanges.at(-1)?.response,
+                              providerExchanges: exchanges,
+                              providerMetadata: event.type === "finish" ? event.providerMetadata : undefined,
+                              normalizedResponse: {
+                                text: textParts.join(""),
+                                reasoning: reasoningParts.join(""),
+                                toolCalls,
+                              },
+                            }
+                          },
+                        }
+                      : record.raw
+                        ? { raw: record.raw }
+                        : {}),
+                  }
+                  if (record.status === "succeeded" || record.status === "failed")
+                    return diagnostics.complete(context, record.event, payload, {
+                      status: record.status,
+                      durationMs: performance.now() - started,
+                    })
+                  return diagnostics.emit(context, record.event, payload)
+                }),
+                Stream.catchCause((cause) =>
+                  Stream.fromEffect(
+                    (terminal ? Effect.void : failed(cause)).pipe(Effect.andThen(Effect.failCause(cause))),
+                  ),
+                ),
+              )
 
-            // Adapter seam: both runtimes expose the same LLMEvent stream. Native
-            // already returns one; AI SDK streams are converted here.
+            const finish = (source: Stream.Stream<LLMEvent, unknown>) =>
+              observe(source).pipe(
+                Stream.onExit((exit) => {
+                  if (!context || terminal) return Effect.void
+                  terminal = true
+                  const outcome = diagnosticStreamExit(exit)
+                  return diagnostics.complete(
+                    context,
+                    outcome.event,
+                    {
+                      summary: {
+                        provider: input.model.providerID,
+                        model: input.model.id,
+                        attempt: context.attempt,
+                        error: DiagnosticTrace.errorInfo(outcome.error, "provider"),
+                      },
+                    },
+                    { status: outcome.status, durationMs: performance.now() - started },
+                  )
+                }),
+              )
+            if (result.type === "native") return finish(result.stream)
             const state = LLMAISDK.adapterState()
-            return Stream.fromAsyncIterable(result.result.fullStream, (e) =>
+            const ai = Stream.fromAsyncIterable(result.result.fullStream, (e) =>
               e instanceof Error ? e : new Error(String(e)),
             ).pipe(
               Stream.mapEffect((event) => LLMAISDK.toLLMEvents(state, event)),
               Stream.flatMap((events) => Stream.fromIterable(events)),
             )
+            return finish(ai)
           }),
         ),
       )
@@ -390,6 +593,7 @@ export const node = LayerNode.make({
   service: Service,
   layer: live,
   deps: [
+    DiagnosticTrace.node,
     Auth.node,
     Config.node,
     Provider.node,
@@ -400,5 +604,56 @@ export const node = LayerNode.make({
     RuntimeFlags.node,
   ],
 })
+
+export function diagnosticLLMEvent(event: LLMEvent, index: number) {
+  if (event.type === "finish")
+    return {
+      event: "llm.request.completed",
+      status: "succeeded" as const,
+      summary: {
+        reason: event.reason,
+        usageRole: "request-total",
+        usage: event.usage ? { ...event.usage } : undefined,
+      },
+      raw: () => ({ providerMetadata: event.providerMetadata }),
+    }
+  if (event.type === "provider-error")
+    return {
+      event: "llm.request.failed",
+      status: "failed" as const,
+      summary: {
+        error: {
+          ...DiagnosticTrace.errorInfo(
+            { name: "ProviderError", message: event.message, retryable: event.retryable },
+            "provider",
+          ),
+          classification: event.classification,
+        },
+      },
+    }
+  if (event.type === "text-delta" || event.type === "reasoning-delta" || event.type === "tool-input-delta")
+    return {
+      event: "llm.stream.chunk",
+      summary: { index, kind: event.type.replace("-delta", ""), contentBytes: Buffer.byteLength(event.text, "utf8") },
+      raw: () => ({ content: event.text }),
+    }
+  return undefined
+}
+
+export function diagnosticStreamExit(exit: Exit.Exit<unknown, unknown>) {
+  if (Exit.isSuccess(exit))
+    return {
+      event: "llm.request.failed" as const,
+      status: "failed" as const,
+      error: new Error("Provider stream ended without a finish event"),
+    }
+  if (Cause.hasInterruptsOnly(exit.cause))
+    return {
+      event: "llm.request.cancelled" as const,
+      status: "cancelled" as const,
+      error: Cause.squash(exit.cause),
+    }
+  return { event: "llm.request.failed" as const, status: "failed" as const, error: Cause.squash(exit.cause) }
+}
 
 export * as LLM from "./llm"

@@ -1,6 +1,7 @@
 import { Layer, ManagedRuntime } from "effect"
 import { attach } from "./run-service"
 import * as Observability from "@opencode-ai/core/observability"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
 
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Database } from "@opencode-ai/core/database/database"
@@ -56,6 +57,7 @@ import { SessionProjector } from "@opencode-ai/core/session/projector"
 
 export const AppLayer = AppNodeBuilderV1.build(
   LayerNode.group([
+    DiagnosticTrace.node,
     Npm.node,
     FSUtil.node,
     Database.node,

@@ -5,6 +5,7 @@ import { createCompatibleApi } from "./server-compat"
 function setup(
   protocol: "v1" | "v2" | Promise<"v1" | "v2">,
   responses?: { vcs?: { branch: string; default_branch: string } },
+  surface?: "web" | "desktop",
 ) {
   const requests: Request[] = []
   const fetcher = Object.assign(
@@ -48,11 +49,17 @@ function setup(
     current: createApiForServer({ server, fetch: fetcher }),
     legacy: (directory) => createSdkForServer({ server, fetch: fetcher, directory, throwOnError: true }),
     directory: "/repo",
+    surface,
   })
   return { api, requests }
 }
 
 describe("createCompatibleApi", () => {
+  test("forwards the app surface to legacy prompt admission", async () => {
+    const { api, requests } = setup("v1", undefined, "desktop")
+    await api.session.prompt({ sessionID: "ses_1", text: "hello" })
+    expect(await requests[0]!.json()).toMatchObject({ diagnosticSurface: "desktop" })
+  })
   /*
   test("routes V1 archive through the legacy session update", async () => {
     const { api, requests } = setup("v1")

@@ -65,10 +65,23 @@ const GlobalUpgradeResult = Schema.Union([
   }),
 ])
 
+const DiagnosticStatus = Schema.Struct({
+  root: Schema.String,
+  enabled: Schema.Boolean,
+  rawPayloads: Schema.Boolean,
+  streaming: Schema.Boolean,
+  retentionDays: Schema.Number,
+  maxTotalBytes: Schema.Number,
+})
+
+const DiagnosticCleanupResult = Schema.Struct({ root: Schema.String })
+
 export const GlobalPaths = {
   health: "/global/health",
   event: "/global/event",
   config: "/global/config",
+  diagnostics: "/global/diagnostics",
+  diagnosticsCleanup: "/global/diagnostics/cleanup",
   dispose: "/global/dispose",
   upgrade: "/global/upgrade",
 } as const
@@ -114,6 +127,12 @@ export const GlobalApi = HttpApi.make("global").add(
           description: "Update global WisCode configuration settings and preferences.",
         }),
       ),
+      HttpApiEndpoint.get("diagnosticsStatus", GlobalPaths.diagnostics, {
+        success: described(DiagnosticStatus, "Local diagnostic trace status and directory"),
+      }).annotateMerge(OpenApi.annotations({ identifier: "global.diagnostics.status", summary: "Get diagnostic status" })),
+      HttpApiEndpoint.post("diagnosticsCleanup", GlobalPaths.diagnosticsCleanup, {
+        success: described(DiagnosticCleanupResult, "Diagnostic retention cleanup result"),
+      }).annotateMerge(OpenApi.annotations({ identifier: "global.diagnostics.cleanup", summary: "Clean up diagnostic logs" })),
       HttpApiEndpoint.post("dispose", GlobalPaths.dispose, {
         success: described(Schema.Boolean, "Global disposed"),
       }).annotateMerge(

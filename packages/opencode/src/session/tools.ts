@@ -23,6 +23,8 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { isRecord } from "@/util/record"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { observeTool } from "./tool-diagnostic"
 
 const MCP_RESOURCE_TOOLS = {
   list: "list_mcp_resources",
@@ -46,8 +48,14 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
   bypassAgentCheck: boolean
   messages: SessionV1.WithParts[]
   promptOps: TaskPromptOps
+  diagnostic?: {
+    service: DiagnosticTrace.Interface
+    context: DiagnosticTrace.TraceContext
+    activeTurn?: () => DiagnosticTrace.TraceContext
+  }
 }) {
   const tools: Record<string, AITool> = {}
+  const kinds = new Map<string, "builtin" | "plugin" | "mcp">()
   const run = yield* EffectBridge.make()
   const plugin = yield* Plugin.Service
   const permission = yield* Permission.Service
@@ -55,13 +63,20 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
   const mcp = yield* MCP.Service
   const truncate = yield* Truncate.Service
   const flags = yield* RuntimeFlags.Service
+  const diagnosticContext = () => input.diagnostic?.activeTurn?.() ?? input.diagnostic?.context
+  const decisions = new Map<string, { requested: boolean; decision: string }>()
 
   const context = (args: Record<string, unknown>, options: ToolExecutionOptions): Tool.Context => ({
     sessionID: input.session.id,
     abort: options.abortSignal!,
     messageID: input.processor.message.id,
     callID: options.toolCallId,
-    extra: { model: input.model, bypassAgentCheck: input.bypassAgentCheck, promptOps: input.promptOps },
+    extra: {
+      model: input.model,
+      bypassAgentCheck: input.bypassAgentCheck,
+      promptOps: input.promptOps,
+      diagnostic: input.diagnostic,
+    },
     agent: input.agent.name,
     messages: input.messages,
     metadata: (val) =>
@@ -80,13 +95,28 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
       }),
     ask: (req) =>
       permission
-        .ask({
-          ...req,
-          sessionID: input.session.id,
-          tool: { messageID: input.processor.message.id, callID: options.toolCallId },
-          ruleset: Permission.merge(input.agent.permission, input.session.permission ?? []),
-        })
-        .pipe(Effect.orDie),
+        .ask(
+          {
+            ...req,
+            sessionID: input.session.id,
+            tool: { messageID: input.processor.message.id, callID: options.toolCallId },
+            ruleset: Permission.merge(input.agent.permission, input.session.permission ?? []),
+          },
+          diagnosticContext(),
+        )
+        .pipe(
+          Effect.tap(() =>
+            Effect.sync(() => {
+              decisions.set(options.toolCallId, { requested: true, decision: "allowed" })
+            }),
+          ),
+          Effect.tapCause(() =>
+            Effect.sync(() => {
+              decisions.set(options.toolCallId, { requested: true, decision: "denied" })
+            }),
+          ),
+          Effect.orDie,
+        ),
   })
 
   for (const item of yield* registry.tools({
@@ -95,6 +125,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
     agent: input.agent,
     permission: input.session.permission,
   })) {
+    kinds.set(item.id, item.source === "plugin" ? "plugin" : "builtin")
     const schema = ProviderTransform.schema(input.model, ToolJsonSchema.fromTool(item))
     tools[item.id] = tool({
       description: item.description,
@@ -107,6 +138,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.before",
               { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
               { args },
+              diagnosticContext(),
             )
             const result = yield* item.execute(args, ctx)
             const output = {
@@ -122,6 +154,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.after",
               { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID, args },
               output,
+              diagnosticContext(),
             )
             if (options.abortSignal?.aborted) {
               yield* input.processor.completeToolCall(options.toolCallId, output)
@@ -137,6 +170,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
     (client) => !!client.getServerCapabilities()?.resources,
   )
   if (hasMcpResourceServer) {
+    Object.values(MCP_RESOURCE_TOOLS).forEach((name) => kinds.set(name, "mcp"))
     tools[MCP_RESOURCE_TOOLS.list] = tool({
       description:
         "Lists resources provided by connected MCP servers. Resources provide context such as files, database schemas, or application-specific information.",
@@ -176,6 +210,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.before",
               { tool: MCP_RESOURCE_TOOLS.list, sessionID: ctx.sessionID, callID: opts.toolCallId },
               { args },
+              diagnosticContext(),
             )
             yield* ctx.ask({
               permission: "read",
@@ -209,6 +244,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.after",
               { tool: MCP_RESOURCE_TOOLS.list, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
               output,
+              diagnosticContext(),
             )
             if (opts.abortSignal?.aborted) {
               yield* input.processor.completeToolCall(opts.toolCallId, output)
@@ -259,6 +295,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.before",
               { tool: MCP_RESOURCE_TOOLS.listTemplates, sessionID: ctx.sessionID, callID: opts.toolCallId },
               { args },
+              diagnosticContext(),
             )
             yield* ctx.ask({
               permission: "read",
@@ -292,6 +329,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.after",
               { tool: MCP_RESOURCE_TOOLS.listTemplates, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
               output,
+              diagnosticContext(),
             )
             if (opts.abortSignal?.aborted) {
               yield* input.processor.completeToolCall(opts.toolCallId, output)
@@ -339,6 +377,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.before",
               { tool: MCP_RESOURCE_TOOLS.read, sessionID: ctx.sessionID, callID: opts.toolCallId },
               { args },
+              diagnosticContext(),
             )
             yield* ctx.ask({
               permission: "read",
@@ -374,6 +413,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               "tool.execute.after",
               { tool: MCP_RESOURCE_TOOLS.read, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
               output,
+              diagnosticContext(),
             )
             if (opts.abortSignal?.aborted) {
               yield* input.processor.completeToolCall(opts.toolCallId, output)
@@ -385,9 +425,10 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
     })
   }
 
-  if (flags.experimentalCodeMode) return tools
+  if (flags.experimentalCodeMode) return instrument()
 
   for (const [key, entry] of Object.entries(yield* mcp.tools())) {
+    kinds.set(key, "mcp")
     const item = McpCatalog.convertTool(entry.def, entry.client, entry.timeout)
     const execute = item.execute
     if (!execute) continue
@@ -403,6 +444,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
             "tool.execute.before",
             { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId },
             { args },
+            diagnosticContext(),
           )
           const result: Awaited<ReturnType<NonNullable<typeof execute>>> = yield* Effect.gen(function* () {
             yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] })
@@ -421,6 +463,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
             "tool.execute.after",
             { tool: key, sessionID: ctx.sessionID, callID: opts.toolCallId, args },
             result,
+            diagnosticContext(),
           )
 
           const textParts: string[] = []
@@ -489,7 +532,36 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
     tools[key] = item
   }
 
-  return tools
+  return instrument()
+
+  function instrument() {
+    if (!input.diagnostic) return tools
+    for (const [name, item] of Object.entries(tools)) {
+      if (!item.execute) continue
+      const execute = item.execute
+      tools[name] = {
+        ...item,
+        execute: (args, options) =>
+          observeTool({
+            diagnostics: input.diagnostic!.service,
+            context: input.diagnostic!.context,
+            activeTurn: input.diagnostic!.activeTurn,
+            name,
+            kind: kinds.get(name) ?? "builtin",
+            callID: options.toolCallId,
+            permission: () => {
+              const decision = decisions.get(options.toolCallId)
+              decisions.delete(options.toolCallId)
+              return decision ?? { requested: false, decision: "not-requested" }
+            },
+            args,
+            abort: options.abortSignal,
+            execute: () => execute(args, options),
+          }),
+      }
+    }
+    return tools
+  }
 })
 
 function toRecord(value: unknown) {

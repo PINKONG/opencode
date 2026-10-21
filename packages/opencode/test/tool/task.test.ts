@@ -101,13 +101,15 @@ function stubOps(opts?: {
   text?: string
   error?: NonNullable<SessionV1.Assistant["error"]>
   toolError?: string
+  childTraceId?: string
 }): TaskPromptOps {
   return {
     cancel: () => Effect.void,
     resolvePromptParts: (template) => Effect.succeed([{ type: "text" as const, text: template }]),
-    prompt: (input) =>
+    prompt: (input, _parentToolCallId, onChildTrace) =>
       Effect.sync(() => {
         opts?.onPrompt?.(input)
+        if (opts?.childTraceId) onChildTrace?.(opts.childTraceId)
         return reply(input, opts?.text ?? "done", opts?.error, opts?.toolError)
       }),
   }
@@ -474,7 +476,11 @@ describe("tool.task", () => {
       const tool = yield* TaskTool
       const def = yield* tool.init()
       let seen: SessionPrompt.PromptInput | undefined
-      const promptOps = stubOps({ text: "created", onPrompt: (input) => (seen = input) })
+      const promptOps = stubOps({
+        text: "created",
+        childTraceId: "trace_child_test",
+        onPrompt: (input) => (seen = input),
+      })
 
       const result = yield* def.execute(
         {
@@ -499,6 +505,7 @@ describe("tool.task", () => {
       expect(kids).toHaveLength(1)
       expect(kids[0]?.id).toBe(result.metadata.sessionId)
       expect(result.metadata.sessionId).not.toBe("ses_missing")
+      expect(result.metadata.childTraceId).toBe("trace_child_test")
       expect(result.output).toContain(`<task id="${result.metadata.sessionId}" state="completed">`)
       expect(seen?.sessionID).toBe(result.metadata.sessionId)
     }),

@@ -181,6 +181,7 @@ export function resumeStreamAfterPageShow(event: PageTransitionEvent, start: () 
 type ServerEventEmitter = ReturnType<typeof createGlobalEmitter<{ [key: string]: ServerEvent }>>
 type ServerSDKBase = {
   server: ServerConnection.Any
+  surface: "web" | "desktop"
   scope: ServerScope
   protocol: Promise<ServerProtocol>
   protocolKind: Accessor<ServerProtocol | undefined>
@@ -356,7 +357,8 @@ function createServerSdkContextBase(server: ServerConnection.Any, scope: ServerS
       throwOnError: true,
       directory,
     })
-  const api = createCompatibleApi({ protocol, current: currentApi, legacy })
+  const surface = platform.platform === "desktop" ? "desktop" as const : "web" as const
+  const api = createCompatibleApi({ protocol, current: currentApi, legacy, surface })
 
   return {
     server,
@@ -366,6 +368,7 @@ function createServerSdkContextBase(server: ServerConnection.Any, scope: ServerS
     url: server.http.url,
     client: sdk,
     api,
+    surface,
     currentApi,
     event: {
       on: emitter.on.bind(emitter),
@@ -442,6 +445,7 @@ function createDirSdkContext(directory: string, serverSDK: ServerSDKBase) {
       current: serverSDK.currentApi,
       legacy: (next) => serverSDK.createClient({ directory: next ?? directory, throwOnError: true }),
       directory,
+      surface: serverSDK.surface,
     }),
     event: emitter,
     get url() {

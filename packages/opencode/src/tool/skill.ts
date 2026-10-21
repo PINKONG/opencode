@@ -4,6 +4,7 @@ import { Ripgrep } from "@opencode-ai/core/ripgrep"
 import { Skill } from "../skill"
 import * as Tool from "./tool"
 import DESCRIPTION from "./skill.txt"
+import type { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
 
 export const Parameters = Schema.Struct({
   name: Schema.String.annotate({ description: "The name of the skill from available_skills" }),
@@ -40,6 +41,11 @@ export const SkillTool = Tool.define(
             follow: false,
             signal: ctx.abort,
             limit: 10,
+          })
+          const diagnostic = ctx.extra?.diagnostic as { service: Pick<DiagnosticTrace.Interface, "emit">; context: DiagnosticTrace.TraceContext; activeTurn?: () => DiagnosticTrace.TraceContext } | undefined
+          if (diagnostic) yield* diagnostic.service.emit({ ...diagnostic.context, ...diagnostic.activeTurn?.(), toolCallId: ctx.callID }, "context.source.loaded", {
+            summary: { sourceKind: "skill", sourceId: info.name, path: info.location, contentBytes: Buffer.byteLength(info.content, "utf8"), itemCount: files.length },
+            raw: () => ({ content: info.content, files }),
           })
 
           return {

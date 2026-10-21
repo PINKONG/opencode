@@ -1842,6 +1842,12 @@ export type McpLocalConfig = {
   timeout?: number
 }
 
+export type McpMaxkbHmacAuthConfig = {
+  type: "maxkb-hmac"
+  appKey: string
+  appSecret: string
+}
+
 export type McpOAuthConfig = {
   clientId?: string
   clientSecret?: string
@@ -1863,6 +1869,7 @@ export type McpRemoteConfig = {
   headers?: {
     [key: string]: string
   }
+  auth?: McpMaxkbHmacAuthConfig
   /**
    * OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection.
    */
@@ -1888,6 +1895,13 @@ export type AttachmentConfig = {
 
 export type Config = {
   $schema?: string
+  diagnostics?: {
+    enabled?: boolean
+    rawPayloads?: boolean
+    streaming?: boolean
+    retentionDays?: number
+    maxTotalBytes?: number
+  }
   shell?: string
   logLevel?: LogLevel
   server?: ServerConfig
@@ -5011,6 +5025,7 @@ export type CommandV2Info = {
   name: string
   template: string
   description?: string
+  source?: "command" | "skill"
   agent?: string
   model?: ModelRef
   subtask?: boolean
@@ -7329,6 +7344,66 @@ export type GlobalConfigUpdateResponses = {
 
 export type GlobalConfigUpdateResponse = GlobalConfigUpdateResponses[keyof GlobalConfigUpdateResponses]
 
+export type GlobalDiagnosticsStatusData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/global/diagnostics"
+}
+
+export type GlobalDiagnosticsStatusErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type GlobalDiagnosticsStatusError = GlobalDiagnosticsStatusErrors[keyof GlobalDiagnosticsStatusErrors]
+
+export type GlobalDiagnosticsStatusResponses = {
+  /**
+   * Local diagnostic trace status and directory
+   */
+  200: {
+    root: string
+    enabled: boolean
+    rawPayloads: boolean
+    streaming: boolean
+    retentionDays: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    maxTotalBytes: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }
+}
+
+export type GlobalDiagnosticsStatusResponse = GlobalDiagnosticsStatusResponses[keyof GlobalDiagnosticsStatusResponses]
+
+export type GlobalDiagnosticsCleanupData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/global/diagnostics/cleanup"
+}
+
+export type GlobalDiagnosticsCleanupErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type GlobalDiagnosticsCleanupError = GlobalDiagnosticsCleanupErrors[keyof GlobalDiagnosticsCleanupErrors]
+
+export type GlobalDiagnosticsCleanupResponses = {
+  /**
+   * Diagnostic retention cleanup result
+   */
+  200: {
+    root: string
+  }
+}
+
+export type GlobalDiagnosticsCleanupResponse =
+  GlobalDiagnosticsCleanupResponses[keyof GlobalDiagnosticsCleanupResponses]
+
 export type GlobalDisposeData = {
   body?: never
   path?: never
@@ -7655,6 +7730,35 @@ export type ToolListResponses = {
 
 export type ToolListResponse = ToolListResponses[keyof ToolListResponses]
 
+export type ExperimentalToolCallData = {
+  body?: {
+    client: string
+    name: "list_dataset_documents" | "get_document_paragraphs"
+    arguments?: {
+      [key: string]: unknown
+    }
+  }
+  path?: never
+  query?: never
+  url: "/experimental/tool/call"
+}
+
+export type ExperimentalToolCallErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type ExperimentalToolCallError = ExperimentalToolCallErrors[keyof ExperimentalToolCallErrors]
+
+export type ExperimentalToolCallResponses = {
+  /**
+   * MCP tool call result
+   */
+  200: unknown
+}
+
 export type ToolIdsData = {
   body?: never
   path?: never
@@ -7891,6 +7995,32 @@ export type ExperimentalResourceListResponses = {
 
 export type ExperimentalResourceListResponse =
   ExperimentalResourceListResponses[keyof ExperimentalResourceListResponses]
+
+export type ExperimentalResourceReadData = {
+  body?: {
+    client: string
+    uri: string
+  }
+  path?: never
+  query?: never
+  url: "/experimental/resource/read"
+}
+
+export type ExperimentalResourceReadErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type ExperimentalResourceReadError = ExperimentalResourceReadErrors[keyof ExperimentalResourceReadErrors]
+
+export type ExperimentalResourceReadResponses = {
+  /**
+   * MCP resource read result
+   */
+  200: unknown
+}
 
 export type FindTextData = {
   body?: never
@@ -9796,6 +9926,7 @@ export type SessionMessagesResponse2 = SessionMessagesResponses[keyof SessionMes
 
 export type SessionPromptData = {
   body?: {
+    diagnosticSurface?: "cli" | "web" | "desktop" | "acp" | "background"
     messageID?: string
     model?: {
       providerID: string
@@ -10143,6 +10274,7 @@ export type SessionSummarizeResponse = SessionSummarizeResponses[keyof SessionSu
 
 export type SessionPromptAsyncData = {
   body?: {
+    diagnosticSurface?: "cli" | "web" | "desktop" | "acp" | "background"
     messageID?: string
     model?: {
       providerID: string
@@ -10193,6 +10325,7 @@ export type SessionPromptAsyncResponse = SessionPromptAsyncResponses[keyof Sessi
 export type SessionCommandData = {
   body?: {
     messageID?: string
+    diagnosticSurface?: "cli" | "web" | "desktop" | "acp" | "background"
     agent?: string
     model?: string
     arguments: string
@@ -11598,6 +11731,55 @@ export type V2SessionPromptResponses = {
 }
 
 export type V2SessionPromptResponse = V2SessionPromptResponses[keyof V2SessionPromptResponses]
+
+export type V2SessionCommandData = {
+  body: {
+    id?: string
+    command: string
+    arguments?: string
+    files?: Array<PromptInputFileAttachment>
+    agent?: string
+    model?: ModelRef
+    resume?: boolean
+  }
+  path: {
+    sessionID: string
+  }
+  query?: never
+  url: "/api/session/{sessionID}/command"
+}
+
+export type V2SessionCommandErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * UnauthorizedError
+   */
+  401: UnauthorizedError
+  /**
+   * SessionNotFoundError
+   */
+  404: SessionNotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+}
+
+export type V2SessionCommandError = V2SessionCommandErrors[keyof V2SessionCommandErrors]
+
+export type V2SessionCommandResponses = {
+  /**
+   * Success
+   */
+  200: {
+    data: SessionInputAdmitted
+  }
+}
+
+export type V2SessionCommandResponse = V2SessionCommandResponses[keyof V2SessionCommandResponses]
 
 export type V2SessionCompactData = {
   body?: never

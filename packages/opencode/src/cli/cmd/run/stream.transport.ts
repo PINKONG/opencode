@@ -1219,6 +1219,7 @@ function createLayer(input: StreamInput) {
 
           const req = {
             sessionID: input.sessionID,
+            diagnosticSurface: "cli" as const,
             messageID: next.prompt.messageID,
             agent: next.agent,
             model: next.model,
@@ -1281,6 +1282,7 @@ function createLayer(input: StreamInput) {
                         input.sdk.session.command(
                           {
                             sessionID: input.sessionID,
+                            diagnosticSurface: "cli",
                             messageID: next.prompt.messageID,
                             agent: next.agent,
                             model: next.model ? `${next.model.providerID}/${next.model.modelID}` : undefined,

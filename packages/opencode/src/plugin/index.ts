@@ -33,9 +33,12 @@ import type { WorkspaceAdapter } from "@/control-plane/types"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { InstallationChannel } from "@opencode-ai/core/installation/version"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { observePluginHook } from "./diagnostic"
 
 type State = {
   hooks: Hooks[]
+  hookIDs: string[]
 }
 
 // Hook names that follow the (input, output) => Promise<void> trigger pattern
@@ -52,6 +55,7 @@ export interface Interface {
     name: Name,
     input: Input,
     output: Output,
+    diagnostic?: DiagnosticTrace.TraceContext,
   ) => Effect.Effect<Output>
   readonly list: () => Effect.Effect<Hooks[]>
   readonly init: () => Effect.Effect<void>
@@ -130,11 +134,21 @@ const layer = Layer.effect(
     const events = yield* EventV2Bridge.Service
     const config = yield* Config.Service
     const flags = yield* RuntimeFlags.Service
+    const diagnostics = yield* DiagnosticTrace.Service
 
     const state = yield* InstanceState.make<State>(
       Effect.fn("Plugin.state")(function* (ctx) {
         const hooks: Hooks[] = []
+        const hookIDs: string[] = []
         const bridge = yield* EffectBridge.make()
+        const global = yield* config.getGlobal()
+        yield* diagnostics.configure({
+          enabled: global.diagnostics?.enabled ?? false,
+          rawPayloads: global.diagnostics?.rawPayloads ?? false,
+          streaming: global.diagnostics?.streaming ?? false,
+          retentionDays: global.diagnostics?.retentionDays ?? 14,
+          maxTotalBytes: global.diagnostics?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
+        })
 
         function publishPluginError(message: string) {
           bridge.fork(events.publish(Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() }))
@@ -173,9 +187,18 @@ const layer = Layer.effect(
             catch: errorMessage,
           }).pipe(
             Effect.tapError((error) => Effect.logError("failed to load internal plugin", { name: plugin.name, error })),
+            Effect.tapError((error) => diagnostics.complete(undefined, "plugin.loaded", {
+              summary: { pluginId: plugin.name, source: "internal", error: DiagnosticTrace.errorInfo(error, "plugin") },
+            }, { status: "failed" })),
             Effect.option,
           )
-          if (init._tag === "Some") hooks.push(init.value)
+          if (init._tag === "Some") {
+            hooks.push(init.value)
+            hookIDs.push(plugin.name)
+            yield* diagnostics.complete(undefined, "plugin.loaded", {
+              summary: { pluginId: plugin.name, source: "internal" },
+            })
+          }
         }
 
         const plugins = flags.pure ? [] : (cfg.plugin_origins ?? [])
@@ -189,11 +212,18 @@ const layer = Layer.effect(
             kind: "server",
             report: {
               start(candidate) {},
-              missing(candidate, _retry, message) {},
+              missing(candidate, _retry, message) {
+                bridge.fork(diagnostics.complete(undefined, "plugin.loaded", {
+                  summary: { pluginId: candidate.plan.spec, source: "external", stage: "missing", error: DiagnosticTrace.errorInfo(message, "plugin") },
+                }, { status: "failed" }))
+              },
               error(candidate, _retry, stage, error, resolved) {
                 const spec = candidate.plan.spec
                 const cause = error instanceof Error ? (error.cause ?? error) : error
                 const message = stage === "load" ? errorMessage(error) : errorMessage(cause)
+                bridge.fork(diagnostics.complete(undefined, "plugin.loaded", {
+                  summary: { pluginId: spec, source: "external", stage, error: DiagnosticTrace.errorInfo(error, "plugin"), resolved },
+                }, { status: "failed" }))
 
                 if (stage === "install") {
                   const parsed = parsePluginSpecifier(spec)
@@ -218,6 +248,7 @@ const layer = Layer.effect(
         )
         for (const load of loaded) {
           if (!load) continue
+          const before = hooks.length
 
           // Keep plugin execution sequential so hook registration and execution
           // order remains deterministic across plugin runs.
@@ -229,6 +260,9 @@ const layer = Layer.effect(
             },
           }).pipe(
             Effect.tapError((error) => Effect.logError("failed to load plugin", { path: load.spec, error })),
+            Effect.tapError((error) => diagnostics.complete(undefined, "plugin.loaded", {
+              summary: { pluginId: load.spec, source: load.source, error: DiagnosticTrace.errorInfo(error, "plugin") },
+            }, { status: "failed" })),
             Effect.catch(() => {
               // TODO: make proper events for this
               // events.publish(Session.Event.Error, {
@@ -239,6 +273,12 @@ const layer = Layer.effect(
               return Effect.void
             }),
           )
+          for (let index = before; index < hooks.length; index++) {
+            hookIDs.push(load.spec)
+            yield* diagnostics.complete(undefined, "plugin.loaded", {
+              summary: { pluginId: load.spec, source: load.source },
+            })
+          }
         }
 
         // Notify plugins of current config
@@ -248,6 +288,9 @@ const layer = Layer.effect(
             catch: errorMessage,
           }).pipe(
             Effect.tapError((error) => Effect.logError("plugin config hook failed", { error })),
+            Effect.tapError((error) => diagnostics.complete(undefined, "plugin.hook.failed", {
+              summary: { hook: "config", error: DiagnosticTrace.errorInfo(error, "plugin") },
+            }, { status: "failed" })),
             Effect.ignore,
           )
         }
@@ -277,7 +320,7 @@ const layer = Layer.effect(
           ),
         )
 
-        return { hooks }
+        return { hooks, hookIDs }
       }),
     )
 
@@ -285,13 +328,21 @@ const layer = Layer.effect(
       Name extends TriggerName,
       Input = Parameters<Required<Hooks>[Name]>[0],
       Output = Parameters<Required<Hooks>[Name]>[1],
-    >(name: Name, input: Input, output: Output) {
+    >(name: Name, input: Input, output: Output, diagnostic?: DiagnosticTrace.TraceContext) {
       if (!name) return output
       const s = yield* InstanceState.get(state)
-      for (const hook of s.hooks) {
+      for (const [index, hook] of s.hooks.entries()) {
         const fn = hook[name] as any
         if (!fn) continue
-        yield* Effect.promise(async () => fn(input, output))
+        yield* Effect.promise(() => observePluginHook({
+          diagnostics,
+          context: diagnostic,
+          pluginId: s.hookIDs[index] ?? "unknown",
+          hook: name,
+          input,
+          output,
+          execute: () => Promise.resolve(fn(input, output)),
+        }))
       }
       return output
     })
@@ -312,7 +363,7 @@ const layer = Layer.effect(
 export const node = LayerNode.make({
   service: Service,
   layer: layer,
-  deps: [EventV2Bridge.node, Config.node, RuntimeFlags.node],
+  deps: [DiagnosticTrace.node, EventV2Bridge.node, Config.node, RuntimeFlags.node],
 })
 
 export * as Plugin from "."

@@ -25,6 +25,7 @@ import { isRecord } from "@/util/record"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { Database } from "@opencode-ai/core/database/database"
 import { Usage, type LLMEvent } from "@opencode-ai/llm"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
 
 const DOOM_LOOP_THRESHOLD = 3
 export type Result = "compact" | "stop" | "continue"
@@ -65,6 +66,9 @@ type ToolCall = {
 }
 
 interface ProcessorContext extends Input {
+  diagnosticTurn?: DiagnosticTrace.TraceContext
+  diagnosticService?: DiagnosticTrace.Interface
+  diagnosticQuerySource?: LLM.StreamInput["querySource"]
   toolcalls: Record<string, ToolCall>
   shouldBreak: boolean
   snapshot: string | undefined
@@ -94,6 +98,7 @@ const layer = Layer.effect(
     const image = yield* Image.Service
     const events = yield* EventV2Bridge.Service
     const database = yield* Database.Service
+    const diagnostics = yield* DiagnosticTrace.Service
 
     const create = Effect.fn("SessionProcessor.create")(function* (input: Input) {
       // Pre-capture snapshot before the LLM stream starts. The AI SDK
@@ -113,6 +118,7 @@ const layer = Layer.effect(
         reasoningMap: {},
       }
       let aborted = false
+      const providerToolStarted = new Map<string, number>()
 
       const parse = (e: unknown) =>
         MessageV2.fromError(e, {
@@ -349,6 +355,21 @@ const layer = Layer.effect(
                 ? { ...value.providerMetadata, providerExecuted: true }
                 : value.providerMetadata,
             }))
+            if (value.providerExecuted && ctx.diagnosticTurn) {
+              providerToolStarted.set(value.id, performance.now())
+              yield* (ctx.diagnosticService ?? diagnostics).emit(
+                { ...ctx.diagnosticTurn, toolCallId: value.id },
+                "tool.started",
+                {
+                  summary: {
+                    name: value.name,
+                    toolKind: "provider",
+                    permission: { requested: false, decision: "provider" },
+                  },
+                  raw: () => ({ input: value.input }),
+                },
+              )
+            }
 
             const parts = yield* MessageV2.parts(ctx.assistantMessage.id).pipe(
               Effect.provideService(Database.Service, database),
@@ -383,6 +404,29 @@ const layer = Layer.effect(
           case "tool-result": {
             const toolCall = yield* readToolCall(value.id)
             if (!toolCall && value.result.type === "error") return
+            if (value.providerExecuted && ctx.diagnosticTurn) {
+              const started = providerToolStarted.get(value.id)
+              providerToolStarted.delete(value.id)
+              yield* (ctx.diagnosticService ?? diagnostics).complete(
+                { ...ctx.diagnosticTurn, toolCallId: value.id },
+                value.result.type === "error" ? "tool.failed" : "tool.completed",
+                {
+                  summary: {
+                    name: value.name,
+                    toolKind: "provider",
+                    permission: { requested: false, decision: "provider" },
+                    ...(value.result.type === "error"
+                      ? { error: DiagnosticTrace.errorInfo(value.result.value, "provider-tool") }
+                      : {}),
+                  },
+                  raw: () => ({ output: value.result.value }),
+                },
+                {
+                  status: value.result.type === "error" ? "failed" : "succeeded",
+                  ...(started === undefined ? {} : { durationMs: performance.now() - started }),
+                },
+              )
+            }
             if (value.result.type === "error") {
               yield* failToolCall(value.id, value.result.value)
               return
@@ -457,7 +501,7 @@ const layer = Layer.effect(
             ctx.assistantMessage.finish = value.reason
             ctx.assistantMessage.cost += usage.cost
             ctx.assistantMessage.tokens = usage.tokens
-            yield* session.updatePart({
+            const part = yield* session.updatePart({
               id: PartID.ascending(),
               reason: value.reason,
               snapshot: completedSnapshot,
@@ -467,6 +511,23 @@ const layer = Layer.effect(
               tokens: usage.tokens,
               cost: usage.cost,
             })
+            if (ctx.diagnosticTurn)
+              yield* (ctx.diagnosticService ?? diagnostics).complete(ctx.diagnosticTurn, "llm.step.completed", {
+                summary: {
+                  ...diagnosticStepSummary({
+                    assistantMessageId: ctx.assistantMessage.id,
+                    userMessageId: ctx.assistantMessage.parentID,
+                    partId: part.id,
+                    step: value.index,
+                    reason: value.reason,
+                    tokens: usage.tokens,
+                    cost: ctx.model.cost ? usage.cost : undefined,
+                  }),
+                  querySource: ctx.diagnosticQuerySource,
+                  attempt: ctx.diagnosticTurn.attempt,
+                },
+                raw: () => ({ providerMetadata: value.providerMetadata }),
+              })
             yield* session.updateMessage(ctx.assistantMessage)
             if (ctx.snapshot) {
               const patch = yield* snapshot.patch(ctx.snapshot)
@@ -645,13 +706,26 @@ const layer = Layer.effect(
         })
         ctx.needsCompaction = false
         ctx.shouldBreak = (yield* config.get()).experimental?.continue_loop_on_deny !== true
+        let attempt = 0
+        ctx.diagnosticTurn = streamInput.diagnostic
+        ctx.diagnosticService = streamInput.diagnosticService
+        ctx.diagnosticQuerySource = streamInput.querySource ?? (streamInput.parentSessionID ? "subagent" : "main")
 
         return yield* Effect.gen(function* () {
           yield* Effect.gen(function* () {
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            const stream = llm.stream(streamInput)
+            attempt++
+            const stream = llm.stream({
+              ...streamInput,
+              attempt,
+              assistantMessageID: ctx.assistantMessage.id,
+              onTurn: (turn) => {
+                ctx.diagnosticTurn = turn
+                streamInput.onTurn?.(turn)
+              },
+            })
 
             yield* stream.pipe(
               Stream.tap((event) => handleEvent(event)),
@@ -676,13 +750,27 @@ const layer = Layer.effect(
                 provider: input.model.providerID,
                 parse,
                 set: (info) => {
-                  return status.set(ctx.sessionID, {
+                  const next = status.set(ctx.sessionID, {
                     type: "retry",
                     attempt: info.attempt,
                     message: info.message,
                     action: info.action,
                     next: info.next,
                   })
+                  if (!streamInput.diagnostic) return next
+                  return next.pipe(
+                    Effect.andThen(
+                      // The wait begins after this callback; the next attempt gets its own turn ID.
+                      diagnostics.emit(streamInput.diagnostic, "processing.phase.started", {
+                        summary: {
+                          phase: "retry-backoff",
+                          attempt: info.attempt,
+                          next: info.next,
+                          message: info.message,
+                        },
+                      }),
+                    ),
+                  )
                 },
               }),
             ),
@@ -710,10 +798,39 @@ const layer = Layer.effect(
   }),
 )
 
+export function diagnosticStepSummary(input: {
+  assistantMessageId: string
+  userMessageId: string
+  partId: string
+  step: number
+  reason: string
+  tokens: ReturnType<typeof Session.getUsage>["tokens"]
+  cost?: number
+}) {
+  return {
+    messageId: input.assistantMessageId,
+    userMessageId: input.userMessageId,
+    partId: input.partId,
+    step: input.step,
+    reason: input.reason,
+    usageRole: "step-billed" as const,
+    usage: {
+      ...(input.tokens.total === undefined ? {} : { totalTokens: input.tokens.total }),
+      inputTokens: input.tokens.input,
+      outputTokens: input.tokens.output,
+      reasoningTokens: input.tokens.reasoning,
+      cacheReadInputTokens: input.tokens.cache.read,
+      cacheWriteInputTokens: input.tokens.cache.write,
+      ...(input.cost === undefined ? {} : { cost: { amount: input.cost, currency: "USD", estimated: true } }),
+    },
+  }
+}
+
 export const node = LayerNode.make({
   service: Service,
   layer: layer,
   deps: [
+    DiagnosticTrace.node,
     Session.node,
     Config.node,
     Snapshot.node,

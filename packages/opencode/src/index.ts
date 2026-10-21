@@ -28,6 +28,7 @@ import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { DbCommand } from "./cli/cmd/db"
 import { BmadCommand } from "./cli/cmd/bmad"
+import { DiagnosticsCommand } from "./cli/cmd/diagnostics"
 import { prependBundledUvToPath } from "./bmad/resources"
 import { errorMessage } from "./util/error"
 import { isRecord } from "./util/record"
@@ -107,6 +108,7 @@ const cli = yargs(args)
   .command(PluginCommand)
   .command(DbCommand)
   .command(BmadCommand)
+  .command(DiagnosticsCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

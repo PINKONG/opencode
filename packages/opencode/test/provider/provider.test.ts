@@ -314,6 +314,19 @@ it.instance("getModel returns model for valid provider/model", () =>
   }),
 )
 
+it.instance("recording fetch creates a request-local language model instead of reusing the cached one", () =>
+  Effect.gen(function* () {
+    yield* setProcessEnv("ANTHROPIC_API_KEY", "test-api-key")
+    const provider = yield* Provider.Service
+    const model = yield* provider.getModel(ProviderV2.ID.anthropic, ModelV2.ID.make("claude-sonnet-4-6"))
+    const ordinary = yield* provider.getLanguage(model)
+    const recorded = yield* provider.getLanguage(model, { wrapFetch: (base) => base })
+    const next = yield* provider.getLanguage(model, { wrapFetch: (base) => base })
+    expect(recorded).not.toBe(ordinary)
+    expect(next).not.toBe(recorded)
+  }),
+)
+
 it.instance("getModel throws ModelNotFoundError for invalid model", () =>
   Effect.gen(function* () {
     yield* set("ANTHROPIC_API_KEY", "test-api-key")

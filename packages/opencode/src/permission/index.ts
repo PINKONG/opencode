@@ -6,11 +6,12 @@ import { Deferred, Effect, Layer, Context } from "effect"
 import os from "os"
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { EventV2Bridge } from "@/event-v2-bridge"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
 
 export const Event = PermissionV1.Event
 
 export interface Interface {
-  readonly ask: (input: PermissionV1.AskInput) => Effect.Effect<void, PermissionV1.Error>
+  readonly ask: (input: PermissionV1.AskInput, diagnostic?: DiagnosticTrace.TraceContext) => Effect.Effect<void, PermissionV1.Error>
   readonly reply: (input: PermissionV1.ReplyInput) => Effect.Effect<void, PermissionV1.NotFoundError>
   readonly list: () => Effect.Effect<ReadonlyArray<PermissionV1.Request>>
 }
@@ -37,12 +38,21 @@ export function evaluate(permission: string, pattern: string, ...rulesets: Permi
   )
 }
 
+export function permissionDiagnostic(input: { permission: string; pattern: string; action: "allow" | "deny" | "ask"; callID?: string }) {
+  return {
+    event: input.action === "deny" ? "processing.phase.failed" : "processing.phase.completed",
+    status: input.action === "deny" ? "failed" as const : "succeeded" as const,
+    summary: { phase: "permission-check", permission: input.permission, pattern: input.pattern, decision: input.action, ...(input.callID ? { callID: input.callID } : {}) },
+  }
+}
+
 export class Service extends Context.Service<Service, Interface>()("@opencode/Permission") {}
 
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
     const events = yield* EventV2Bridge.Service
+    const diagnostics = yield* DiagnosticTrace.Service
     const state = yield* InstanceState.make<State>(
       Effect.fn("Permission.state")(function* (ctx) {
         void ctx
@@ -64,13 +74,15 @@ const layer = Layer.effect(
       }),
     )
 
-    const ask = Effect.fn("Permission.ask")(function* (input: PermissionV1.AskInput) {
+    const ask = Effect.fn("Permission.ask")(function* (input: PermissionV1.AskInput, diagnostic?: DiagnosticTrace.TraceContext) {
       const { approved, pending } = yield* InstanceState.get(state)
       const { ruleset, ...request } = input
       let needsAsk = false
 
       for (const pattern of request.patterns) {
         const rule = evaluate(request.permission, pattern, ruleset, approved)
+        const record = permissionDiagnostic({ permission: request.permission, pattern, action: rule.action, callID: request.tool?.callID })
+        yield* diagnostics.complete(diagnostic ? { ...diagnostic, toolCallId: request.tool?.callID } : { sessionId: request.sessionID, toolCallId: request.tool?.callID }, record.event, { summary: record.summary }, { status: record.status })
         yield* Effect.logInfo("evaluated", { permission: request.permission, pattern, action: rule })
         if (rule.action === "deny") {
           return yield* new PermissionV1.DeniedError({
@@ -116,6 +128,9 @@ const layer = Layer.effect(
         sessionID: existing.info.sessionID,
         requestID: existing.info.id,
         reply: input.reply,
+      })
+      yield* diagnostics.complete({ sessionId: existing.info.sessionID, toolCallId: existing.info.tool?.callID }, "processing.phase.completed", {
+        summary: { phase: "permission-check", permission: existing.info.permission, decision: input.reply },
       })
 
       if (input.reply === "reject") {
@@ -218,6 +233,6 @@ export function visibleTools<T>(tools: Record<string, T>, ruleset: PermissionV1.
   return Object.fromEntries(Object.entries(tools).filter(([name]) => !hidden.has(name)))
 }
 
-export const node = LayerNode.make({ service: Service, layer: layer, deps: [EventV2Bridge.node] })
+export const node = LayerNode.make({ service: Service, layer: layer, deps: [DiagnosticTrace.node, EventV2Bridge.node] })
 
 export * as Permission from "."

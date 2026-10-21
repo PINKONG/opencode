@@ -51,6 +51,7 @@ type CompatibleInput = {
   current: ServerApi
   legacy: LegacyFor
   directory?: string
+  surface?: "web" | "desktop"
 }
 
 function mime(uri: string) {
@@ -200,6 +201,7 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
       async prompt(value: SessionPromptInput & LegacyPrompt) {
         await legacy().session.promptAsync({
           sessionID: value.sessionID,
+          diagnosticSurface: input.surface,
           messageID: value.id ?? undefined,
           agent: value.agent,
           model: value.model,
@@ -241,6 +243,7 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
       async command(value: SessionCommandInput) {
         await legacy().session.command({
           sessionID: value.sessionID,
+          diagnosticSurface: input.surface,
           messageID: value.id ?? undefined,
           command: value.command,
           arguments: value.arguments ?? "",

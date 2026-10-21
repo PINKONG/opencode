@@ -18,7 +18,11 @@ import { Database } from "@opencode-ai/core/database/database"
 export interface TaskPromptOps {
   cancel(sessionID: SessionID): Effect.Effect<void>
   resolvePromptParts(template: string): Effect.Effect<SessionPrompt.PromptInput["parts"]>
-  prompt(input: SessionPrompt.PromptInput): Effect.Effect<SessionV1.WithParts>
+  prompt(
+    input: SessionPrompt.PromptInput,
+    parentToolCallId?: string,
+    onChildTrace?: (traceId: string) => void,
+  ): Effect.Effect<SessionV1.WithParts>
 }
 
 const id = "task"
@@ -186,6 +190,7 @@ export const TaskTool = Tool.define(
         parentSessionId: ctx.sessionID,
         sessionId: nextSession.id,
         model,
+        childTraceId: undefined as string | undefined,
         ...(runInBackground ? { background: true } : {}),
       }
 
@@ -199,17 +204,23 @@ export const TaskTool = Tool.define(
 
       const runTask = Effect.fn("TaskTool.runTask")(function* () {
         const parts = yield* ops.resolvePromptParts(params.prompt)
-        const result = yield* ops.prompt({
-          messageID: MessageID.ascending(),
-          sessionID: nextSession.id,
-          model: {
-            modelID: model.modelID,
-            providerID: model.providerID,
+        const result = yield* ops.prompt(
+          {
+            messageID: MessageID.ascending(),
+            sessionID: nextSession.id,
+            model: {
+              modelID: model.modelID,
+              providerID: model.providerID,
+            },
+            variant: next.model ? undefined : variant,
+            agent: next.name,
+            parts,
           },
-          variant: next.model ? undefined : variant,
-          agent: next.name,
-          parts,
-        })
+          ctx.callID,
+          (traceId) => {
+            metadata.childTraceId = traceId
+          },
+        )
         if (result.info.role === "assistant" && result.info.error) {
           const message =
             "message" in result.info.error.data && typeof result.info.error.data.message === "string"

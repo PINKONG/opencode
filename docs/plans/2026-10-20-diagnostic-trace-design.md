@@ -77,7 +77,7 @@ WisCode 当前已有面向开发者的普通运行日志，但它主要记录服
 └── 2026-10-20/
     ├── instance.jsonl
     ├── ses_abc.jsonl
-    ├── ses_abc.jsonl.1
+    ├── ses_abc.1.jsonl
     ├── ses_def.jsonl
     └── ...
 ```
@@ -92,7 +92,7 @@ WisCode 当前已有面向开发者的普通运行日志，但它主要记录服
 - 文件使用 UTF-8 JSONL，一行一个完整 JSON 对象，以换行结尾。
 - 事件对象写入采用单次 append；业务不依赖跨行事务。
 - 进程崩溃或强制终止后，最后一行可能不完整。读取端忽略最后一个无法解析的尾行，不修改、不自动修复历史文件。
-- 写入端下一次追加到同一流时，可在持有该流锁的情况下将不完整尾行截断至最后一个换行；这不改变读取端的只读行为。完整但损坏的行不得静默跳过。
+- 写入端下一次追加到同一流时，可在持有该流锁的情况下将不完整尾行截断至最后一个换行；这不改变读取端的只读行为。最后一条完整但损坏的行保留在原卷并写普通错误日志，后续事件写入下一数字卷，序号从前一条有效记录继续；读取端必须报告损坏行，不得静默跳过。
 - 同一会话的事件由同一 writer 串行写入；不同会话可以并行。
 
 每条记录统一使用如下信封：
@@ -132,7 +132,7 @@ WisCode 当前已有面向开发者的普通运行日志，但它主要记录服
 字段约定：
 
 - `schema`、`schemaVersion`：跨版本解析的协议标识。
-- `seq`：单个日志流的写入顺序。每个 session 文件和每日 `instance.jsonl` 各自单调递增；由于有界队列可能丢弃低优先级事件，序号允许出现空洞。
+- `seq`：单个日志流的写入顺序。每个 session 文件和每日 `instance.jsonl` 各自单调递增；写入端在流锁内分配序号，入队前丢弃的事件不占序号。读取端仍应容忍空洞。
 - `eventId`：全局唯一事件 ID。
 - `status`：`started`、`succeeded`、`failed`、`cancelled` 或 `dropped`。
 - `timestamp`：UTC ISO 8601 时间。
@@ -150,7 +150,7 @@ WisCode 当前已有面向开发者的普通运行日志，但它主要记录服
 - `location`：项目目录和可选 workspace；路径按原样记录。
 - `runtime.surface`：`cli`、`web`、`desktop`、`acp` 或 `background`。
 - `runtime.sessionEngine`：当前为 `legacy-v1`；未来 `SessionRunner` 迁移后使用 `session-v2`。它与入口 surface 是两个独立维度。
-- `payload`：事件类型专属数据。未知字段读取端必须保留并忽略，不因新增字段失败。
+- `payload`：普通事件固定为 `{ "summary": {...}, "raw": {...} }`，其中 `raw` 仅在 `rawPayloads` 开启且事件提供原文时出现；关闭时保留 `summary` 而省略 `raw`。`diagnostic.events_dropped` 使用专用计数 payload。未知字段读取端必须保留并忽略，不因新增字段失败。
 
 所有时长单位为毫秒，token 复用 `@opencode-ai/llm` 现有 `Usage` 语义，不能另造一套会造成统计不一致的 token 定义。
 
@@ -171,6 +171,8 @@ task.started
 `task.started` 在用户输入已被接受、服务端生成 `traceId` 后写入。若输入在 admission 阶段就被拒绝，也必须尽可能写入 `task.failed`，并标明 `stage: admission`。`task.completed` 表示该 trace 达到正常稳定状态，不等同于某一个 provider chunk 到达。
 
 每个被 admitted 的 prompt 都创建自己的 `traceId`。如果 prompt 到达时 Legacy `SessionPrompt` 的 runLoop 正在运行并加入当前循环，则新 trace 通过 `followsTraceId` 指向当时活跃的 trace；不能把多个用户输入合并成一个 trace。
+
+子任务建立时额外发出 `task.child.started`，在父任务流中记录父子 session ID、`parentTraceId`、`childTraceId` 和父工具调用 ID。前台 task 工具完成事件也包含父子链接；后台 task 在工具先返回时通过后续的 `task.child.started` 建立链接。
 
 任务 payload 至少包含：
 
@@ -197,7 +199,7 @@ task.started
 - `processing.phase.completed`
 - `processing.phase.failed`
 
-`payload.phase` 使用受控枚举，例如：
+`payload.summary.phase` 使用受控枚举，例如：
 
 - `admission`
 - `context-assembly`
@@ -256,8 +258,7 @@ task.started
     "cacheReadInputTokens": 100,
     "cacheWriteInputTokens": 0,
     "reasoningTokens": 80,
-    "totalTokens": 1300,
-    "providerMetadata": {}
+    "totalTokens": 1300
   },
   "timing": {
     "queueMs": 10,
@@ -279,10 +280,14 @@ task.started
 - `providerResponse`：仅在 `rawPayloads: true` 时记录 provider 原始响应或原始流聚合结果；关闭时保留解析后的响应摘要。
 - `normalizedResponse`：WisCode 解析后的响应。`rawPayloads: true` 时包含文本、provider 返回的 reasoning 和完整 tool call 参数；关闭时只保留文本/参数长度、数量、finish reason 和类型摘要。
 - `usage`：复用现有 LLM `Usage` 字段及 provider metadata。
+- `usageRole` 区分 `step-billed` 与 `request-total`。同一 `turnId` 有逐步计费记录时，SQLite 对账只汇总 `llm.step.completed` 的 usage/cost；没有逐步记录（例如 native runtime）才使用 `llm.request.completed` 的请求总量，不能把两层记录相加。
 - `usage.cost` 可选记录现有 `getUsage` 定价计算得到的估算费用，例如 `{ "amount": 0.0123, "currency": "USD", "estimated": true }`。它必须注明币种和是否为估算值，不能把不同 provider 的价格直接混算；没有价格信息时省略。
 - `timing`：能测量的阶段才记录，不可测量字段为 `null` 或省略，不能填估算值。
 - `querySource`：调用来源，至少支持 `main`、`subagent`、`auxiliary`、`title`、`summary` 和 `compaction`，用于区分主对话、子代理和系统辅助调用。`retry` 不是来源值；重试保持原来源，并通过 `attempt` 和 `retry.count` 表达。`summary` 专指 `SessionSummary.summarize` 等摘要生成调用，不并入 `auxiliary`。
+- 项目副本名称生成等不属于持久化会话的模型调用使用 `querySource: auxiliary`；它们有独立诊断 trace，但不伪造 SQLite 会话消息。原始 `providerMetadata` 仅进入 `payload.raw`，默认摘要只含归一化用量。
+- 同一次 MaxKB MCP 搜索可同时出现 `tool.*` 和 `knowledge.query.*`；两层事件共用 `traceId`、`turnId` 与 `toolCallId`，聚合调用次数时按 `toolCallId` 去重，不能把它们算成两次执行。
 - `messageId`、`partId`：可选关联键，用于连接诊断日志与现有 SQLite 会话转录及 token 统计。
+- `llm.request.*.messageId` 是 assistant 消息 ID（尚未生成时省略），`userMessageId` 是触发请求的用户消息 ID。`llm.step.completed` 在 processor 保存 `step-finish` part 后发出，包含该 assistant `messageId`、实际保存的 `partId` 和归一化计费 usage；请求级 `usageRole: request-total` 与步骤级 `usageRole: step-billed` 不得相加。
 - `genAi`：与 OpenTelemetry GenAI 语义约定兼容的字段映射。首版不要求导出 OTel，但字段命名和 token 语义应保持可映射。
 
 默认模式不记录原始正文，也不记录每个 stream delta。`rawPayloads: true` 时记录完整对话内容、provider request/response、工具和上下文 payload；关闭时只保留摘要、耗时、usage 和状态。`streaming: true` 时，追加逐 delta 事件；若 `rawPayloads` 关闭，chunk 只记录长度、kind 和时序，不记录文本正文。
@@ -293,7 +298,7 @@ task.started
 
 模型的隐藏思维链不可从 WisCode 侧保证可见；只有 provider 实际返回的 reasoning 字段才可以记录。
 
-`payload.phase` 的枚举是可扩展集合，不是封闭协议。新增阶段名不属于 schema breaking change，读取端必须保留并展示未知阶段；已有阶段的语义不能无公告地改变。
+`payload.summary.phase` 的枚举是可扩展集合，不是封闭协议。新增阶段名不属于 schema breaking change，读取端必须保留并展示未知阶段；已有阶段的语义不能无公告地改变。
 
 `rawPayloads` 的开关语义与 `streaming` 分离：性能分析通常只需要结构摘要、usage 和 timing；需要查看对话正文、provider 适配或插件改写时才开启完整原始 payload。设置改变后只影响新事件，不回填旧事件，也不修改已经写入的记录。
 
@@ -302,9 +307,9 @@ task.started
 Skill 发现和加载记录：
 
 - `context.source.loaded`：skill、reference、system context 等上下文来源实际被加载时记录。
-- `payload.sourceKind`：`skill`、`reference`、`system`、`agent` 等。
-- `payload.sourceId`：名称、路径或稳定标识。
-- `payload.content`：`rawPayloads: true` 时的原始内容；关闭时使用 `contentBytes`、`itemCount`、来源标识和其他摘要。LLM 请求的完整 system/messages 仅在 `rawPayloads` 开启时记录。
+- `payload.summary.sourceKind`：`skill`、`reference`、`system`、`agent` 等。
+- `payload.summary.sourceId`：名称、路径或稳定标识。
+- `payload.raw.content`：`rawPayloads: true` 时的原始内容；关闭时使用摘要中的 `contentBytes`、`itemCount`、来源标识和其他字段。LLM 请求的完整 system/messages 仅在 `rawPayloads` 开启时记录。
 - `rawPayloads` 开启时，上下文来源的完整内容也会写入；关闭时只记录来源标识、路径、大小和数量，避免普通诊断模式保存正文。
 
 工具生命周期：
@@ -325,7 +330,7 @@ Skill 发现和加载记录：
   "output": {},
   "permission": {
     "requested": true,
-    "decision": "allow|deny|ask|provider-executed"
+    "decision": "allowed|denied|not-requested|provider"
   }
 }
 ```
