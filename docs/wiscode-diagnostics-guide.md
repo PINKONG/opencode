@@ -173,13 +173,19 @@ wiscode diagnostics tail [--session ses_ID | --trace trace_ID]
 
 **tail 永远不显示日志原文**——一行一个事件的精简摘要。需要原文用 `show`（见 6.4）。
 
-### 6.3 定位一个任务的 traceId
+### 6.3 如何获取三种 ID（ses_ID / trace_ID / evt_ID）
 
-先看任务事件拿 ID：
+`--session`、`--trace` 和 `show` 分别需要会话、任务、事件三种 ID。**万能开关是 `--ids`：任何 `tail` 查询加上它，每行行尾都会输出完整的 `eventId`、`sessionId`、`traceId`**。此外每种 ID 还有更快的直达入口：
 
-```bash
-wiscode diagnostics tail --event 'task.started' --ids --limit 5
-```
+| ID | 用在哪 | 获取方式 |
+| --- | --- | --- |
+| `ses_ID` | `--session` 会话视图 | ① **界面地址栏**：会话页 URL 就是 `/<项目名>/session/ses_…`，直接复制；② **日志文件名**：`ls -t ~/.local/share/wiscode/log/diagnostics/2026-10-21/`，最新的 `ses_….jsonl` 文件名（去掉 `.jsonl`）就是会话 ID；③ `wiscode diagnostics tail --event 'task.started' --ids --limit 3` |
+| `trace_ID` | `--trace` 任务视图 | 从目标任务的 `task.started` 行取：`tail --session ses_… --event 'task.started' --ids`，按时间对上任务发起时刻即可锁定；子代理任务看 `task.child.started` 行的 `childTraceId`；任何 `show evt_…` 的输出里也带 `traceId` |
+| `evt_ID` | `show` 单事件深查 | 定位到可疑行后，**给同一条 tail 命令加 `--ids`**，复制行尾的 `eventId=evt_…` |
+
+注意：不加 `--ids` 时会话列显示为缩写（`ses_e...21gTi`，前 5 后 5），只能肉眼区分，不能用于查询。
+
+典型动线：**地址栏拿 ses_ID → `tail --session` 加 `--status failed` / `--event` 过滤缩小范围 → 加 `--ids` 拿 evt_ID → `show` 深挖；需要圈定完整任务时取 trace_ID 换 `--trace` 视图**。
 
 ### 6.4 `wiscode diagnostics show <eventId>` —— 单事件深查
 
@@ -201,6 +207,14 @@ wiscode diagnostics show evt_ea38ce… --raw    # 追加原始请求/响应（�
 
 ```bash
 DIAG=~/.local/share/wiscode/log/diagnostics
+
+# 列出某会话的所有任务及 traceId（定位任务链用）
+jq -r 'select(.event=="task.started") | [.timestamp, .traceId] | @tsv' \
+  $DIAG/2026-10-21/ses_xxx.jsonl
+
+# 列出某会话所有失败事件及 eventId（衔接 show 用）
+jq -r 'select(.event=="tool.failed") | [.timestamp, .eventId, .summary.name] | @tsv' \
+  $DIAG/2026-10-21/ses_xxx.jsonl
 
 # 某会话每次模型调用的 token 明细
 jq -c 'select(.event=="llm.step.completed") | {t:.timestamp, in:.payload.summary.usage.inputTokens, out:.payload.summary.usage.outputTokens, cacheRead:.payload.summary.usage.cacheReadInputTokens}' \

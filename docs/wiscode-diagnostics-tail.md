@@ -59,12 +59,36 @@ wiscode diagnostics tail [--session ses_ID | --trace trace_ID]
 | `--limit` | 1–10000，默认 100 | 输出最近 N 条**可见**行。所有过滤（含 chunk 隐藏）先于 limit 生效。 |
 | `--event` | glob | 事件名匹配，`*` 是唯一通配符，如 `llm.*`、`tool.*`、`task.started`。含其他通配符字符（`?`、`[`、`]`）会被拒绝。 |
 | `--status` | `started` / `succeeded` / `failed` / `cancelled` / `dropped` | 精确匹配事件的 status 字段。 |
-| `--follow` | 开关 | 实时跟随，见 §6。不能与 `--until` 同用；`--since` 同时过滤初始快照与新增行。 |
+| `--follow` | 开关 | 实时跟随，见 §7。不能与 `--until` 同用；`--since` 同时过滤初始快照与新增行。 |
 | `--chunks` | 开关 | 显示 `llm.stream.chunk` 逐 delta 事件。默认隐藏（几百个 chunk 会淹没生命周期事件）；仍只有 kind/index/字节数，无正文。 |
 | `--ids` | 开关 | 行尾追加完整 `eventId` / `sessionId` / `traceId` / `turnId` / `source`，用于衔接 `show` 和脚本处理。 |
 | `--utc` | 开关 | 时间列用 UTC（`2026-10-20 10:00:00.000Z` 形式）。默认本地时区带数字偏移（`2026-10-20 18:00:00.000 +08:00`）。 |
 
-## 5. 输出行格式
+## 5. 从哪里获取 ses_ID / trace_ID / evt_ID
+
+`--session`、`--trace`、`show <eventId>` 需要的三种 ID 都能从一个开关拿到：**任何 tail 查询加 `--ids`，每行行尾即输出完整的 `eventId` / `sessionId` / `traceId` / `turnId` / `source`**。每种 ID 另有更快入口：
+
+| ID | 用途 | 获取方式 |
+| --- | --- | --- |
+| `ses_ID` | `--session`（§3.2） | ① 界面地址栏：会话页 URL 即 `/<项目名>/session/ses_…`，直接复制；② 日志文件名：`ls -t <root>/YYYY-MM-DD/` 最新的 `ses_….jsonl`，文件名（去掉 `.jsonl`）就是会话 ID；③ `wiscode diagnostics tail --event 'task.started' --ids --limit 3` |
+| `trace_ID` | `--trace`（§3.3） | 目标任务 `task.started` 行的 `traceId`（`tail --session ses_… --event 'task.started' --ids`，按时间对上任务发起时刻）；子任务看 `task.child.started` 行的 `summary.childTraceId`；`show` 任意事件的输出中也带 `traceId` |
+| `evt_ID` | `show` | 定位到目标行后给同一条 tail 命令加 `--ids`，复制行尾 `eventId=evt_…` |
+
+不加 `--ids` 时会话列是缩写（前 5…后 5），只能肉眼区分，不能用作查询参数。
+
+批量提取直接用 jq 读文件：
+
+```bash
+DIAG=~/.local/share/wiscode/log/diagnostics
+
+# 某会话全部任务及 traceId（定位任务链用）
+jq -r 'select(.event=="task.started") | [.timestamp, .traceId] | @tsv' $DIAG/2026-10-21/ses_xxx.jsonl
+
+# 某会话全部失败事件及 eventId（衔接 show 用）
+jq -r 'select(.event=="tool.failed") | [.timestamp, .eventId, .summary.name] | @tsv' $DIAG/2026-10-21/ses_xxx.jsonl
+```
+
+## 6. 输出行格式
 
 每行一个事件，从左到右：
 
@@ -93,7 +117,7 @@ wiscode diagnostics tail [--session ses_ID | --trace trace_ID]
 - **`--ids` 附加**：行尾追加 ` eventId=… sessionId=… traceId=… turnId=… source=<文件路径>`，其中 source 直接给出事件所在文件。
 - 行宽超出终端列宽（无终端信息时 160 列）截断加 `...`；`--ids` 行不截断；完整字段用 `show` 查看。
 
-## 6. `--follow` 实时跟随
+## 7. `--follow` 实时跟随
 
 ```bash
 wiscode diagnostics tail --follow [--session … | --trace …] [过滤参数]
@@ -106,7 +130,7 @@ wiscode diagnostics tail --follow [--session … | --trace …] [过滤参数]
 - `Ctrl-C` 正常退出（退出码 0）。
 - 检测到文件身份变化、截断或同尺寸重写时，会从新代数的偏移 0 继续读取，并向 stderr 输出 `Diagnostic stream reset`；在外部就地重写等竞争下，前缀行可能重放，这是优先避免吞日志的 best-effort 语义。
 
-## 7. 退出码
+## 8. 退出码
 
 | 场景 | 退出码 |
 | --- | --- |
@@ -117,7 +141,7 @@ wiscode diagnostics tail --follow [--session … | --trace …] [过滤参数]
 
 扫描中文件被并发清理（删除）属预期竞态：打一条 partial 警告到 stderr，继续扫描其余文件，正常退出。
 
-## 8. 配套命令
+## 9. 配套命令
 
 ```bash
 wiscode diagnostics status             # 诊断开关状态 + 日志根目录
@@ -129,7 +153,7 @@ wiscode diagnostics clear --yes        # 清空全部诊断日志（含当天）
 
 `tail` 永远不输出原始正文（请求/响应体、密钥、对话内容不会出现在单行摘要里）；查看原文的唯一入口是 `show --raw`，其输出**未脱敏**，可能包含 API key、访问 token 和私有代码，仅限本地终端使用。
 
-## 9. 典型工作流
+## 10. 典型工作流
 
 ```bash
 # 1. token 消耗排查主路径：某会话的逐步计费 token 细项（含缓存读写）
@@ -152,19 +176,19 @@ wiscode diagnostics tail --since 2026-10-21T09:00:00+08:00 --until 2026-10-21T12
 wiscode diagnostics tail
 ```
 
-## 10. 性能与成本说明
+## 11. 性能与成本说明
 
 - 全局/trace 视图为保证"最近 N 条"精确，需流式扫描保留期内全部文件（默认上限约 2 GB，活跃卷可能更多；trace 构建链接遍需要第二遍扫描）。内存有界：只保留 N 条紧凑投影，raw payload 读到即弃。
 - 每行解析有 64 MiB 安全上限（rawPayloads 开启时单行可能很大），超限显式报错，绝不截断成看似正常的事件。
 - 长扫描在 TTY stderr 显示限频进度行；重定向时静默。
 
-## 11. 安全边界
+## 12. 安全边界
 
 - 读取器只访问诊断根目录，拒绝符号链接与无关文件；`--session`/`--trace`/eventId 是过滤器，永远不当作文件路径拼接。
 - stdout 只有记录行；警告、进度、错误走 stderr，便于管道使用。
 - 本命令不上传任何数据；诊断目录整体应视为敏感数据目录。
 
-## 12. 已知限制
+## 13. 已知限制
 
 - 快照读取与清理/替换不是事务：并发变化的文件按 best-effort 单遍读取，可能遗漏该文件中的记录，但不把不完整尾行或畸形行当作有效事件。
 - `--follow` 检测到流重置后会从新代数重新读取；外部并发改写仍可能导致前缀行重放，stderr 会提示重置。
