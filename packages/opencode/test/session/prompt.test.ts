@@ -57,6 +57,8 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { LocationServiceMap, locationServiceMapLayer } from "@opencode-ai/core/location-services"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { Diagnostic } from "@opencode-ai/schema"
 
 const summary = Layer.succeed(
   SessionSummary.Service,
@@ -71,6 +73,43 @@ const ref = {
   providerID: ProviderV2.ID.make("test"),
   modelID: ModelV2.ID.make("test-model"),
 }
+
+const diagnosticTasks: DiagnosticTrace.TraceContext[] = []
+let diagnosticConfig: DiagnosticTrace.Config = {
+  enabled: false,
+  rawPayloads: false,
+  streaming: false,
+  retentionDays: 14,
+  maxTotalBytes: 2 * 1024 * 1024 * 1024,
+}
+const diagnosticTrace = Layer.succeed(
+  DiagnosticTrace.Service,
+  DiagnosticTrace.Service.of({
+    configure: (config) => Effect.sync(() => (diagnosticConfig = config)),
+    config: () => diagnosticConfig,
+    startTask: (input) => {
+      const context: DiagnosticTrace.TraceContext = {
+        ...(input.sessionId === undefined ? {} : { sessionId: input.sessionId }),
+        traceId: Diagnostic.TraceID.create(),
+        ...(input.parentTraceId === undefined ? {} : { parentTraceId: Diagnostic.TraceID.make(input.parentTraceId) }),
+        ...(input.followsTraceId === undefined ? {} : { followsTraceId: Diagnostic.TraceID.make(input.followsTraceId) }),
+        ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
+        ...(input.location === undefined ? {} : { location: input.location }),
+      }
+      diagnosticTasks.push(context)
+      return context
+    },
+    startTurn: (context, input = {}) => ({ ...context, turnId: Diagnostic.TurnID.create(), attempt: input.attempt ?? 1 }),
+    emit: () => Effect.void,
+    complete: () => Effect.void,
+    flush: () => Effect.void,
+    close: () => Effect.void,
+    closeAll: () => Effect.void,
+    root: () => "/tmp/wiscode-diagnostic-test",
+    cleanup: () => Effect.void,
+    clear: () => Effect.succeed({ deleted: 0, skipped: 0 }),
+  }),
+)
 
 function withSh<A, E, R>(fx: () => Effect.Effect<A, E, R>) {
   return Effect.acquireUseRelease(
@@ -212,6 +251,7 @@ const promptRoot = LayerNode.group([
 function makePrompt(input?: { mcpInstructions?: MCP.ServerInstructions[]; processor?: "blocking" }) {
   const replacements = [
     [SessionSummary.node, summary],
+    [DiagnosticTrace.node, diagnosticTrace],
     [LSP.node, lsp],
     [MCP.node, makeMcp(input?.mcpInstructions)],
     [RuntimeFlags.node, runtimeFlags],
@@ -226,6 +266,7 @@ function makeHttp(input?: { mcpInstructions?: MCP.ServerInstructions[]; processo
   const root = LayerNode.group([promptRoot, testLLMServerNode])
   const replacements = [
     [SessionSummary.node, summary],
+    [DiagnosticTrace.node, diagnosticTrace],
     [LSP.node, lsp],
     [MCP.node, makeMcp(input?.mcpInstructions)],
     [RuntimeFlags.node, runtimeFlags],
@@ -1433,6 +1474,7 @@ it.instance("concurrent loop callers all receive same error result", () =>
 
 it.instance("prompt submitted during an active run is included in the next LLM input", () =>
   Effect.gen(function* () {
+    diagnosticTasks.length = 0
     const { llm } = yield* useServerConfig(providerCfg)
     const gate = yield* Deferred.make<void>()
     const prompt = yield* SessionPrompt.Service
@@ -1473,6 +1515,10 @@ it.instance("prompt submitted during an active run is included in the next LLM i
         ),
       "timed out waiting for second prompt to save",
     )
+
+    const traces = diagnosticTasks.filter((task) => task.sessionId === chat.id)
+    expect(traces).toHaveLength(2)
+    expect(traces[1]?.followsTraceId).toBe(traces[0]?.traceId)
 
     yield* Deferred.succeed(gate, void 0)
 
@@ -2464,7 +2510,7 @@ noLLMServer.instance(
         if (NamedError.Unknown.isInstance(err)) {
           expect(err.data.message).toContain('Command not found: "nonexistent-command-xyz"')
           expect(err.data.message).toContain("customize-wiscode")
-          expect(err.data.message).not.toContain("init")
+          expect(err.data.message).not.toMatch(/(?:Available commands: |, )init(?:,|$)/)
         }
       }
     }),

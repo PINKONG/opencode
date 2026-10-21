@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, spyOn } from "bun:test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { Effect, Layer } from "effect"
 import fs from "fs/promises"
 import path from "path"
 import { pathToFileURL } from "url"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { FSUtil } from "@opencode-ai/core/fs-util"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
+import { Global } from "@opencode-ai/core/global"
 import { Config } from "@/config/config"
 import { disposeAllInstances, provideInstance, testInstanceStoreLayer, tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
@@ -36,7 +39,7 @@ function withTmp<T, A, E, R>(
   })
 }
 
-function load(dir: string, flags?: Parameters<typeof RuntimeFlags.layer>[0]) {
+function load(dir: string, flags?: Parameters<typeof RuntimeFlags.layer>[0], diagnostics = false) {
   const source = path.join(dir, "opencode.json")
   return Effect.gen(function* () {
     const config = yield* Effect.promise(
@@ -46,9 +49,13 @@ function load(dir: string, flags?: Parameters<typeof RuntimeFlags.layer>[0]) {
     return yield* Effect.gen(function* () {
       const plugin = yield* Plugin.Service
       yield* plugin.list()
+      if (diagnostics) {
+        const trace = yield* DiagnosticTrace.Service
+        yield* trace.flush()
+      }
     }).pipe(
       Effect.provide(
-        LayerNode.compile(Plugin.node, [
+        AppNodeBuilder.build(LayerNode.group([Plugin.node, DiagnosticTrace.node]), [
           [
             Config.node,
             TestConfig.layer({
@@ -57,9 +64,16 @@ function load(dir: string, flags?: Parameters<typeof RuntimeFlags.layer>[0]) {
                   plugin: plugins,
                   plugin_origins: plugins.map((plugin) => ({ spec: plugin, source, scope: "local" as const })),
                 }),
+              getGlobal: () =>
+                Effect.succeed({
+                  diagnostics: { enabled: diagnostics },
+                }),
               directories: () => Effect.succeed([dir]),
             }),
           ],
+          ...(diagnostics
+            ? [[Global.node, Global.layerWith({ log: path.join(dir, "logs"), state: path.join(dir, "state") })] as const]
+            : []),
           [RuntimeFlags.node, RuntimeFlags.layer({ disableDefaultPlugins: true, ...flags })],
         ]),
       ),
@@ -96,6 +110,36 @@ describe("plugin.loader.shared", () => {
         Effect.gen(function* () {
           yield* load(tmp.path)
           expect(yield* Effect.promise(() => fs.readFile(tmp.extra.mark, "utf8"))).toBe("called")
+        }),
+    ),
+  )
+
+  it.live("writes loaded plugin diagnostics to the instance stream", () =>
+    withTmp(
+      async (dir) => {
+        const file = path.join(dir, "plugin.ts")
+        await Bun.write(file, "export default async () => ({})\n")
+        await Bun.write(
+          path.join(dir, "opencode.json"),
+          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
+        )
+        return { date: new Date().toISOString().slice(0, 10) }
+      },
+      (tmp) =>
+        Effect.gen(function* () {
+          yield* load(tmp.path, undefined, true)
+          const log = path.join(tmp.path, "logs", "diagnostics", tmp.extra.date, "instance.jsonl")
+          const events = (yield* Effect.promise(() => Bun.file(log).text()))
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line))
+          expect(events).toContainEqual(
+            expect.objectContaining({
+              event: "plugin.loaded",
+              payload: { summary: expect.objectContaining({ source: "file" }) },
+            }),
+          )
+          expect(events[0]?.sessionId).toBeUndefined()
         }),
     ),
   )
