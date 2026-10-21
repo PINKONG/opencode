@@ -19,6 +19,13 @@ describe("SettingsGeneral", () => {
     expect(textV2).toContain("<SidecarLanSection />")
   })
 
+  test("shows diagnostic log settings only in desktop layouts", async () => {
+    const legacy = await Bun.file(new URL("./settings-general.tsx", import.meta.url)).text()
+    const next = await Bun.file(new URL("./settings-v2/general.tsx", import.meta.url)).text()
+    expect(legacy).toMatch(/<Show when=\{desktop\(\)\}>\s*<SettingsLogsSection \/>\s*<\/Show>/)
+    expect(next).toMatch(/<Show when=\{desktop\(\)\}>\s*<SettingsLogsSectionV2 \/>\s*<\/Show>/)
+  })
+
   test("uses sidecar credentials when showing desktop LAN access URL", async () => {
     const text = await Bun.file(new URL("./settings-general.tsx", import.meta.url)).text()
     expect(text).toContain("buildSidecarLanAccessUrl")

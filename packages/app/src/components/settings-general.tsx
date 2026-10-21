@@ -1001,7 +1001,9 @@ export const SettingsGeneral: Component = () => {
 
         <SidecarLanSection />
 
-        <SettingsLogsSection />
+        <Show when={desktop()}>
+          <SettingsLogsSection />
+        </Show>
 
         <DisplaySection />
 

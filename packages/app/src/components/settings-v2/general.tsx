@@ -802,7 +802,9 @@ export const SettingsGeneralV2: Component<{
 
         <SidecarLanSection />
 
-        <SettingsLogsSectionV2 />
+        <Show when={desktop()}>
+          <SettingsLogsSectionV2 />
+        </Show>
 
         <DisplaySection />
 
