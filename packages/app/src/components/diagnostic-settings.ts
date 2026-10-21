@@ -8,9 +8,8 @@ export async function openDiagnosticDirectory(input: {
 
 export async function cleanupDiagnosticLogs(input: {
   confirm: () => boolean
-  cleanup: () => Promise<unknown>
+  cleanup: () => Promise<{ deleted: number; skipped: number }>
 }) {
-  if (!input.confirm()) return false
-  await input.cleanup()
-  return true
+  if (!input.confirm()) return
+  return input.cleanup()
 }

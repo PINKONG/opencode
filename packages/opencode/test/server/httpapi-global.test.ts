@@ -35,6 +35,7 @@ const diagnostic = {
   closeAll: () => Effect.void,
   root: () => "/tmp/wiscode-diagnostics",
   cleanup: () => Effect.void,
+  clear: () => Effect.succeed({ deleted: 2, skipped: 0 }),
 }
 
 const apiLayer = HttpRouter.serve(
@@ -94,11 +95,11 @@ describe("global HttpApi", () => {
     }),
   )
 
-  it.live("accepts an explicit diagnostic cleanup request", () =>
+  it.live("clears current diagnostic files on explicit request", () =>
     Effect.gen(function* () {
       const response = yield* HttpClientRequest.post(GlobalPaths.diagnosticsCleanup).pipe(HttpClient.execute)
       expect(response.status).toBe(200)
-      expect(yield* response.json).toEqual({ root: "/tmp/wiscode-diagnostics" })
+      expect(yield* response.json).toEqual({ root: "/tmp/wiscode-diagnostics", deleted: 2, skipped: 0 })
     }),
   )
 

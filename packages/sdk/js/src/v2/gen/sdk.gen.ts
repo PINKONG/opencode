@@ -1428,7 +1428,7 @@ export class Diagnostics extends HeyApiClient {
   }
 
   /**
-   * Clean up diagnostic logs
+   * Clear diagnostic logs
    */
   public cleanup<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).post<

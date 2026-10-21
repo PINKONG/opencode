@@ -65,6 +65,7 @@ export interface Interface {
   readonly closeAll: () => Effect.Effect<void>
   readonly root: () => string
   readonly cleanup: (input?: { light?: boolean }) => Effect.Effect<void>
+  readonly clear: () => Effect.Effect<{ deleted: number; skipped: number }>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/DiagnosticTrace") {}
@@ -84,6 +85,7 @@ type NodeOptions = {
   lockTimeoutMs?: number
   lockStaleMs?: number
   cleanupLockTimeoutMs?: number
+  cleanupIntervalMs?: number
 }
 
 type PendingEvent = {
@@ -430,6 +432,76 @@ function makeLayer(options: NodeOptions = {}) {
           return next
         })
 
+      let cleanupTimer: ReturnType<typeof setTimeout> | undefined
+      const scheduleCleanup = () => {
+        if (!current.enabled || cleanupTimer) return
+        cleanupTimer = setTimeout(() => {
+          cleanupTimer = undefined
+          if (!current.enabled) return
+          void Effect.runPromise(cleanup())
+            .catch((error) => reportFailure("Scheduled diagnostic cleanup failed", error))
+            .finally(scheduleCleanup)
+        }, options.cleanupIntervalMs ?? 6 * 60 * 60 * 1000)
+        cleanupTimer.unref?.()
+      }
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          if (cleanupTimer) clearTimeout(cleanupTimer)
+          cleanupTimer = undefined
+        }),
+      )
+
+      const clear: Interface["clear"] = () =>
+        Effect.promise(() => {
+          const next = cleaning.then(async () => {
+            await Effect.runPromise(flush())
+            let deleted = 0
+            let skipped = 0
+            const dates = await fs.readdir(root, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
+              if (error.code === "ENOENT") return []
+              throw error
+            })
+            for (const date of dates.filter((entry) => entry.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(entry.name))) {
+              const directory = path.join(root, date.name)
+              const names = await fs.readdir(directory)
+              const groups = new Map<string, string[]>()
+              for (const name of names) {
+                const match = name.match(/^(instance|ses_.+?)(?:\.\d+)?\.jsonl$/)
+                if (!match) continue
+                groups.set(match[1], [...(groups.get(match[1]) ?? []), name])
+              }
+              for (const [base, files] of groups) {
+                let lease: Awaited<ReturnType<typeof Flock.acquire>> | undefined
+                let remaining = files.length
+                try {
+                  lease = await Flock.acquire(path.join(directory, `${base}.jsonl`), {
+                    dir: path.join(global.state, "locks"),
+                    staleMs: options.lockStaleMs ?? 60_000,
+                    timeoutMs: options.cleanupLockTimeoutMs ?? 250,
+                  })
+                  for (const name of files) {
+                    await fs.unlink(path.join(directory, name))
+                    deleted++
+                    remaining--
+                  }
+                } catch (error) {
+                  skipped += remaining
+                  reportFailure("Diagnostic clear failed", error)
+                } finally {
+                  await lease?.release().catch((error) => reportFailure("Diagnostic clear lock release failed", error))
+                }
+              }
+              await fs.rmdir(directory).catch(() => undefined)
+            }
+            return { deleted, skipped }
+          })
+          cleaning = next.then(
+            () => undefined,
+            (error) => reportFailure("Diagnostic clear failed", error),
+          )
+          return next
+        })
+
       const startTask: Interface["startTask"] = (input) => ({
         ...(input.sessionId === undefined ? {} : { sessionId: input.sessionId }),
         traceId: Diagnostic.TraceID.create(),
@@ -452,7 +524,13 @@ function makeLayer(options: NodeOptions = {}) {
           Effect.gen(function* () {
             const wasEnabled = current.enabled
             current = { ...value }
-            if (current.enabled && !wasEnabled) yield* cleanup({ light: true }).pipe(Effect.forkDetach)
+            if (!current.enabled) {
+              if (cleanupTimer) clearTimeout(cleanupTimer)
+              cleanupTimer = undefined
+              return
+            }
+            if (!wasEnabled) yield* cleanup().pipe(Effect.forkDetach)
+            scheduleCleanup()
           }),
         config: () => current,
         startTask,
@@ -465,6 +543,7 @@ function makeLayer(options: NodeOptions = {}) {
         closeAll: () => flush(),
         root: () => root,
         cleanup,
+        clear,
       })
     }),
   )

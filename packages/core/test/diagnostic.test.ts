@@ -642,6 +642,132 @@ describe("DiagnosticTrace", () => {
     await expect(fs.stat(oldDirectory)).rejects.toThrow()
   })
 
+  test("enabled diagnostics clean expired files periodically and stop when disabled", async () => {
+    await using tmp = await tmpdir()
+    const oldDirectory = path.join(tmp.path, "log", "diagnostics", "2020-01-01")
+    await fs.mkdir(oldDirectory, { recursive: true })
+    const oldFile = path.join(oldDirectory, "ses_retention.jsonl")
+    await fs.writeFile(oldFile, "old\n")
+
+    await run(
+      tmp.path,
+      Effect.gen(function* () {
+        const service = yield* DiagnosticTrace.Service
+        yield* service.configure({ ...service.config(), enabled: true })
+        yield* Effect.promise(async () => {
+          for (let attempt = 0; attempt < 100 && (await fs.stat(oldFile).catch(() => undefined)); attempt++) {
+            await Bun.sleep(10)
+          }
+        })
+        expect(yield* Effect.promise(() => fs.stat(oldFile).catch(() => undefined))).toBeUndefined()
+
+        yield* Effect.promise(async () => {
+          await fs.mkdir(oldDirectory, { recursive: true })
+          await fs.writeFile(oldFile, "again\n")
+        })
+        yield* Effect.promise(async () => {
+          for (let attempt = 0; attempt < 100 && (await fs.stat(oldFile).catch(() => undefined)); attempt++) {
+            await Bun.sleep(10)
+          }
+        })
+        expect(yield* Effect.promise(() => fs.stat(oldFile).catch(() => undefined))).toBeUndefined()
+
+        yield* service.configure({ ...service.config(), enabled: false })
+        yield* service.cleanup()
+        yield* Effect.promise(async () => {
+          await fs.mkdir(oldDirectory, { recursive: true })
+          await fs.writeFile(oldFile, "preserved\n")
+        })
+        yield* Effect.promise(() => Bun.sleep(100))
+        expect(yield* Effect.promise(() => fs.readFile(oldFile, "utf8"))).toBe("preserved\n")
+      }),
+      DiagnosticTrace.testingNode({ cleanupIntervalMs: 25 }),
+    )
+  })
+
+  test("periodic cleanup enforces the size limit without deleting the active volume", async () => {
+    await using tmp = await tmpdir()
+    const directory = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10))
+    const closed = path.join(directory, "ses_periodic.jsonl")
+    const active = path.join(directory, "ses_periodic.1.jsonl")
+    await fs.mkdir(directory, { recursive: true })
+    await fs.writeFile(active, "active\n")
+
+    await run(
+      tmp.path,
+      Effect.gen(function* () {
+        const service = yield* DiagnosticTrace.Service
+        yield* service.configure({ ...service.config(), enabled: true, maxTotalBytes: 1 })
+        yield* service.cleanup()
+        yield* Effect.promise(() => fs.writeFile(closed, "closed\n"))
+        yield* Effect.promise(async () => {
+          for (let attempt = 0; attempt < 100 && (await fs.stat(closed).catch(() => undefined)); attempt++) {
+            await Bun.sleep(10)
+          }
+        })
+        expect(yield* Effect.promise(() => fs.stat(closed).catch(() => undefined))).toBeUndefined()
+        expect(yield* Effect.promise(() => fs.readFile(active, "utf8"))).toBe("active\n")
+      }),
+      DiagnosticTrace.testingNode({ cleanupIntervalMs: 100 }),
+    )
+  })
+
+  test("manual clear removes today's active diagnostic files and accepts new writes", async () => {
+    await using tmp = await tmpdir()
+    const date = new Date().toISOString().slice(0, 10)
+    const directory = path.join(tmp.path, "log", "diagnostics", date)
+    const result = await run(
+      tmp.path,
+      Effect.gen(function* () {
+        const service = yield* DiagnosticTrace.Service
+        yield* service.configure({ ...service.config(), enabled: true })
+        const context = service.startTask({ sessionId: "ses_manual" })
+        yield* service.complete(context, "task.completed", { summary: {} })
+        yield* service.complete(undefined, "plugin.loaded", { summary: {} })
+        yield* service.flush()
+        const cleared = yield* service.clear()
+        yield* service.complete(context, "task.completed", { summary: {} })
+        yield* service.flush()
+        return cleared
+      }),
+    )
+    expect(result).toEqual({ deleted: 2, skipped: 0 })
+    await expect(fs.stat(path.join(directory, "instance.jsonl"))).rejects.toThrow()
+    const rows = (await fs.readFile(path.join(directory, "ses_manual.jsonl"), "utf8")).trim().split("\n")
+    expect(rows).toHaveLength(1)
+    expect(JSON.parse(rows[0]).seq).toBe(0)
+  })
+
+  test("manual clear reports files skipped under another writer's lock", async () => {
+    await using tmp = await tmpdir()
+    const date = new Date().toISOString().slice(0, 10)
+    const directory = path.join(tmp.path, "log", "diagnostics", date)
+    const stream = path.join(directory, "ses_locked.jsonl")
+    await fs.mkdir(directory, { recursive: true })
+    await fs.writeFile(stream, "locked\n")
+    await fs.writeFile(path.join(directory, "instance.jsonl"), "free\n")
+    const lease = await Flock.acquire(stream, {
+      dir: path.join(tmp.path, "state", "locks"),
+      staleMs: 5_000,
+      timeoutMs: 5_000,
+    })
+    try {
+      const result = await run(
+        tmp.path,
+        Effect.gen(function* () {
+          const service = yield* DiagnosticTrace.Service
+          return yield* service.clear()
+        }),
+        DiagnosticTrace.testingNode({ cleanupLockTimeoutMs: 0 }),
+      )
+      expect(result).toEqual({ deleted: 1, skipped: 1 })
+      expect(await fs.readFile(stream, "utf8")).toBe("locked\n")
+      await expect(fs.stat(path.join(directory, "instance.jsonl"))).rejects.toThrow()
+    } finally {
+      await lease.release()
+    }
+  })
+
   test("explicit cleanup processes more than one thousand expired volumes", async () => {
     await using tmp = await tmpdir()
     const oldDirectory = path.join(tmp.path, "log", "diagnostics", "2020-01-01")

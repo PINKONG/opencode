@@ -70,6 +70,18 @@
   gap: 16px;
 }
 
+@media (max-width: 639px) {
+  .settings-v2-logs-section {
+    margin-inline: -28px;
+  }
+
+  .settings-v2-logs-section [data-component="settings-v2-list"] {
+    padding-inline: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
 .settings-v2-section-title {
   padding-bottom: 8px;
   font-size: 15px;

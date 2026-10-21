@@ -97,8 +97,8 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
     })
 
     const diagnosticsCleanup = Effect.fn("GlobalHttpApi.diagnosticsCleanup")(function* () {
-      yield* diagnostics.cleanup()
-      return { root: diagnostics.root() }
+      const result = yield* diagnostics.clear()
+      return { root: diagnostics.root(), ...result }
     })
 
     const dispose = Effect.fn("GlobalHttpApi.dispose")(function* () {

@@ -1,4 +1,5 @@
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
+import { NonNegativeInt } from "@opencode-ai/core/schema"
 import { EventV2 } from "@opencode-ai/core/event"
 import { EventManifest } from "@/event-manifest"
 import { InstanceDisposed } from "@/server/event"
@@ -74,7 +75,7 @@ const DiagnosticStatus = Schema.Struct({
   maxTotalBytes: Schema.Number,
 })
 
-const DiagnosticCleanupResult = Schema.Struct({ root: Schema.String })
+const DiagnosticCleanupResult = Schema.Struct({ root: Schema.String, deleted: NonNegativeInt, skipped: NonNegativeInt })
 
 export const GlobalPaths = {
   health: "/global/health",
@@ -129,10 +130,14 @@ export const GlobalApi = HttpApi.make("global").add(
       ),
       HttpApiEndpoint.get("diagnosticsStatus", GlobalPaths.diagnostics, {
         success: described(DiagnosticStatus, "Local diagnostic trace status and directory"),
-      }).annotateMerge(OpenApi.annotations({ identifier: "global.diagnostics.status", summary: "Get diagnostic status" })),
+      }).annotateMerge(
+        OpenApi.annotations({ identifier: "global.diagnostics.status", summary: "Get diagnostic status" }),
+      ),
       HttpApiEndpoint.post("diagnosticsCleanup", GlobalPaths.diagnosticsCleanup, {
-        success: described(DiagnosticCleanupResult, "Diagnostic retention cleanup result"),
-      }).annotateMerge(OpenApi.annotations({ identifier: "global.diagnostics.cleanup", summary: "Clean up diagnostic logs" })),
+        success: described(DiagnosticCleanupResult, "Diagnostic log clear result"),
+      }).annotateMerge(
+        OpenApi.annotations({ identifier: "global.diagnostics.cleanup", summary: "Clear diagnostic logs" }),
+      ),
       HttpApiEndpoint.post("dispose", GlobalPaths.dispose, {
         success: described(Schema.Boolean, "Global disposed"),
       }).annotateMerge(

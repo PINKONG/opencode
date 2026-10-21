@@ -9,7 +9,6 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useServer } from "@/context/server"
 import { useServerSync } from "@/context/server-sync"
-import { useServerSDK } from "@/context/server-sdk"
 import { useUpdaterAction } from "../updater-action"
 import { buildSidecarLanAccessUrl } from "@/util/sidecar-lan-access-url"
 import {
@@ -26,10 +25,9 @@ import {
 } from "@/context/settings"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { SettingsListV2 } from "./parts/list"
+import { SettingsLogsSectionV2 } from "../settings-logs"
 import { SettingsRowV2 } from "./parts/row"
 import { LayoutRetirementNotice, LayoutTransitionToggle } from "./interface-transition"
-import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
-import { cleanupDiagnosticLogs, openDiagnosticDirectory } from "../diagnostic-settings"
 import {
   createAppearanceSettingsController,
   createPermissionScopeController,
@@ -287,7 +285,6 @@ export const SettingsGeneralV2: Component<{
   const language = useLanguage()
   const platform = usePlatform()
   const server = useServer()
-  const serverSdk = useServerSDK()
   const serverSync = useServerSync()
   const dialog = useDialog()
   const settings = useSettings()
@@ -298,40 +295,6 @@ export const SettingsGeneralV2: Component<{
   const appearance = createAppearanceSettingsController()
   const sounds = createSoundSettingsController()
   const desktop = createMemo(() => platform.platform === "desktop")
-  const diagnostics = createMemo(() => serverSync().data.config.diagnostics ?? {})
-  const updateDiagnostics = (patch: Partial<NonNullable<ConfigV1.Info["diagnostics"]>>) =>
-    serverSync().updateConfig({ diagnostics: { ...diagnostics(), ...patch } })
-  const diagnosticApi = () => serverSdk().client.global.diagnostics
-  const openDiagnostics = async () => {
-    try {
-      const result = await openDiagnosticDirectory({
-        status: async () => {
-          const response = await diagnosticApi().status()
-          if (!response.data) throw new Error(String(response.error ?? "Diagnostics unavailable"))
-          return response.data
-        },
-        reveal: platform.revealPath ? (directory) => platform.revealPath!(directory) : undefined,
-      })
-      if (!result.opened) window.alert(`Cannot open the local directory here. Diagnostic logs: \n${result.root}`)
-    } catch (error) {
-      window.alert(`Could not open diagnostic logs: ${String(error)}`)
-    }
-  }
-  const cleanupDiagnostics = async () => {
-    try {
-      const cleaned = await cleanupDiagnosticLogs({
-        confirm: () => window.confirm("Clean up local diagnostic logs according to retention limits? This cannot be undone."),
-        cleanup: async () => {
-          const response = await diagnosticApi().cleanup()
-          if (!response.data) throw new Error(String(response.error ?? "Cleanup failed"))
-          return response.data
-        },
-      })
-      if (cleaned) window.alert("Diagnostic log cleanup completed.")
-    } catch (error) {
-      window.alert(`Diagnostic log cleanup failed: ${String(error)}`)
-    }
-  }
 
   const [pinchZoom, { mutate: setPinchZoom }] = createResource(
     () => desktop() && "getPinchZoomEnabled" in platform,
@@ -375,38 +338,6 @@ export const SettingsGeneralV2: Component<{
     <div class="settings-v2-section">
       <SettingsListV2>
         <LanguageSetting />
-
-        <SettingsRowV2 title="Diagnostics" description="Keep local per-session runtime logs. Disabled by default.">
-          <Switch checked={diagnostics().enabled ?? false} onChange={(enabled) => updateDiagnostics({ enabled })} />
-        </SettingsRowV2>
-
-        <Show when={diagnostics().enabled}>
-          <SettingsRowV2
-            title="Raw requests and responses"
-            description="Store model payloads as received. They may contain sensitive data and use disk quickly."
-          >
-            <Switch
-              checked={diagnostics().rawPayloads ?? false}
-              onChange={(rawPayloads) => {
-                if (rawPayloads && !window.confirm("Raw logs store conversations, private code, complete request headers and responses, including possible API keys or access tokens. Nothing is redacted and the 2 GB limit may fill quickly. Enable?")) return
-                void updateDiagnostics({ rawPayloads })
-              }}
-            />
-          </SettingsRowV2>
-          <SettingsRowV2 title="Streaming events" description="Record high-frequency token and progress events.">
-            <Switch
-              checked={diagnostics().streaming ?? false}
-              onChange={(streaming) => updateDiagnostics({ streaming })}
-            />
-          </SettingsRowV2>
-        </Show>
-
-        <SettingsRowV2 title="Open diagnostic folder" description="Diagnostic logs stay on this machine and are not uploaded automatically.">
-          <ButtonV2 size="normal" variant="neutral" onClick={() => void openDiagnostics()}>Open folder</ButtonV2>
-        </SettingsRowV2>
-        <SettingsRowV2 title="Clean up now" description="Apply retention and disk limits to older logs, even while capture is off.">
-          <ButtonV2 size="normal" variant="neutral" onClick={() => void cleanupDiagnostics()}>Clean up</ButtonV2>
-        </SettingsRowV2>
 
         <PermissionScopeSetting controller={permissionScope} />
 
@@ -650,7 +581,9 @@ export const SettingsGeneralV2: Component<{
           const status = lanStatus.latest
           if (!status || status.status === "disabled") return language.t("settings.desktop.sidecarLan.status.disabled")
           if (status.status === "available" && status.url) {
-            return language.t("settings.desktop.sidecarLan.status.available", { url: sidecarLanAccessUrl() ?? status.url })
+            return language.t("settings.desktop.sidecarLan.status.available", {
+              url: sidecarLanAccessUrl() ?? status.url,
+            })
           }
           if (status.status === "custom_unavailable") {
             return language.t("settings.desktop.sidecarLan.status.customUnavailable")
@@ -868,6 +801,8 @@ export const SettingsGeneralV2: Component<{
         </Show>
 
         <SidecarLanSection />
+
+        <SettingsLogsSectionV2 />
 
         <DisplaySection />
 

@@ -7394,10 +7394,12 @@ export type GlobalDiagnosticsCleanupError = GlobalDiagnosticsCleanupErrors[keyof
 
 export type GlobalDiagnosticsCleanupResponses = {
   /**
-   * Diagnostic retention cleanup result
+   * Diagnostic log clear result
    */
   200: {
     root: string
+    deleted: number
+    skipped: number
   }
 }
 

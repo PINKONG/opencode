@@ -1,4 +1,4 @@
-import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
+import { Component, Show, createMemo, createResource, onMount } from "solid-js"
 import { Button } from "@opencode-ai/ui/button"
 import { Icon } from "@opencode-ai/ui/icon"
 import { Select } from "@opencode-ai/ui/select"
@@ -32,8 +32,8 @@ import {
 import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { SettingsList } from "./settings-list"
-import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
-import { cleanupDiagnosticLogs, openDiagnosticDirectory } from "./diagnostic-settings"
+import { SettingsRow } from "./settings-row"
+import { SettingsLogsSection } from "./settings-logs"
 
 let demoSoundState = {
   cleanup: undefined as (() => void) | undefined,
@@ -129,40 +129,6 @@ export const SettingsGeneral: Component = () => {
 
   const serverSync = useServerSync()
   const serverSdk = useServerSDK()
-  const diagnostics = createMemo(() => serverSync().data.config.diagnostics ?? {})
-  const updateDiagnostics = (patch: Partial<NonNullable<ConfigV1.Info["diagnostics"]>>) =>
-    serverSync().updateConfig({ diagnostics: { ...diagnostics(), ...patch } })
-  const diagnosticApi = () => serverSdk().client.global.diagnostics
-  const openDiagnostics = async () => {
-    try {
-      const result = await openDiagnosticDirectory({
-        status: async () => {
-          const response = await diagnosticApi().status()
-          if (!response.data) throw new Error(String(response.error ?? "诊断状态不可用"))
-          return response.data
-        },
-        reveal: platform.revealPath ? (directory) => platform.revealPath!(directory) : undefined,
-      })
-      if (!result.opened) window.alert(`无法在此环境打开本机目录。诊断日志位于：\n${result.root}`)
-    } catch (error) {
-      window.alert(`无法打开诊断日志目录：${String(error)}`)
-    }
-  }
-  const cleanupDiagnostics = async () => {
-    try {
-      const cleaned = await cleanupDiagnosticLogs({
-        confirm: () => window.confirm("现在按保留期限和磁盘上限清理本机诊断日志？此操作不可撤销。"),
-        cleanup: async () => {
-          const response = await diagnosticApi().cleanup()
-          if (!response.data) throw new Error(String(response.error ?? "清理失败"))
-          return response.data
-        },
-      })
-      if (cleaned) window.alert("诊断日志清理完成。")
-    } catch (error) {
-      window.alert(`诊断日志清理失败：${String(error)}`)
-    }
-  }
 
   const [shells] = createResource(
     async () => {
@@ -352,38 +318,6 @@ export const SettingsGeneral: Component = () => {
             size="small"
             triggerVariant="settings"
           />
-        </SettingsRow>
-
-        <SettingsRow title="诊断日志" description="在本地按会话保存详细运行事件，默认关闭。">
-          <Switch checked={diagnostics().enabled ?? false} onChange={(enabled) => updateDiagnostics({ enabled })} />
-        </SettingsRow>
-
-        <Show when={diagnostics().enabled}>
-          <SettingsRow
-            title="原始请求与响应"
-            description="原样保存模型请求和响应内容，可能包含敏感信息并快速占用磁盘。"
-          >
-            <Switch
-              checked={diagnostics().rawPayloads ?? false}
-              onChange={(rawPayloads) => {
-                if (rawPayloads && !window.confirm("原始诊断日志将原样保存对话、私有代码、完整请求头与响应，可能包含 API key 或访问 token；不会脱敏，且可能快速占满 2 GB 限额。确认启用？")) return
-                void updateDiagnostics({ rawPayloads })
-              }}
-            />
-          </SettingsRow>
-          <SettingsRow title="流式事件" description="记录 token、阶段和进度等高频流事件。">
-            <Switch
-              checked={diagnostics().streaming ?? false}
-              onChange={(streaming) => updateDiagnostics({ streaming })}
-            />
-          </SettingsRow>
-        </Show>
-
-        <SettingsRow title="打开诊断目录" description="诊断日志只保存在本机，不会自动上传。">
-          <Button size="small" variant="secondary" onClick={() => void openDiagnostics()}>打开目录</Button>
-        </SettingsRow>
-        <SettingsRow title="立即清理" description="按保留期限和磁盘上限清理旧日志；关闭诊断后也可执行。">
-          <Button size="small" variant="secondary" onClick={() => void cleanupDiagnostics()}>清理</Button>
         </SettingsRow>
 
         <SettingsRow
@@ -821,7 +755,9 @@ export const SettingsGeneral: Component = () => {
           const status = lanStatus.latest
           if (!status || status.status === "disabled") return language.t("settings.desktop.sidecarLan.status.disabled")
           if (status.status === "available" && status.url) {
-            return language.t("settings.desktop.sidecarLan.status.available", { url: sidecarLanAccessUrl() ?? status.url })
+            return language.t("settings.desktop.sidecarLan.status.available", {
+              url: sidecarLanAccessUrl() ?? status.url,
+            })
           }
           if (status.status === "custom_unavailable") {
             return language.t("settings.desktop.sidecarLan.status.customUnavailable")
@@ -1065,30 +1001,14 @@ export const SettingsGeneral: Component = () => {
 
         <SidecarLanSection />
 
+        <SettingsLogsSection />
+
         <DisplaySection />
 
         <Show when={desktop()}>
           <AdvancedSection />
         </Show>
       </div>
-    </div>
-  )
-}
-
-interface SettingsRowProps {
-  title: string | JSX.Element
-  description: string | JSX.Element
-  children: JSX.Element
-}
-
-const SettingsRow: Component<SettingsRowProps> = (props) => {
-  return (
-    <div class="flex flex-wrap items-center gap-4 py-3 border-b border-border-weak-base last:border-none sm:flex-nowrap">
-      <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span class="text-14-medium text-text-strong">{props.title}</span>
-        <span class="text-12-regular text-text-weak">{props.description}</span>
-      </div>
-      <div class="flex w-full justify-end sm:w-auto sm:shrink-0">{props.children}</div>
     </div>
   )
 }
