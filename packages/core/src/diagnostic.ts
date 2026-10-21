@@ -651,7 +651,7 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-function sessionFilename(sessionId: string) {
+export function sessionFilename(sessionId: string) {
   return `ses_${encodeURIComponent((sessionId.startsWith("ses_") ? sessionId.slice(4) : sessionId).toWellFormed())}`
 }
 
