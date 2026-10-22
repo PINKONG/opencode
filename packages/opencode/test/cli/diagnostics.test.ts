@@ -130,6 +130,41 @@ test("diagnostics show exposes raw only with --raw", async () => {
   }
 }, 30_000)
 
+test("diagnostics show keeps large raw output intact through a pipe", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "wiscode-diagnostics-show-large-"))
+  try {
+    const dir = path.join(root, "data", "wiscode", "log", "diagnostics", "2026-10-20")
+    await fs.mkdir(dir, { recursive: true })
+    const body = "x".repeat(2 * 1024 * 1024)
+    await fs.writeFile(path.join(dir, "instance.jsonl"), JSON.stringify({
+      schema: "wiscode.diagnostic", schemaVersion: 1, seq: 0, eventId: "evt_large",
+      event: "llm.request.completed", status: "succeeded", timestamp: "2026-10-20T10:00:00.000Z",
+      monotonicMs: 1, payload: { summary: { name: "demo" }, raw: { providerResponse: { body } } },
+    }) + "\n")
+    const child = Bun.spawn([process.execPath, "src/index.ts", "diagnostics", "show", "evt_large", "--raw"], {
+      cwd: new URL("../../", import.meta.url).pathname,
+      env: { ...process.env, XDG_DATA_HOME: path.join(root, "data"), XDG_CACHE_HOME: path.join(root, "cache"), XDG_CONFIG_HOME: path.join(root, "config"), XDG_STATE_HOME: path.join(root, "state") },
+      stdout: "pipe", stderr: "pipe",
+    })
+    const output = await new Response(child.stdout).text()
+    expect(await child.exited).toBe(0)
+    expect(JSON.parse(output).raw.providerResponse.body).toHaveLength(body.length)
+
+    const redirectedPath = path.join(root, "raw.json")
+    const redirectedFile = await fs.open(redirectedPath, "w")
+    const redirected = Bun.spawn([process.execPath, "src/index.ts", "diagnostics", "show", "evt_large", "--raw"], {
+      cwd: new URL("../../", import.meta.url).pathname,
+      env: { ...process.env, XDG_DATA_HOME: path.join(root, "data"), XDG_CACHE_HOME: path.join(root, "cache"), XDG_CONFIG_HOME: path.join(root, "config"), XDG_STATE_HOME: path.join(root, "state") },
+      stdout: redirectedFile.fd, stderr: "ignore",
+    })
+    expect(await redirected.exited).toBe(0)
+    await redirectedFile.close()
+    expect(JSON.parse(await fs.readFile(redirectedPath, "utf8")).raw.providerResponse.body).toHaveLength(body.length)
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+}, 30_000)
+
 test("diagnostics tail --follow prints initial and appended complete lines once", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "wiscode-diagnostics-follow-"))
   try {

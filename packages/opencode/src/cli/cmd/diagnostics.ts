@@ -148,9 +148,15 @@ const ShowCommand = effectCmd({
     const found = yield* Effect.promise(() => DiagnosticReader.find(diagnostics.root(), args.eventId))
     if (!found) return yield* fail(`diagnostic event not found: ${args.eventId}`)
     if (args.raw) console.error("Showing unredacted diagnostic payload; it may contain secrets.")
-    console.log(renderDiagnosticEvent(found.event, args.raw))
+    yield* Effect.promise(() => writeStdout(renderDiagnosticEvent(found.event, args.raw)))
   }),
 })
+
+function writeStdout(value: string) {
+  return new Promise<void>((resolve, reject) => {
+    process.stdout.write(`${value}\n`, (error) => error ? reject(error) : resolve())
+  })
+}
 
 const StatusCommand = effectCmd({
   command: "status",
