@@ -882,8 +882,8 @@ export const dict = {
   "settings.logs.enabled.description": "在本機按工作階段儲存詳細執行事件，預設關閉。",
   "settings.logs.categories.title": "日誌類別",
   "settings.logs.categories.description": "選擇要寫入新診斷日誌的事件類別。",
-  "settings.logs.categories.unsupported": "This server does not support diagnostic category filters.",
-  "settings.logs.categories.failed": "Could not update diagnostic categories: {{error}}",
+  "settings.logs.categories.unsupported": "此伺服器不支援診斷日誌類別篩選。",
+  "settings.logs.categories.failed": "無法更新診斷日誌類別：{{error}}",
   "settings.logs.categories.all": "全部事件",
   "settings.logs.categories.llmOnly": "僅大模型",
   "settings.logs.categories.task": "工作階段",
@@ -893,6 +893,11 @@ export const dict = {
   "settings.logs.categories.knowledge": "知識庫",
   "settings.logs.categories.plugin": "外掛程式",
   "settings.logs.categories.context": "上下文",
+  "settings.logs.content.title": "模型互動內容",
+  "settings.logs.content.description":
+    "記錄傳送給模型的邏輯請求，以及模型傳回的文字、推理和工具呼叫。不包含提供者的原始酬載或驗證標頭。",
+  "settings.logs.content.unsupported": "此伺服器不支援記錄模型互動內容。",
+  "settings.logs.content.failed": "無法更新模型互動內容設定：{{error}}",
   "settings.logs.raw.title": "原始請求與回應",
   "settings.logs.raw.description": "原樣儲存模型請求與回應，可能包含敏感資訊並快速佔用磁碟。",
   "settings.logs.raw.confirm":

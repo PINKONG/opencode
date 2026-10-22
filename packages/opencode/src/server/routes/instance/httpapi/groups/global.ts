@@ -70,6 +70,7 @@ const GlobalUpgradeResult = Schema.Union([
 const DiagnosticStatus = Schema.Struct({
   root: Schema.String,
   enabled: Schema.Boolean,
+  llmContent: Schema.Boolean,
   rawPayloads: Schema.Boolean,
   streaming: Schema.Boolean,
   retentionDays: Schema.Number,

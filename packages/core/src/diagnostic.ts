@@ -9,7 +9,7 @@ import { Flock } from "./util/flock"
 import { ConfigDiagnostics } from "./config/diagnostics"
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
-type EventInput = { summary: unknown; raw?: () => unknown | Promise<unknown> }
+type EventInput = { summary: unknown; content?: unknown; raw?: () => unknown | Promise<unknown> }
 type EmitOptions = { status?: Diagnostic.Status; durationMs?: number; parentEventId?: string }
 
 export type Category = ConfigDiagnostics.Category
@@ -17,6 +17,7 @@ export type ConfigInput = ConfigDiagnostics.Info
 
 export interface Config {
   readonly enabled: boolean
+  readonly llmContent: boolean
   readonly rawPayloads: boolean
   readonly streaming: boolean
   readonly retentionDays: number
@@ -78,6 +79,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Di
 
 const defaults: Config = {
   enabled: false,
+  llmContent: false,
   rawPayloads: false,
   streaming: false,
   retentionDays: 14,
@@ -88,6 +90,7 @@ const defaults: Config = {
 export function fromConfig(input: ConfigInput | undefined): Config {
   return {
     enabled: input?.enabled ?? defaults.enabled,
+    llmContent: input?.llmContent ?? defaults.llmContent,
     rawPayloads: input?.rawPayloads ?? defaults.rawPayloads,
     streaming: input?.streaming ?? defaults.streaming,
     retentionDays: input?.retentionDays ?? defaults.retentionDays,
@@ -295,6 +298,14 @@ function makeLayer(options: NodeOptions = {}) {
             reportFailure("Diagnostic summary serialization failed", error)
             return
           }
+          let content: JsonValue | undefined
+          if (snapshot.llmContent && event.startsWith("llm.") && input.content !== undefined) {
+            try {
+              content = normalize(input.content, new WeakSet(), true)
+            } catch (error) {
+              reportFailure("Diagnostic LLM content serialization failed", error)
+            }
+          }
           const envelope: Omit<Diagnostic.Envelope, "seq"> = {
             schema: "wiscode.diagnostic",
             schemaVersion: 1,
@@ -313,7 +324,10 @@ function makeLayer(options: NodeOptions = {}) {
             ...(options.parentEventId ? { parentEventId: Diagnostic.EventID.make(options.parentEventId) } : {}),
             ...(context?.location ? { location: context.location } : {}),
             ...(context?.runtime ? { runtime: context.runtime } : {}),
-            payload: { summary },
+            payload: {
+              summary,
+              ...(content === undefined ? {} : { content }),
+            },
           }
           const entry: PendingEvent = {
             priority,
@@ -321,7 +335,14 @@ function makeLayer(options: NodeOptions = {}) {
               if (!input.raw || !snapshot.rawPayloads) return { envelope }
               try {
                 return {
-                  envelope: { ...envelope, payload: { summary, raw: normalize(await input.raw()) } },
+                  envelope: {
+                    ...envelope,
+                    payload: {
+                      summary,
+                      ...(content === undefined ? {} : { content }),
+                      raw: normalize(await input.raw()),
+                    },
+                  },
                 }
               } catch (failed) {
                 return { envelope, failed }
@@ -641,7 +662,7 @@ async function recoverSequence(file: string, size: number): Promise<{ seq: numbe
   }
 }
 
-function normalize(value: unknown, seen = new WeakSet<object>()): JsonValue {
+function normalize(value: unknown, seen = new WeakSet<object>(), preserveBinary = false): JsonValue {
   if (value === null || typeof value === "string" || typeof value === "boolean") return value
   if (typeof value === "number") return Number.isFinite(value) ? value : { type: "number", value: String(value) }
   if (value === undefined) return { type: "undefined" }
@@ -650,19 +671,25 @@ function normalize(value: unknown, seen = new WeakSet<object>()): JsonValue {
   if (typeof value === "bigint") return { type: "bigint", value: value.toString() }
   if (typeof value === "symbol") return { type: "symbol", value: value.description ?? "" }
   if (typeof value === "function") return { type: "function", name: value.name }
+  if (preserveBinary && (ArrayBuffer.isView(value) || value instanceof ArrayBuffer)) {
+    const bytes = value instanceof ArrayBuffer
+      ? Buffer.from(value)
+      : Buffer.from(value.buffer, value.byteOffset, value.byteLength)
+    return { type: "binary", bytes: bytes.byteLength, encoding: "base64", data: bytes.toString("base64") }
+  }
   if (value instanceof Uint8Array) return { type: "binary", bytes: value.byteLength }
   if (typeof value !== "object") return { type: typeof value, value: String(value) }
   if (seen.has(value)) return { type: "circular" }
   seen.add(value)
   try {
-    if (Array.isArray(value)) return value.map((item) => normalize(item, seen))
+    if (Array.isArray(value)) return value.map((item) => normalize(item, seen, preserveBinary))
     if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) {
       return { type: value.constructor?.name ?? "object", value: String(value) }
     }
     return Object.fromEntries(
       Object.entries(value)
         .filter(([, item]) => item !== undefined)
-        .map(([key, item]) => [key, normalize(item, seen)]),
+        .map(([key, item]) => [key, normalize(item, seen, preserveBinary)]),
     )
   } finally {
     seen.delete(value)

@@ -27,6 +27,10 @@ export function diagnosticCategoriesMatch(
   return !!actual && expected.length === actual.length && expected.every((category) => actual.includes(category))
 }
 
+export function diagnosticLlmContentMatch(expected: boolean, actual: unknown) {
+  return actual === expected
+}
+
 export async function openDiagnosticDirectory(input: {
   status: () => Promise<{ root: string }>
   reveal?: (path: string) => Promise<boolean>

@@ -789,6 +789,11 @@ export const dict = {
   "settings.logs.categories.knowledge": "Knowledge",
   "settings.logs.categories.plugin": "Plugins",
   "settings.logs.categories.context": "Context",
+  "settings.logs.content.title": "Model interaction content",
+  "settings.logs.content.description":
+    "Record logical requests sent to the model and the text, reasoning, and tool calls it returns. Does not include raw provider payloads or authentication headers.",
+  "settings.logs.content.unsupported": "This server does not support diagnostic model interaction content.",
+  "settings.logs.content.failed": "Could not update model interaction content: {{error}}",
   "settings.logs.raw.title": "Raw requests and responses",
   "settings.logs.raw.description":
     "Store model payloads unchanged. They may contain sensitive data and fill the disk quickly.",

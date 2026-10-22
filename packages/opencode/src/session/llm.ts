@@ -6,7 +6,7 @@ import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { serviceUse } from "@opencode-ai/core/effect/service-use"
 import { Cause, Context, Effect, Exit, Layer } from "effect"
 import * as Stream from "effect/Stream"
-import { streamText, wrapLanguageModel, type ModelMessage, type Tool } from "ai"
+import { asSchema, streamText, wrapLanguageModel, type ModelMessage, type Tool } from "ai"
 import type { LLMEvent } from "@opencode-ai/llm"
 import { LLMClient } from "@opencode-ai/llm/route"
 import type { LLMClientService } from "@opencode-ai/llm/route"
@@ -60,6 +60,7 @@ export type StreamInput = {
 export type StreamRequest = StreamInput & {
   abort: AbortSignal
   wire?: ReturnType<typeof createWireCapture>
+  onPrepared?: (prepared: LLMRequestPrep.Prepared) => Effect.Effect<void>
 }
 
 export interface Interface {
@@ -124,6 +125,7 @@ const live: Layer.Layer<
         flags,
         isWorkflow,
       })
+      if (input.onPrepared) yield* input.onPrepared(prepared)
 
       // Wire up toolExecutor for DWS workflow models so that tool calls
       // from the workflow service are executed via opencode's tool system
@@ -378,11 +380,32 @@ const live: Layer.Layer<
               : undefined
             if (context) input.onTurn?.(context)
             const started = performance.now()
+            const diagnosticConfig = diagnostics.config()
             const wire =
-              context && diagnostics.config().enabled && diagnostics.config().rawPayloads
+              context && diagnosticConfig.enabled && diagnosticConfig.rawPayloads
                 ? createWireCapture()
                 : undefined
-            if (context) {
+            let terminal = false
+            const ctrl = yield* Effect.acquireRelease(
+              Effect.sync(() => new AbortController()),
+              (ctrl) =>
+                Effect.sync(() => {
+                  ctrl.abort()
+                }),
+            )
+            let chunk = 0
+            let firstTokenMs: number | undefined
+            let textBytes = 0
+            let reasoningBytes = 0
+            let toolCallCount = 0
+            const textParts: string[] = []
+            const reasoningParts: string[] = []
+            const toolCalls: Array<{ id: string; name: string; input: unknown }> = []
+
+            let admitted = false
+            const requestStarted = (prepared?: LLMRequestPrep.Prepared) => Effect.gen(function* () {
+              if (!context || admitted) return
+              admitted = true
               yield* diagnostics.emit(context, "llm.request.started", {
                 summary: {
                   provider: input.model.providerID,
@@ -394,25 +417,17 @@ const live: Layer.Layer<
                   messageId: input.assistantMessageID,
                   userMessageId: input.user.id,
                 },
+                ...(prepared && diagnosticConfig.llmContent ? { content: diagnosticRequestContent(prepared) } : {}),
                 raw: () => ({
                   wiscodeRequest: { system: input.system, messages: input.messages, tools: Object.keys(input.tools) },
                 }),
               })
-            }
-            let terminal = false
-            const ctrl = yield* Effect.acquireRelease(
-              Effect.sync(() => new AbortController()),
-              (ctrl) =>
-                Effect.sync(() => {
-                  ctrl.abort()
-                }),
-            )
-
+            }).pipe(Effect.catchCause((cause) => Effect.logWarning("Diagnostic request content failed", cause)))
             const failed = (cause: Cause.Cause<unknown>) => {
               if (!context || terminal) return Effect.void
               terminal = true
               const outcome = diagnosticStreamExit(Exit.failCause(cause))
-              return diagnostics.complete(
+              return requestStarted().pipe(Effect.andThen(diagnostics.complete(
                 context,
                 outcome.event,
                 {
@@ -422,6 +437,17 @@ const live: Layer.Layer<
                     error: DiagnosticTrace.errorInfo(Cause.squash(cause), "provider"),
                     attempt: context.attempt,
                   },
+                  ...(diagnosticConfig.llmContent
+                    ? {
+                        content: {
+                          kind: "response",
+                          text: textParts.join(""),
+                          reasoning: reasoningParts.join(""),
+                          toolCalls,
+                          complete: false,
+                        },
+                      }
+                    : {}),
                   ...(wire
                     ? {
                         raw: async () => {
@@ -436,18 +462,10 @@ const live: Layer.Layer<
                     : {}),
                 },
                 { status: outcome.status, durationMs: performance.now() - started },
-              )
+              )))
             }
-            const result = yield* run({ ...input, abort: ctrl.signal, wire }).pipe(Effect.tapCause(failed))
+            const result = yield* run({ ...input, abort: ctrl.signal, wire, onPrepared: requestStarted }).pipe(Effect.tapCause(failed))
 
-            let chunk = 0
-            let firstTokenMs: number | undefined
-            let textBytes = 0
-            let reasoningBytes = 0
-            let toolCallCount = 0
-            const textParts: string[] = []
-            const reasoningParts: string[] = []
-            const toolCalls: Array<{ id: string; name: string; input: unknown }> = []
             const observe = (source: Stream.Stream<LLMEvent, unknown>) =>
               source.pipe(
                 Stream.tap((event) => {
@@ -461,16 +479,16 @@ const live: Layer.Layer<
                     firstTokenMs ??= performance.now() - started
                     if (event.type === "text-delta") {
                       textBytes += Buffer.byteLength(event.text, "utf8")
-                      if (wire) textParts.push(event.text)
+                      if (wire || diagnosticConfig.llmContent) textParts.push(event.text)
                     }
                     if (event.type === "reasoning-delta") {
                       reasoningBytes += Buffer.byteLength(event.text, "utf8")
-                      if (wire) reasoningParts.push(event.text)
+                      if (wire || diagnosticConfig.llmContent) reasoningParts.push(event.text)
                     }
                   }
                   if (event.type === "tool-call") {
                     toolCallCount++
-                    if (wire) toolCalls.push({ id: event.id, name: event.name, input: event.input })
+                    if (wire || diagnosticConfig.llmContent) toolCalls.push({ id: event.id, name: event.name, input: event.input })
                   }
                   const record = diagnosticLLMEvent(event, chunk++)
                   if (!record) return Effect.void
@@ -509,6 +527,18 @@ const live: Layer.Layer<
                           }
                         : {}),
                     },
+                    ...(terminalEvent && diagnosticConfig.llmContent
+                      ? {
+                          content: {
+                            kind: "response",
+                            text: textParts.join(""),
+                            reasoning: reasoningParts.join(""),
+                            toolCalls,
+                            finishReason: event.type === "finish" ? event.reason : undefined,
+                            complete: record.status === "succeeded",
+                          },
+                        }
+                      : {}),
                     ...(terminalEvent && wire
                       ? {
                           raw: async () => {
@@ -565,6 +595,9 @@ const live: Layer.Layer<
                         attempt: context.attempt,
                         error: DiagnosticTrace.errorInfo(outcome.error, "provider"),
                       },
+                      ...(diagnosticConfig.llmContent ? {
+                        content: { kind: "response", text: textParts.join(""), reasoning: reasoningParts.join(""), toolCalls, complete: false },
+                      } : {}),
                     },
                     { status: outcome.status, durationMs: performance.now() - started },
                   )
@@ -588,6 +621,19 @@ const live: Layer.Layer<
 )
 
 export const hasToolCalls = LLMRequestPrep.hasToolCalls
+
+export function diagnosticRequestContent(prepared: Pick<LLMRequestPrep.Prepared, "system" | "messages" | "tools">) {
+  return {
+    kind: "request",
+    system: prepared.system,
+    messages: prepared.messages,
+    tools: Object.entries(prepared.tools).map(([name, tool]) => ({
+      name,
+      description: tool.description,
+      inputSchema: asSchema(tool.inputSchema).jsonSchema,
+    })),
+  }
+}
 
 export const node = LayerNode.make({
   service: Service,

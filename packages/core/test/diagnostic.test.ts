@@ -52,12 +52,49 @@ describe("DiagnosticTrace", () => {
   test("maps every configuration field and supplies complete defaults", () => {
     expect(DiagnosticTrace.fromConfig(undefined)).toEqual({
       enabled: false, rawPayloads: false, streaming: false, retentionDays: 14,
-      maxTotalBytes: 2 * 1024 * 1024 * 1024, categories: undefined,
+      maxTotalBytes: 2 * 1024 * 1024 * 1024, categories: undefined, llmContent: false,
     })
     expect(DiagnosticTrace.fromConfig({ enabled: true, rawPayloads: true, streaming: true,
-      retentionDays: 7, maxTotalBytes: 4096, categories: ["llm", "tool"] })).toEqual({
-      enabled: true, rawPayloads: true, streaming: true, retentionDays: 7, maxTotalBytes: 4096, categories: ["llm", "tool"],
+      retentionDays: 7, maxTotalBytes: 4096, categories: ["llm", "tool"], llmContent: true })).toEqual({
+      enabled: true, rawPayloads: true, streaming: true, retentionDays: 7, maxTotalBytes: 4096, categories: ["llm", "tool"], llmContent: true,
     })
+  })
+
+  test("writes LLM content only when enabled and leaves raw payloads independent", async () => {
+    await using tmp = await tmpdir()
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      yield* service.configure({ ...service.config(), enabled: true, llmContent: true })
+      yield* service.emit(undefined, "llm.request.started", { summary: {}, content: { kind: "request", messages: [] } })
+      yield* service.configure({ ...service.config(), llmContent: false, rawPayloads: true })
+      yield* service.emit(undefined, "llm.request.started", { summary: {}, content: { kind: "request", messages: ["hidden"] }, raw: () => ({ raw: true }) })
+      yield* service.flush()
+    }))
+    const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
+    const rows = (await fs.readFile(file, "utf8")).trim().split("\n").map((line) => JSON.parse(line))
+    expect(rows[0].payload).toEqual({ summary: {}, content: { kind: "request", messages: [] } })
+    expect(rows[1].payload).toEqual({ summary: {}, raw: { raw: true } })
+  })
+
+  test("preserves binary attachments in content without changing summary or raw normalization", async () => {
+    await using tmp = await tmpdir()
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      yield* service.configure({ ...service.config(), enabled: true, llmContent: true, rawPayloads: true })
+      const data = new Uint8Array([0, 128, 255])
+      yield* service.emit(undefined, "llm.request.started", {
+        summary: { data },
+        content: { messages: [{ role: "user", content: [{ type: "image", image: data }, { type: "file", data: data.buffer }] }] },
+        raw: () => ({ data }),
+      })
+      yield* service.flush()
+    }))
+    const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
+    const payload = JSON.parse(await fs.readFile(file, "utf8")).payload
+    const binary = { type: "binary", bytes: 3, encoding: "base64", data: "AID/" }
+    expect(payload.content.messages[0].content).toEqual([{ type: "image", image: binary }, { type: "file", data: binary }])
+    expect(payload.summary.data).toEqual({ type: "binary", bytes: 3 })
+    expect(payload.raw.data).toEqual({ type: "binary", bytes: 3 })
   })
 
   test("copies category snapshots and restores unrestricted admission on replacement", async () => {
@@ -77,6 +114,46 @@ describe("DiagnosticTrace", () => {
     const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
     expect((await fs.readFile(file, "utf8")).trim().split("\n").map((line) => JSON.parse(line).event))
       .toEqual(["llm.request.started", "future.event"])
+  })
+
+  test("does not normalize content when disabled or filtered and restricts it to LLM events", async () => {
+    await using tmp = await tmpdir()
+    let calls = 0
+    const content = { get text() { calls++; return "private" } }
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      yield* service.configure({ ...service.config(), enabled: true })
+      yield* service.emit(undefined, "llm.request.started", { summary: { case: "disabled" }, content })
+      yield* service.configure({ ...service.config(), llmContent: true, categories: ["tool"] })
+      yield* service.emit(undefined, "llm.request.started", { summary: {}, content })
+      yield* service.emit(undefined, "tool.started", { summary: { case: "other-family" }, content })
+      yield* service.configure({ ...service.config(), categories: ["llm"] })
+      yield* service.emit(undefined, "llm.request.completed", { summary: { case: "enabled" }, content })
+      yield* service.flush()
+    }))
+    const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
+    const rows = (await fs.readFile(file, "utf8")).trim().split("\n").map((line) => JSON.parse(line))
+    expect(calls).toBe(1)
+    expect(rows.map((row) => row.payload)).toEqual([
+      { summary: { case: "disabled" } },
+      { summary: { case: "other-family" } },
+      { summary: { case: "enabled" }, content: { text: "private" } },
+    ])
+  })
+
+  test("content serialization failures retain the summary and do not fail the business effect", async () => {
+    await using tmp = await tmpdir()
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      yield* service.configure({ ...service.config(), enabled: true, llmContent: true })
+      yield* service.emit(undefined, "llm.request.completed", {
+        summary: { kept: true },
+        content: { get broken() { throw new Error("content failed") } },
+      })
+      yield* service.flush()
+    }))
+    const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
+    expect(JSON.parse(await fs.readFile(file, "utf8")).payload).toEqual({ summary: { kept: true } })
   })
 
   test("keeps category and streaming admission independent", async () => {
@@ -195,6 +272,7 @@ describe("DiagnosticTrace", () => {
         const context = service.startTask({ sessionId: "ses_enabled" })
         yield* service.configure({
           enabled: true,
+          llmContent: false,
           rawPayloads: false,
           streaming: false,
           retentionDays: 14,

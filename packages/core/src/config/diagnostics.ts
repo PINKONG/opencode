@@ -10,6 +10,7 @@ export const Categories = Schema.Array(Category).check(Schema.isMinLength(1))
 
 export const Info = Schema.Struct({
   enabled: Schema.optional(Schema.Boolean),
+  llmContent: Schema.optional(Schema.Boolean),
   rawPayloads: Schema.optional(Schema.Boolean),
   streaming: Schema.optional(Schema.Boolean),
   retentionDays: Schema.optional(NonNegativeInt),

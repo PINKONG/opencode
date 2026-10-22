@@ -3,6 +3,7 @@ import {
   cleanupDiagnosticLogs,
   diagnosticCategoriesPatch,
   diagnosticCategoriesMatch,
+  diagnosticLlmContentMatch,
   openDiagnosticDirectory,
   selectedDiagnosticCategories,
   updateDiagnosticCategory,
@@ -37,6 +38,43 @@ test("diagnostic category saves reject servers silently ignoring category update
   expect(diagnosticCategoriesMatch(["llm"], ["tool"])).toBe(false)
   expect(diagnosticCategoriesMatch(null, undefined)).toBe(true)
   expect(diagnosticCategoriesMatch(["llm", "tool"], ["tool", "llm"])).toBe(true)
+})
+
+test("diagnostic llm content saves reject servers that omit or change the setting", () => {
+  expect(diagnosticLlmContentMatch(true, true)).toBe(true)
+  expect(diagnosticLlmContentMatch(false, false)).toBe(true)
+  expect(diagnosticLlmContentMatch(true, false)).toBe(false)
+  expect(diagnosticLlmContentMatch(false, true)).toBe(false)
+  expect(diagnosticLlmContentMatch(false, undefined)).toBe(false)
+  expect(diagnosticLlmContentMatch(true, undefined)).toBe(false)
+  expect(diagnosticLlmContentMatch(false, null)).toBe(false)
+  expect(diagnosticLlmContentMatch(false, 0)).toBe(false)
+  expect(diagnosticLlmContentMatch(true, "true")).toBe(false)
+})
+
+test("diagnostic llm content has localized copy and errors", () => {
+  expect(en["settings.logs.content.title"]).toBe("Model interaction content")
+  expect(zh["settings.logs.content.title"]).toBe("模型交互内容")
+  expect(zht["settings.logs.content.title"]).toBe("模型互動內容")
+  for (const dict of [en, zh, zht]) {
+    expect(dict["settings.logs.content.description"]).toBeTruthy()
+    expect(dict["settings.logs.content.unsupported"]).toBeTruthy()
+    expect(dict["settings.logs.content.failed"]).toContain("{{error}}")
+  }
+  for (const dict of [zh, zht]) {
+    expect(dict["settings.logs.categories.unsupported"]).not.toBe(en["settings.logs.categories.unsupported"])
+    expect(dict["settings.logs.categories.failed"]).not.toBe(en["settings.logs.categories.failed"])
+    expect(dict["settings.logs.categories.failed"]).toContain("{{error}}")
+  }
+})
+
+test("both desktop settings generations share verified content saves without optimistic state", async () => {
+  const text = await Bun.file(new URL("./settings-logs.tsx", import.meta.url)).text()
+  expect(text.match(/onChange=\{logs.updateContent\}/g)).toHaveLength(2)
+  expect(text.match(/checked=\{logs.diagnostics\(\).llmContent \?\? false\}/g)).toHaveLength(2)
+  expect(text.match(/disabled=\{logs.saving\(\)\}/g)).toHaveLength(14)
+  expect(text).toContain("diagnosticLlmContentMatch(llmContent, result.data?.diagnostics?.llmContent)")
+  expect(text).toContain("diagnostics: { ...diagnostics(), ...patch }")
 })
 
 test("diagnostic category selection cannot remove its last category", () => {

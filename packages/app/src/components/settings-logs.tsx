@@ -1,4 +1,5 @@
-import { Component, Show, createMemo, createSignal } from "solid-js"
+import { Component, Show, createMemo } from "solid-js"
+import { createStore } from "solid-js/store"
 import { Button } from "@opencode-ai/ui/button"
 import { Checkbox } from "@opencode-ai/ui/checkbox"
 import { Switch } from "@opencode-ai/ui/switch"
@@ -14,6 +15,7 @@ import {
   cleanupDiagnosticLogs,
   diagnosticCategoriesMatch,
   diagnosticCategoriesPatch,
+  diagnosticLlmContentMatch,
   DIAGNOSTIC_CATEGORIES,
   openDiagnosticDirectory,
   selectedDiagnosticCategories,
@@ -30,12 +32,14 @@ function useLogs() {
   const serverSdk = useServerSDK()
   const serverSync = useServerSync()
   const diagnostics = createMemo(() => serverSync().data.config.diagnostics ?? {})
-  const [savingCategories, setSavingCategories] = createSignal(false)
+  const [pending, setPending] = createStore({ categories: false, content: false })
+  const saving = () => pending.categories || pending.content
   const update = (patch: NonNullable<ConfigUpdate["diagnostics"]>) =>
     serverSync().updateConfig({ diagnostics: { ...diagnostics(), ...patch } })
   const updateCategories = async (categories: readonly (typeof DIAGNOSTIC_CATEGORIES)[number][] | null) => {
+    if (saving()) return
     const expected = categories === null ? null : [...categories]
-    setSavingCategories(true)
+    setPending("categories", true)
     try {
       const result = await update({ categories: diagnosticCategoriesPatch(expected) })
       if (!result.data?.diagnostics || !diagnosticCategoriesMatch(expected, result.data.diagnostics.categories)) {
@@ -44,7 +48,21 @@ function useLogs() {
     } catch (error) {
       window.alert(language.t("settings.logs.categories.failed", { error: String(error) }))
     } finally {
-      setSavingCategories(false)
+      setPending("categories", false)
+    }
+  }
+  const updateContent = async (llmContent: boolean) => {
+    if (saving()) return
+    setPending("content", true)
+    try {
+      const result = await update({ llmContent })
+      if (!diagnosticLlmContentMatch(llmContent, result.data?.diagnostics?.llmContent)) {
+        throw new Error(language.t("settings.logs.content.unsupported"))
+      }
+    } catch (error) {
+      window.alert(language.t("settings.logs.content.failed", { error: String(error) }))
+    } finally {
+      setPending("content", false)
     }
   }
   const toggleCategory = (category: (typeof DIAGNOSTIC_CATEGORIES)[number], checked: boolean) =>
@@ -89,7 +107,7 @@ function useLogs() {
     if (rawPayloads && !window.confirm(language.t("settings.logs.raw.confirm"))) return
     void update({ rawPayloads })
   }
-  return { language, diagnostics, savingCategories, update, updateRaw, updateCategories, toggleCategory, open, cleanup }
+  return { language, diagnostics, saving, update, updateRaw, updateContent, updateCategories, toggleCategory, open, cleanup }
 }
 
 function categoryLabel(language: ReturnType<typeof useLanguage>, category: (typeof DIAGNOSTIC_CATEGORIES)[number]) {
@@ -106,7 +124,7 @@ export const SettingsLogsSection: Component = () => {
           title={logs.language.t("settings.logs.enabled.title")}
           description={logs.language.t("settings.logs.enabled.description")}
         >
-          <Switch checked={logs.diagnostics().enabled ?? false} onChange={(enabled) => logs.update({ enabled })} />
+          <Switch disabled={logs.saving()} checked={logs.diagnostics().enabled ?? false} onChange={(enabled) => logs.update({ enabled })} />
         </SettingsRow>
         <Show when={logs.diagnostics().enabled}>
           <div class="flex flex-col gap-2 py-3 border-b border-border-weak-base last:border-none">
@@ -116,10 +134,10 @@ export const SettingsLogsSection: Component = () => {
                 <span class="text-12-regular text-text-weak">{logs.language.t("settings.logs.categories.description")}</span>
               </div>
               <div class="flex w-full justify-end gap-2 sm:w-auto sm:shrink-0">
-                <Button size="small" variant="secondary" disabled={logs.savingCategories()} onClick={() => void logs.updateCategories(null)}>
+                <Button size="small" variant="secondary" disabled={logs.saving()} onClick={() => void logs.updateCategories(null)}>
                   {logs.language.t("settings.logs.categories.all")}
                 </Button>
-                <Button size="small" variant="secondary" disabled={logs.savingCategories()} onClick={() => void logs.updateCategories(["llm"])}>
+                <Button size="small" variant="secondary" disabled={logs.saving()} onClick={() => void logs.updateCategories(["llm"])}>
                   {logs.language.t("settings.logs.categories.llmOnly")}
                 </Button>
               </div>
@@ -127,7 +145,7 @@ export const SettingsLogsSection: Component = () => {
             <div class="flex flex-wrap gap-x-5 gap-y-2">
               {DIAGNOSTIC_CATEGORIES.map((category) => (
                 <Checkbox
-                  disabled={logs.savingCategories()}
+                  disabled={logs.saving()}
                   checked={selectedDiagnosticCategories(logs.diagnostics().categories).includes(category)}
                   onChange={(checked) => logs.toggleCategory(category, checked)}
                 >
@@ -137,16 +155,27 @@ export const SettingsLogsSection: Component = () => {
             </div>
           </div>
           <SettingsRow
+            title={logs.language.t("settings.logs.content.title")}
+            description={logs.language.t("settings.logs.content.description")}
+          >
+            <Switch
+              disabled={logs.saving()}
+              checked={logs.diagnostics().llmContent ?? false}
+              onChange={logs.updateContent}
+            />
+          </SettingsRow>
+          <SettingsRow
             title={logs.language.t("settings.logs.raw.title")}
             description={logs.language.t("settings.logs.raw.description")}
           >
-            <Switch checked={logs.diagnostics().rawPayloads ?? false} onChange={logs.updateRaw} />
+            <Switch disabled={logs.saving()} checked={logs.diagnostics().rawPayloads ?? false} onChange={logs.updateRaw} />
           </SettingsRow>
           <SettingsRow
             title={logs.language.t("settings.logs.streaming.title")}
             description={logs.language.t("settings.logs.streaming.description")}
           >
             <Switch
+              disabled={logs.saving()}
               checked={logs.diagnostics().streaming ?? false}
               onChange={(streaming) => logs.update({ streaming })}
             />
@@ -183,7 +212,7 @@ export const SettingsLogsSectionV2: Component = () => {
           title={logs.language.t("settings.logs.enabled.title")}
           description={logs.language.t("settings.logs.enabled.description")}
         >
-          <SwitchV2 checked={logs.diagnostics().enabled ?? false} onChange={(enabled) => logs.update({ enabled })} />
+          <SwitchV2 disabled={logs.saving()} checked={logs.diagnostics().enabled ?? false} onChange={(enabled) => logs.update({ enabled })} />
         </SettingsRowV2>
         <Show when={logs.diagnostics().enabled}>
           <div data-component="settings-v2-row" data-wrap="content">
@@ -196,12 +225,12 @@ export const SettingsLogsSectionV2: Component = () => {
                 <ButtonV2
                   size="normal"
                   variant="neutral"
-                  disabled={logs.savingCategories()}
+                  disabled={logs.saving()}
                   onClick={() => void logs.updateCategories(null)}
                 >
                   {logs.language.t("settings.logs.categories.all")}
                 </ButtonV2>
-                <ButtonV2 size="normal" variant="neutral" disabled={logs.savingCategories()} onClick={() => void logs.updateCategories(["llm"])}>
+                <ButtonV2 size="normal" variant="neutral" disabled={logs.saving()} onClick={() => void logs.updateCategories(["llm"])}>
                   {logs.language.t("settings.logs.categories.llmOnly")}
                 </ButtonV2>
               </div>
@@ -209,7 +238,7 @@ export const SettingsLogsSectionV2: Component = () => {
             <div data-slot="settings-v2-row-content">
               {DIAGNOSTIC_CATEGORIES.map((category) => (
                 <CheckboxV2
-                  disabled={logs.savingCategories()}
+                  disabled={logs.saving()}
                   label={categoryLabel(logs.language, category)}
                   checked={selectedDiagnosticCategories(logs.diagnostics().categories).includes(category)}
                   onChange={(checked) => logs.toggleCategory(category, checked)}
@@ -218,16 +247,27 @@ export const SettingsLogsSectionV2: Component = () => {
             </div>
           </div>
           <SettingsRowV2
+            title={logs.language.t("settings.logs.content.title")}
+            description={logs.language.t("settings.logs.content.description")}
+          >
+            <SwitchV2
+              disabled={logs.saving()}
+              checked={logs.diagnostics().llmContent ?? false}
+              onChange={logs.updateContent}
+            />
+          </SettingsRowV2>
+          <SettingsRowV2
             title={logs.language.t("settings.logs.raw.title")}
             description={logs.language.t("settings.logs.raw.description")}
           >
-            <SwitchV2 checked={logs.diagnostics().rawPayloads ?? false} onChange={logs.updateRaw} />
+            <SwitchV2 disabled={logs.saving()} checked={logs.diagnostics().rawPayloads ?? false} onChange={logs.updateRaw} />
           </SettingsRowV2>
           <SettingsRowV2
             title={logs.language.t("settings.logs.streaming.title")}
             description={logs.language.t("settings.logs.streaming.description")}
           >
             <SwitchV2
+              disabled={logs.saving()}
               checked={logs.diagnostics().streaming ?? false}
               onChange={(streaming) => logs.update({ streaming })}
             />

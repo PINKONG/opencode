@@ -38,12 +38,14 @@ wiscode diagnostics tail --event 'llm.step.completed'
 | 条目 | 说明 |
 | --- | --- |
 | **诊断日志**（开关） | "在本机按会话保存详细运行事件，默认关闭。" 打开后立即生效，不需要重启，也不影响正在进行的会话。 |
+| **事件类别**（多选） | 控制哪些事件写入文件；“仅大模型”选择 `llm`，“全部事件”删除类别白名单。系统丢弃统计始终记录。 |
+| **模型交互内容**（开关） | 保存完整逻辑请求（system、messages、工具定义）及响应（文本、推理、工具调用）。不包含 provider/wire 报文或 HTTP 请求头；正文仍可能包含敏感信息，不会脱敏。 |
 | **原始请求与响应**（开关） | "原样保存模型请求和响应内容，可能包含敏感信息并快速占用磁盘。" 打开时会弹出二次确认，明确告知：日志将原样保存对话、私有代码、完整请求头与响应，可能包含 API key 或访问 token，**不会脱敏**。仅在需要排查请求/响应细节时临时开启。 |
 | **流式事件**（开关） | "记录 token、阶段和进度等高频流事件。" 默认关闭；分析逐 token 输出节奏时才需要。 |
 | **打开诊断目录**（按钮） | 用系统文件管理器打开日志目录。日志只保存在本机，不会自动上传。桌面平台无法打开目录时会提示日志绝对路径；不表示 Web 设置页提供此入口。 |
 | **清空诊断日志**（按钮） | "删除全部诊断日志，包括今天的文件"。点击后弹出确认："此操作不可撤销"。完成后提示已删除的文件数；有文件正被写入时会跳过并提示稍后重试。 |
 
-三个开关都是**动态生效**：开启后新事件立即开始记录；关闭只停止记录新事件，**不删除**已有日志。
+这些设置都是**动态生效**：对新发生的诊断事件生效，不重建当前会话；关闭只停止相应的新记录，**不删除**已有日志。旧服务端不支持模型交互内容时，设置页会明确报错，不会假装保存成功。
 
 ### 3.2 配置文件方式
 
@@ -53,6 +55,8 @@ wiscode diagnostics tail --event 'llm.step.completed'
 {
   "diagnostics": {
     "enabled": true,
+    "categories": ["llm"],
+    "llmContent": true,
     "rawPayloads": false,
     "streaming": false,
     "retentionDays": 14,
@@ -64,6 +68,8 @@ wiscode diagnostics tail --event 'llm.step.completed'
 | 字段 | 默认 | 含义 |
 | --- | --- | --- |
 | `enabled` | `false` | 诊断总开关 |
+| `categories` | 未配置（全部） | 业务事件族白名单：task、processing、llm、tool、knowledge、plugin、context；空数组不合法，系统丢弃统计不受过滤 |
+| `llmContent` | `false` | 在 LLM 请求开始/终止事件中记录完整逻辑交互内容，与 raw 和 streaming 独立 |
 | `rawPayloads` | `false` | 记录请求/响应原文（高敏感、高体积，独立于 streaming） |
 | `streaming` | `false` | 记录逐 delta 流式事件 |
 | `retentionDays` | `14` | 保留天数；超期日志在周期清理时删除 |
@@ -71,17 +77,20 @@ wiscode diagnostics tail --event 'llm.step.completed'
 
 ### 3.3 推荐配置组合
 
-| 场景 | enabled | rawPayloads | streaming |
-| --- | --- | --- | --- |
-| 日常开启（token/耗时/工具全都有，开销近零） | ✅ | ❌ | ❌ |
-| 排查请求膨胀 / 插件改写 / provider 兼容问题 | ✅ | ✅（临时） | ❌ |
-| 分析逐 token 输出节奏 | ✅ | 按需 | ✅ |
+| 场景 | categories | llmContent | rawPayloads | streaming |
+| --- | --- | --- | --- | --- |
+| 日常查看精简 LLM 交互（推荐） | `["llm"]` | 开 | 关 | 关 |
+| 只看 token / 耗时 / 工具等指标 | 未配置（全部） | 关 | 关 | 关 |
+| provider 兼容或 wire 协议排障 | 按需 | 按需 | 开（临时） | 按需 |
+| 分析逐 token 输出节奏 | 包含 llm | 按需 | 按需 | 开 |
+
+以上组合均需 `enabled: true`。类别不含 `llm` 时，开启 `llmContent` 或 `streaming` 不会放行 LLM 事件。仅 LLM 模式下，没有发生模型调用的会话可能没有日志文件，`tail --session` 会报告找不到该诊断会话；这不代表业务会话不存在，可用 `status` 检查类别设置。
 
 ### 3.4 用命令行确认状态
 
 ```bash
 wiscode diagnostics status
-# {"root":"/Users/you/.local/share/wiscode/log/diagnostics","enabled":true,"rawPayloads":false,...}
+# {"root":"/Users/you/.local/share/wiscode/log/diagnostics","enabled":true,"llmContent":true,"rawPayloads":false,"categories":["llm"],...}
 ```
 
 `root` 就是日志目录的绝对路径。
@@ -118,7 +127,9 @@ wiscode diagnostics status
 ```
 
 - `traceId` 是一次用户任务的 ID；子代理任务用 `parentTraceId` 关联回父任务；同会话内后发的 prompt 用 `followsTraceId` 接续。
-- `payload.summary` 总是存在（元数据：数量、耗时、token、状态）；`payload.raw` 只在 rawPayloads 开启时才有（请求/响应原文）。
+- `payload.summary` 总是存在（元数据：数量、耗时、token、状态）；`payload.content` 在 llmContent 开启时承载逻辑请求或响应；`payload.raw` 只在 rawPayloads 开启时才有（provider/wire 原文）。
+- 请求和响应分别位于 `llm.request.started` 和对应的 completed/failed/cancelled 事件中，按 traceId、turnId、attempt 配对。每轮请求独立保存完整快照，不依赖历史哈希引用；失败或取消的响应保留已有输出并标记 `complete: false`。
+- 内嵌二进制附件在 content 中保存为 `{ type: "binary", bytes, encoding: "base64", data }`，可还原原始字节；URL 引用保持原样，不额外下载资源。
 - 关联键 `messageId`（助手消息）、`userMessageId`、`partId` 可与 SQLite 会话数据互相定位（见 §8.4）。
 
 ## 5. 页面上能做的操作
@@ -190,11 +201,14 @@ wiscode diagnostics tail [--session ses_ID | --trace trace_ID]
 ### 6.4 `wiscode diagnostics show <eventId>` —— 单事件深查
 
 ```bash
-wiscode diagnostics show evt_ea38ce…          # 信封 + summary 美化输出
-wiscode diagnostics show evt_ea38ce… --raw    # 追加原始请求/响应（未脱敏）
+wiscode diagnostics show evt_ea38ce…             # 信封 + summary + content 摘要
+wiscode diagnostics show evt_ea38ce… --content   # 只输出逻辑 LLM 内容（未脱敏）
+wiscode diagnostics show evt_ea38ce… --raw       # 信封 + summary + 原始 provider 数据
 ```
 
 `--raw` 输出前会有 "may contain secrets" 警告；provider 的 SSE 流式响应会按帧展开为编号 JSON，方便逐帧查看。raw 需要 `rawPayloads` 开启时才有记录。
+
+`--content` 与 `--raw` 互斥；content 不存在时输出 `null`，不能事后补录。内容输出前会在 stderr 提醒包含对话、私有代码和工具参数，仅限本机查看。stdout 是完整 JSON，可直接管道到 `jq`，例如 `wiscode diagnostics show evt_ID --content | jq '.messages'`。逻辑请求是 WisCode 组装后的内容，不等同于 provider 最终 HTTP body；检查后者仍需 raw。
 
 ### 6.5 `wiscode diagnostics cleanup --yes` / `clear --yes`
 
@@ -313,7 +327,8 @@ wiscode diagnostics tail --session ses_xxx --event 'plugin.hook.*'
 
 - 日志**只保存在本机**，无任何上传、遥测或远程查看通道。
 - `rawPayloads` 开启时，日志包含：完整对话、私有代码、带鉴权头的请求、工具与插件数据。**日志目录应视为敏感数据目录**，分享文件前先确认内容。
-- `tail` 输出只有元数据摘要，不含正文与密钥；`show --raw` 输出未脱敏原文，仅限本机终端使用。
+- `llmContent` 不记录传输层请求头，但正文仍可包含私有代码、工具参数或用户输入的密钥，不是脱敏功能。每轮完整请求会随历史增长，不承诺固定体积；仍使用既有保留期和容量清理。reader 超过 64 MiB 单行上限会明确报错，不会静默截断。
+- `tail` 不投影完整 content/raw；`show --content` 与 `show --raw` 输出未脱敏内容，仅限本机终端使用。summary 也不是脱敏承诺。
 - 浏览器页面（含 sidecar 地址访问）不提供任何日志查看能力。
 
 ## 12. 性能影响
@@ -321,6 +336,7 @@ wiscode diagnostics tail --session ses_xxx --event 'plugin.hook.*'
 | 配置 | 对任务的影响 |
 | --- | --- |
 | 仅 enabled（推荐日常） | 关键路径每事件约 0.02 毫秒，单任务累计约 4 毫秒，可忽略 |
+| + llmContent | 保存完整逻辑请求和聚合响应；体积随上下文增长，不创建 wire capture，不记录逐帧数据 |
 | + rawPayloads | 每次模型请求增加毫秒级处理与约 2 MB/任务磁盘；内存瞬时双缓冲响应体 |
 | + streaming | 事件量增大（每响应数十到数百条），后台 IO 相应增加，仍不阻塞任务 |
 
@@ -329,7 +345,7 @@ wiscode diagnostics tail --session ses_xxx --event 'plugin.hook.*'
 ## 13. 常见问题
 
 **Q：为什么 tail 里看不到请求/响应原文？**
-设计如此。tail 是精简时间线；原文用 `show <eventId> --raw` 查看（需开启 rawPayloads）。
+设计如此。tail 是精简时间线；逻辑交互用 `show <eventId> --content` 查看（需事先开启 llmContent），provider/wire 原文用 `--raw`（需事先开启 rawPayloads）。
 
 **Q：为什么 cost 一直是 0？**
 该模型在价格表中无定价（如企业计划模型），费用无法估算；token 数照常准确。
@@ -361,6 +377,7 @@ wiscode diagnostics tail --since 2026-10-21T09:00:00+08:00 --limit 500
 wiscode diagnostics tail --follow                # 实时跟随（Ctrl-C 退出）
 wiscode diagnostics tail … --ids                 # 输出完整事件 ID
 wiscode diagnostics show evt_ID                  # 单事件详情
+wiscode diagnostics show evt_ID --content        # 逻辑 LLM 请求/响应（未脱敏）
 wiscode diagnostics show evt_ID --raw            # 原始请求/响应（未脱敏）
 wiscode diagnostics cleanup --yes                # 按保留期清理
 wiscode diagnostics clear --yes                  # 清空全部

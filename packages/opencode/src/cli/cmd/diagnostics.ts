@@ -141,14 +141,20 @@ const ShowCommand = effectCmd({
   command: "show <eventId>",
   describe: "inspect one diagnostic event",
   instance: false,
-  builder: (yargs) => yargs.positional("eventId", { type: "string", demandOption: true }).option("raw", { type: "boolean", default: false, describe: "print unredacted provider payloads, which may contain secrets" }).option("utc", { type: "boolean", default: false }),
+  builder: (yargs) => yargs
+    .positional("eventId", { type: "string", demandOption: true })
+    .option("raw", { type: "boolean", describe: "print unredacted provider payloads, which may contain secrets" })
+    .option("content", { type: "boolean", describe: "print logical LLM content, which may contain conversations and private code" })
+    .option("utc", { type: "boolean", default: false })
+    .conflicts("content", "raw"),
   handler: Effect.fn("Cli.diagnostics.show")(function* (args) {
     if (!/^evt_[A-Za-z0-9_-]+$/.test(args.eventId)) return yield* fail("invalid event ID")
     const diagnostics = yield* DiagnosticTrace.Service
     const found = yield* Effect.promise(() => DiagnosticReader.find(diagnostics.root(), args.eventId))
     if (!found) return yield* fail(`diagnostic event not found: ${args.eventId}`)
     if (args.raw) console.error("Showing unredacted diagnostic payload; it may contain secrets.")
-    yield* Effect.promise(() => writeStdout(renderDiagnosticEvent(found.event, args.raw)))
+    if (args.content) console.error("Showing local LLM content; it may contain conversations, private code and tool arguments. Keep it on this device.")
+    yield* Effect.promise(() => writeStdout(renderDiagnosticEvent(found.event, args)))
   }),
 })
 

@@ -46,10 +46,24 @@ function summary(row: DiagnosticReader.Row) {
   return (llmUsage ? [...usagePairs, ...pairs] : [...pairs, ...usagePairs]).join(" ")
 }
 
-export function renderDiagnosticEvent(event: Diagnostic.Envelope, raw: boolean) {
+export function renderDiagnosticEvent(event: Diagnostic.Envelope, options: { raw?: boolean; content?: boolean } = {}) {
   const { payload, ...envelope } = event
-  const content = payload as { summary?: unknown; raw?: unknown }
-  return JSON.stringify({ ...envelope, summary: content.summary, ...(raw && content.raw !== undefined ? { raw: formatRaw(content.raw) } : {}) }, null, 2)
+  const content = payload as { summary?: unknown; raw?: unknown; content?: Record<string, unknown> }
+  if (options.content) return JSON.stringify(content.content ?? null, null, 2)
+  return JSON.stringify({
+    ...envelope,
+    summary: content.summary,
+    ...(!options.raw && content.content ? {
+      contentSummary: {
+        kind: content.content.kind,
+        bytes: Buffer.byteLength(JSON.stringify(content.content), "utf8"),
+        ...(Array.isArray(content.content.messages) ? { messageCount: content.content.messages.length } : {}),
+        ...(Array.isArray(content.content.tools) ? { toolCount: content.content.tools.length } : {}),
+        ...(typeof content.content.complete === "boolean" ? { complete: content.content.complete } : {}),
+      },
+    } : {}),
+    ...(options.raw && content.raw !== undefined ? { raw: formatRaw(content.raw) } : {}),
+  }, null, 2)
 }
 
 function formatRaw(value: unknown): unknown {

@@ -68,6 +68,17 @@ describe("Config", () => {
     expect(config.diagnostics).toBeUndefined()
   })
 
+  test("diagnostic LLM content accepts only booleans without changing category filters", () => {
+    const decode = Schema.decodeUnknownSync(ConfigV1.Info)
+    for (const llmContent of [true, false]) {
+      expect(decode({ diagnostics: { llmContent, categories: ["tool"] } }).diagnostics)
+        .toEqual({ llmContent, categories: ["tool"] })
+    }
+    for (const llmContent of [null, "true", 1]) {
+      expect(() => decode({ diagnostics: { llmContent } })).toThrow()
+    }
+  })
+
   test("diagnostic settings allow disabling age retention while keeping the size cap", () => {
     const config = Schema.decodeUnknownSync(ConfigV1.Info)({
       diagnostics: { enabled: true, retentionDays: 0, maxTotalBytes: 1024 },

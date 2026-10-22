@@ -78,6 +78,7 @@ const diagnosticTasks: DiagnosticTrace.TraceContext[] = []
 let diagnosticConfig: DiagnosticTrace.Config = {
   enabled: false,
   rawPayloads: false,
+  llmContent: false,
   streaming: false,
   retentionDays: 14,
   maxTotalBytes: 2 * 1024 * 1024 * 1024,

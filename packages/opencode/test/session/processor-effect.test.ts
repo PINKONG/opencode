@@ -303,6 +303,7 @@ it.live("session.processor effect tests capture llm input cleanly", () =>
 
         yield* diagnostics.configure({
           enabled: true,
+          llmContent: false,
           rawPayloads: false,
           streaming: false,
           retentionDays: 14,
@@ -1136,6 +1137,7 @@ itProviderError.live("session.processor effect tests fail provider-executed erro
         const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
         yield* diagnostics.configure({
           enabled: true,
+          llmContent: false,
           rawPayloads: false,
           streaming: false,
           retentionDays: 14,

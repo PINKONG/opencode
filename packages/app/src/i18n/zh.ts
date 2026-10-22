@@ -887,8 +887,8 @@ export const dict = {
   "settings.logs.enabled.description": "在本机按会话保存详细运行事件，默认关闭。",
   "settings.logs.categories.title": "日志类别",
   "settings.logs.categories.description": "选择写入新诊断日志的事件类别。",
-  "settings.logs.categories.unsupported": "This server does not support diagnostic category filters.",
-  "settings.logs.categories.failed": "Could not update diagnostic categories: {{error}}",
+  "settings.logs.categories.unsupported": "此服务器不支持诊断日志类别筛选。",
+  "settings.logs.categories.failed": "无法更新诊断日志类别：{{error}}",
   "settings.logs.categories.all": "全部事件",
   "settings.logs.categories.llmOnly": "仅大模型",
   "settings.logs.categories.task": "任务",
@@ -898,6 +898,11 @@ export const dict = {
   "settings.logs.categories.knowledge": "知识库",
   "settings.logs.categories.plugin": "插件",
   "settings.logs.categories.context": "上下文",
+  "settings.logs.content.title": "模型交互内容",
+  "settings.logs.content.description":
+    "记录发送给模型的逻辑请求，以及模型返回的文本、推理和工具调用。不包含提供商原始报文或鉴权请求头。",
+  "settings.logs.content.unsupported": "此服务器不支持记录模型交互内容。",
+  "settings.logs.content.failed": "无法更新模型交互内容设置：{{error}}",
   "settings.logs.raw.title": "原始请求与响应",
   "settings.logs.raw.description": "原样保存模型请求和响应内容，可能包含敏感信息并快速占用磁盘。",
   "settings.logs.raw.confirm":

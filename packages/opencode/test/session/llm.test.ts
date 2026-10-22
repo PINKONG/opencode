@@ -5,13 +5,14 @@ import { SessionV1 } from "@opencode-ai/core/v1/session"
 import path from "path"
 import fs from "fs/promises"
 import { tool, type ModelMessage } from "ai"
-import { Cause, Effect, Exit, Fiber, Layer, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Stream } from "effect"
 import { InstanceRef } from "../../src/effect/instance-ref"
 import { TestInstance } from "../fixture/fixture"
 import { HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import z from "zod"
 import { LLM } from "../../src/session/llm"
 import { LLMClient, RequestExecutor } from "@opencode-ai/llm/route"
+import { LLMError, LLMEvent, ProviderInternalReason } from "@opencode-ai/llm"
 import { Provider } from "@/provider/provider"
 import { ProviderTransform } from "@/provider/transform"
 import { ModelsDev } from "@opencode-ai/core/models-dev"
@@ -757,6 +758,227 @@ function createEventResponse(chunks: unknown[], includeDone = false) {
   })
 }
 
+type ContentDiagnosticRow = {
+  event: string
+  status: string
+  traceId: string
+  turnId: string
+  payload: {
+    summary: Record<string, unknown>
+    content?: unknown
+    raw?: unknown
+  }
+}
+
+// Replace only the provider boundary: request preparation, stream observation,
+// diagnostics queue, and JSONL persistence all use the real implementations.
+function captureContentDiagnostics(
+  sources: ReadonlyArray<Stream.Stream<LLMEvent, LLMError>>,
+  options: { cancel?: boolean; streaming?: boolean } = {},
+) {
+  return Effect.gen(function* () {
+    const fixture = yield* TestInstance
+    const ctx = yield* InstanceRef
+    if (!ctx) return yield* Effect.die("missing instance context")
+    const model = yield* Provider.use.getModel(ProviderV2.ID.openai, ModelV2.ID.make("gpt-5.2"))
+    const sessionID = SessionID.make("ses_content_diagnostic")
+    const requests: unknown[] = []
+    const pending = [...sources]
+    const layer = AppNodeBuilder.build(LayerNode.group([LLM.node, DiagnosticTrace.node, Plugin.node]), [
+      [
+        Global.node,
+        Global.layerWith({ log: path.join(fixture.directory, "log"), state: path.join(fixture.directory, "state") }),
+      ],
+      [RuntimeFlags.node, RuntimeFlags.layer({ experimentalNativeLlm: true, disableDefaultPlugins: true })],
+      [
+        LayerNodePlatform.llmClient,
+        Layer.succeed(LLMClient.Service, LLMClient.Service.of({
+          prepare: () => Effect.die("unexpected client.prepare"),
+          generate: () => Effect.die("unexpected client.generate"),
+          stream: (request) => {
+            requests.push(request)
+            return pending.shift() ?? Stream.die("unexpected provider attempt")
+          },
+        })),
+      ],
+    ])
+    const result = yield* Effect.promise(() => Effect.runPromise(
+      Effect.gen(function* () {
+        const diagnostics = yield* DiagnosticTrace.Service
+        const plugin = yield* Plugin.Service
+        yield* plugin.init()
+        yield* diagnostics.configure({
+          enabled: true, llmContent: true, rawPayloads: false, streaming: options.streaming ?? false,
+          retentionDays: 14, maxTotalBytes: 1024 * 1024,
+        })
+        const trace = diagnostics.startTask({ sessionId: sessionID, runtime: { sessionEngine: "legacy-v1" } })
+        const service = yield* LLM.Service
+        const agent = { name: "test", mode: "primary", options: {}, permission: [] } satisfies Agent.Info
+        const exits = yield* Effect.forEach(sources, (_, index) => Effect.gen(function* () {
+          const received = yield* Deferred.make<void>()
+          const run = service.stream({
+            user: {
+              id: MessageID.make("msg_content_diagnostic"), sessionID, role: "user",
+              time: { created: 1 }, agent: agent.name,
+              model: { providerID: ProviderV2.ID.openai, modelID: model.id },
+            },
+            sessionID, model, agent, system: ["content-system"],
+            messages: [{ role: "user", content: "content-request" }], tools: {},
+            diagnostic: trace, attempt: index + 1,
+          }).pipe(
+            Stream.tap((event) => event.type === "tool-call" ? Deferred.succeed(received, undefined) : Effect.void),
+            Stream.runCollect,
+          )
+          if (!options.cancel) return yield* Effect.exit(run)
+          const fiber = yield* run.pipe(Effect.forkScoped)
+          yield* Deferred.await(received).pipe(Effect.timeout("2 seconds"))
+          yield* Fiber.interrupt(fiber)
+          return yield* Fiber.await(fiber)
+        }))
+        yield* diagnostics.flush(sessionID)
+        return { root: diagnostics.root(), exits }
+      }).pipe(Effect.scoped, Effect.provide(layer), Effect.provideService(InstanceRef, ctx)),
+    ))
+    const rows = (yield* Effect.promise(() =>
+      Bun.file(path.join(result.root, new Date().toISOString().slice(0, 10), `${sessionID}.jsonl`)).text(),
+    )).trim().split("\n").map((line) => JSON.parse(line) as ContentDiagnosticRow)
+    expect(requests).toHaveLength(sources.length)
+    expect(rows.every((row) => row.payload.raw === undefined)).toBe(true)
+    if (!options.streaming) expect(rows.some((row) => row.event === "llm.stream.chunk")).toBe(false)
+    return { rows, exits: result.exits }
+  })
+}
+
+describe("session.llm.content diagnostics", () => {
+  const config = () => openAIConfig(loadFixture("openai", "gpt-5.2").model, "http://127.0.0.1:1/v1")
+  const partial = [
+    LLMEvent.reasoningDelta({ id: "reasoning-1", text: "Think " }),
+    LLMEvent.reasoningDelta({ id: "reasoning-1", text: "carefully" }),
+    LLMEvent.textDelta({ id: "text-1", text: "Hello " }),
+    LLMEvent.textDelta({ id: "text-1", text: "world" }),
+    LLMEvent.toolInputStart({ id: "call-1", name: "lookup" }),
+    LLMEvent.toolInputDelta({ id: "call-1", name: "lookup", text: '{"query":' }),
+    LLMEvent.toolInputDelta({ id: "call-1", name: "lookup", text: '"weather"}' }),
+    LLMEvent.toolInputEnd({ id: "call-1", name: "lookup" }),
+    LLMEvent.toolCall({ id: "call-1", name: "lookup", input: { query: "weather" }, providerExecuted: true }),
+  ]
+  const response = {
+    kind: "response", text: "Hello world", reasoning: "Think carefully",
+    toolCalls: [{ id: "call-1", name: "lookup", input: { query: "weather" } }],
+  }
+
+  for (const streaming of [false, true]) {
+    it.instance(`aggregates reasoning and tool-call response content with streaming ${streaming}`, () =>
+      Effect.gen(function* () {
+        const result = yield* captureContentDiagnostics([
+          Stream.fromIterable([...partial, LLMEvent.finish({ reason: "tool-calls" })]),
+        ], { streaming })
+        expect(Exit.isSuccess(result.exits[0])).toBe(true)
+        const started = result.rows.find((row) => row.event === "llm.request.started")
+        const completed = result.rows.filter((row) => row.event === "llm.request.completed")
+        expect(completed).toHaveLength(1)
+        expect(completed[0].payload.content).toEqual({ ...response, finishReason: "tool-calls", complete: true })
+        expect(completed[0]).toMatchObject({ status: "succeeded", traceId: started?.traceId, turnId: started?.turnId })
+        expect(result.rows.some((row) => row.event === "llm.stream.chunk")).toBe(streaming)
+      }), { config })
+  }
+
+  it.instance("records request and empty response content on failure before the first event", () =>
+    Effect.gen(function* () {
+      const error = new LLMError({
+        module: "diagnostic-fixture", method: "stream",
+        reason: new ProviderInternalReason({ message: "before-first-response", status: 503 }),
+      })
+      const result = yield* captureContentDiagnostics([Stream.fail(error)])
+      expect(Exit.isFailure(result.exits[0])).toBe(true)
+      expect(result.rows.map((row) => row.event)).toEqual(["llm.request.started", "llm.request.failed"])
+      expect(result.rows[0].payload.content).toMatchObject({
+        kind: "request", messages: expect.arrayContaining([{ role: "user", content: "content-request" }]),
+      })
+      expect(result.rows[1]).toMatchObject({ status: "failed", payload: {
+        summary: { error: { message: expect.stringContaining("before-first-response") } },
+        content: { kind: "response", text: "", reasoning: "", toolCalls: [], complete: false },
+      } })
+    }), { config })
+
+  it.instance("preserves partial content on provider-error without a later success overwriting it", () =>
+    Effect.gen(function* () {
+      const result = yield* captureContentDiagnostics([Stream.fromIterable([
+        ...partial,
+        LLMEvent.providerError({ message: "partial-provider-error", retryable: true }),
+        LLMEvent.finish({ reason: "error" }),
+      ])])
+      const terminal = result.rows.filter((row) => row.event !== "llm.request.started")
+      expect(terminal).toHaveLength(1)
+      expect(terminal[0]).toMatchObject({ event: "llm.request.failed", status: "failed", payload: {
+        summary: { error: { message: "partial-provider-error", retryable: true } },
+      } })
+      expect(terminal[0].payload.content).toEqual({ ...response, complete: false })
+    }), { config })
+
+  it.instance("preserves partial content on interruption and records only one cancelled terminal event", () =>
+    Effect.gen(function* () {
+      const result = yield* captureContentDiagnostics([
+        Stream.fromIterable(partial).pipe(Stream.concat(Stream.never)),
+      ], { cancel: true })
+      expect(Exit.isFailure(result.exits[0])).toBe(true)
+      if (Exit.isFailure(result.exits[0])) expect(Cause.hasInterruptsOnly(result.exits[0].cause)).toBe(true)
+      expect(result.rows.map((row) => row.event)).toEqual(["llm.request.started", "llm.request.cancelled"])
+      expect(result.rows[1].status).toBe("cancelled")
+      expect(result.rows[1].payload.content).toEqual({ ...response, complete: false })
+    }), { config })
+
+  it.instance("preserves partial content when the provider stream fails with a typed error", () =>
+    Effect.gen(function* () {
+      const error = new LLMError({
+        module: "diagnostic-fixture", method: "stream",
+        reason: new ProviderInternalReason({ message: "partial-stream-failure", status: 503 }),
+      })
+      const result = yield* captureContentDiagnostics([
+        Stream.fromIterable(partial).pipe(Stream.concat(Stream.fail(error))),
+      ])
+      expect(Exit.isFailure(result.exits[0])).toBe(true)
+      expect(result.rows.map((row) => row.event)).toEqual(["llm.request.started", "llm.request.failed"])
+      expect(result.rows[1]).toMatchObject({ status: "failed", payload: {
+        summary: { error: { message: expect.stringContaining("partial-stream-failure") } },
+      } })
+      expect(result.rows[1].payload.content).toEqual({ ...response, complete: false })
+    }), { config })
+
+  it.instance("records incomplete content and an explicit failure when the stream ends without finish", () =>
+    Effect.gen(function* () {
+      const result = yield* captureContentDiagnostics([Stream.fromIterable(partial)])
+      expect(result.rows.map((row) => row.event)).toEqual(["llm.request.started", "llm.request.failed"])
+      expect(result.rows[1]).toMatchObject({ status: "failed", payload: {
+        summary: { error: { message: "Provider stream ended without a finish event" } },
+      } })
+      expect(result.rows[1].payload.content).toEqual({ ...response, complete: false })
+    }), { config })
+
+  it.instance("keeps retry attempt content and turn IDs independent within one task trace", () =>
+    Effect.gen(function* () {
+      const result = yield* captureContentDiagnostics([
+        Stream.make(
+          LLMEvent.textDelta({ id: "failed-text", text: "discarded-partial" }),
+          LLMEvent.providerError({ message: "retryable-failure", retryable: true }),
+        ),
+        Stream.make(LLMEvent.textDelta({ id: "retry-text", text: "retry-success" }), LLMEvent.finish({ reason: "stop" })),
+      ])
+      expect(result.rows.map((row) => row.event)).toEqual([
+        "llm.request.started", "llm.request.failed", "llm.request.started", "llm.request.completed",
+      ])
+      expect(result.rows.map((row) => row.payload.summary.attempt)).toEqual([1, 1, 2, 2])
+      expect(new Set(result.rows.map((row) => row.traceId)).size).toBe(1)
+      expect(result.rows[0].turnId).toBe(result.rows[1].turnId)
+      expect(result.rows[2].turnId).toBe(result.rows[3].turnId)
+      expect(result.rows[0].turnId).not.toBe(result.rows[2].turnId)
+      expect(result.rows[1].payload.content).toMatchObject({ text: "discarded-partial", complete: false })
+      expect(result.rows[3].payload.content).toEqual({
+        kind: "response", text: "retry-success", reasoning: "", toolCalls: [], finishReason: "stop", complete: true,
+      })
+    }), { config })
+})
+
 describe("session.llm.stream", () => {
   it.instance(
     "captures actual provider request and response in raw diagnostic mode",
@@ -807,6 +1029,7 @@ describe("session.llm.stream", () => {
               yield* Plugin.Service.use((svc) => svc.init())
               yield* diagnostics.configure({
                 enabled: true,
+                llmContent: true,
                 rawPayloads: true,
                 streaming: false,
                 retentionDays: 14,
@@ -822,7 +1045,13 @@ describe("session.llm.stream", () => {
                     agent,
                     system: ["system-secret"],
                     messages: [{ role: "user", content: "request-secret" }],
-                    tools: {},
+                    tools: {
+                      lookup: tool({
+                        description: "Look up a value",
+                        inputSchema: z.object({ query: z.string() }),
+                        execute: async ({ query }) => ({ output: query }),
+                      }),
+                    },
                     diagnostic: trace,
                   })
                   .pipe(Stream.runCollect),
@@ -853,6 +1082,27 @@ describe("session.llm.stream", () => {
           .map((line) => JSON.parse(line))
         const completed = rows.find((row) => row.event === "llm.request.completed")
         expect(completed).toBeDefined()
+        const started = rows.find((row) => row.event === "llm.request.started")
+        expect(started.payload.content).toMatchObject({
+          kind: "request",
+          messages: [
+            { role: "system", content: expect.stringContaining("system-secret") },
+            { role: "user", content: "request-secret" },
+          ],
+          tools: [
+            {
+              name: "lookup",
+              description: "Look up a value",
+              inputSchema: expect.objectContaining({
+                type: "object",
+                properties: expect.objectContaining({ query: expect.objectContaining({ type: "string" }) }),
+              }),
+            },
+          ],
+        })
+        expect(JSON.stringify(started.payload.content)).toContain("system-secret")
+        expect(JSON.stringify(started.payload.content)).toContain("request-secret")
+        expect(completed.payload.content).toMatchObject({ kind: "response", text: "wire-reply", complete: true })
         expect(completed.payload.raw.providerRequest.headers.authorization).toContain("test-key")
         expect(completed.payload.raw.providerRequest.body).toContain("request-secret")
         expect(completed.payload.raw.providerResponse.body).toContain("wire-reply")
@@ -862,8 +1112,9 @@ describe("session.llm.stream", () => {
         const afterDisable = rows.find((row) => row.event === "llm.request.completed" && row.payload.summary.userMessageId === "msg_after_raw_disabled")
         expect(afterDisable).toBeDefined()
         expect(afterDisable?.payload.raw).toBeUndefined()
-        expect(JSON.stringify(rows.filter((row) => row.traceId === afterDisable?.traceId))).not.toContain("private-request-after-disable")
-        expect(JSON.stringify(rows.filter((row) => row.traceId === afterDisable?.traceId))).not.toContain("private-output-after-disable")
+        expect(JSON.stringify(afterDisable?.payload.content)).toContain("private-output-after-disable")
+        const afterDisableStarted = rows.find((row) => row.event === "llm.request.started" && row.payload.summary.userMessageId === "msg_after_raw_disabled")
+        expect(JSON.stringify(afterDisableStarted?.payload.content)).toContain("private-request-after-disable")
       }),
     {
       config: () => ({
@@ -919,6 +1170,7 @@ describe("session.llm.stream", () => {
               yield* Plugin.Service.use((svc) => svc.init())
               yield* diagnostics.configure({
                 enabled: true,
+                llmContent: false,
                 rawPayloads: true,
                 streaming: false,
                 retentionDays: 14,

@@ -113,6 +113,16 @@ describe("PublicApi OpenAPI v2 errors", () => {
     expect(update?.$ref).toBe("#/components/schemas/ConfigUpdate")
   })
 
+  test("exposes the LLM content flag on configuration and diagnostic status", () => {
+    const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
+    const update = spec.paths["/global/config"]?.patch?.requestBody?.content?.["application/json"]?.schema
+    const config = spec.paths["/global/config"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema
+    const status = spec.paths["/global/diagnostics"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema
+    expect(propertySchema(spec, propertySchema(spec, update, "diagnostics"), "llmContent")).toMatchObject({ type: "boolean" })
+    expect(propertySchema(spec, propertySchema(spec, config, "diagnostics"), "llmContent")).toMatchObject({ type: "boolean" })
+    expect(propertySchema(spec, status, "llmContent")).toMatchObject({ type: "boolean" })
+  })
+
   test("includes plugin-facing core schemas", () => {
     const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
 

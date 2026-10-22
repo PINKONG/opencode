@@ -25,7 +25,7 @@ let globalUpdate: unknown
 
 const diagnostic = {
   configure: () => Effect.void,
-  config: () => ({ enabled: false, rawPayloads: false, streaming: false, retentionDays: 14, maxTotalBytes: 0 }),
+  config: () => ({ enabled: false, llmContent: false, rawPayloads: false, streaming: false, retentionDays: 14, maxTotalBytes: 0 }),
   startTask: () => ({}),
   startTurn: (context: DiagnosticTrace.TraceContext) => ({
     ...context,
@@ -111,6 +111,7 @@ describe("global HttpApi", () => {
       expect(yield* response.json).toMatchObject({
         root: "/tmp/wiscode-diagnostics",
         enabled: false,
+        llmContent: false,
         categories: null,
       })
       expect(ensuredRoots).toBe(1)

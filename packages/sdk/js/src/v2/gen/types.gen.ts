@@ -1897,6 +1897,7 @@ export type Config = {
   $schema?: string
   diagnostics?: {
     enabled?: boolean
+    llmContent?: boolean
     rawPayloads?: boolean
     streaming?: boolean
     retentionDays?: number
@@ -2051,6 +2052,7 @@ export type ConfigUpdate = {
   $schema?: string
   diagnostics?: {
     enabled?: boolean
+    llmContent?: boolean
     rawPayloads?: boolean
     streaming?: boolean
     retentionDays?: number
@@ -7522,6 +7524,7 @@ export type GlobalDiagnosticsStatusResponses = {
   200: {
     root: string
     enabled: boolean
+    llmContent: boolean
     rawPayloads: boolean
     streaming: boolean
     retentionDays: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"

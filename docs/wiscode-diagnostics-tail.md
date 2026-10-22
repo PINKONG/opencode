@@ -146,6 +146,7 @@ wiscode diagnostics tail --follow [--session … | --trace …] [过滤参数]
 ```bash
 wiscode diagnostics status             # 诊断开关状态 + 日志根目录
 wiscode diagnostics show evt_ID        # 单事件：envelope + summary 美化缩进输出
+wiscode diagnostics show evt_ID --content # 逻辑 LLM 内容；需在记录时开启 llmContent
 wiscode diagnostics show evt_ID --raw  # 追加原始 payload；provider SSE 响应按帧展开为编号 JSON
 wiscode diagnostics cleanup --yes      # 按保留期（14 天 / 2 GB 目标）清理旧日志
 wiscode diagnostics clear --yes        # 清空全部诊断日志（含当天）

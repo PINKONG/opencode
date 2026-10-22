@@ -130,6 +130,84 @@ test("diagnostics show exposes raw only with --raw", async () => {
   }
 }, 30_000)
 
+test("diagnostics show exposes content only with --content and warns about sensitive text", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "wiscode-diagnostics-show-content-"))
+  try {
+    const dir = path.join(root, "data", "wiscode", "log", "diagnostics", "2026-10-20")
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(path.join(dir, "instance.jsonl"), JSON.stringify({
+      schema: "wiscode.diagnostic", schemaVersion: 1, seq: 0, eventId: "evt_content",
+      event: "llm.request.completed", status: "succeeded", timestamp: "2026-10-20T10:00:00.000Z",
+      monotonicMs: 1,
+      payload: {
+        summary: { model: "demo" },
+        content: { kind: "response", text: "private conversation", reasoning: "private reasoning", toolCalls: [], complete: true },
+        raw: { providerResponse: "private wire" },
+      },
+    }) + "\n")
+    const run = (args: string[]) => Bun.spawn([process.execPath, "src/index.ts", "diagnostics", "show", "evt_content", ...args], {
+      cwd: new URL("../../", import.meta.url).pathname,
+      env: { ...process.env, XDG_DATA_HOME: path.join(root, "data"), XDG_CACHE_HOME: path.join(root, "cache"), XDG_CONFIG_HOME: path.join(root, "config"), XDG_STATE_HOME: path.join(root, "state") },
+      stdout: "pipe", stderr: "pipe",
+    })
+    const ordinary = run([])
+    const ordinaryOutput = await new Response(ordinary.stdout).text()
+    const ordinaryError = await new Response(ordinary.stderr).text()
+    expect(await ordinary.exited, ordinaryError).toBe(0)
+    expect(ordinaryOutput).not.toContain("private conversation")
+    expect(ordinaryOutput).toContain("contentSummary")
+
+    const content = run(["--content"])
+    const contentOutput = await new Response(content.stdout).text()
+    const contentError = await new Response(content.stderr).text()
+    expect(await content.exited, contentError).toBe(0)
+    expect(JSON.parse(contentOutput)).toEqual({ kind: "response", text: "private conversation", reasoning: "private reasoning", toolCalls: [], complete: true })
+    expect(contentOutput).not.toContain("private wire")
+    expect(contentError).toContain("private code")
+
+    const conflicting = run(["--content", "--raw"])
+    expect(await conflicting.exited).not.toBe(0)
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+}, 30_000)
+
+test("diagnostics show keeps large content output intact through a pipe", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "wiscode-diagnostics-show-content-large-"))
+  try {
+    const dir = path.join(root, "data", "wiscode", "log", "diagnostics", "2026-10-20")
+    await fs.mkdir(dir, { recursive: true })
+    const body = "x".repeat(2 * 1024 * 1024)
+    await fs.writeFile(path.join(dir, "instance.jsonl"), JSON.stringify({
+      schema: "wiscode.diagnostic", schemaVersion: 1, seq: 0, eventId: "evt_large_content",
+      event: "llm.request.completed", status: "succeeded", timestamp: "2026-10-20T10:00:00.000Z",
+      monotonicMs: 1, payload: { summary: {}, content: { kind: "response", text: body } },
+    }) + "\n")
+    const child = Bun.spawn([process.execPath, "src/index.ts", "diagnostics", "show", "evt_large_content", "--content"], {
+      cwd: new URL("../../", import.meta.url).pathname,
+      env: { ...process.env, XDG_DATA_HOME: path.join(root, "data"), XDG_CACHE_HOME: path.join(root, "cache"), XDG_CONFIG_HOME: path.join(root, "config"), XDG_STATE_HOME: path.join(root, "state") },
+      stdout: "pipe", stderr: "pipe",
+    })
+    const output = await new Response(child.stdout).text()
+    const error = await new Response(child.stderr).text()
+    expect(await child.exited, error).toBe(0)
+    expect(JSON.parse(output).text).toHaveLength(body.length)
+
+    const redirectedPath = path.join(root, "content.json")
+    const redirectedFile = await fs.open(redirectedPath, "w")
+    const redirected = Bun.spawn([process.execPath, "src/index.ts", "diagnostics", "show", "evt_large_content", "--content"], {
+      cwd: new URL("../../", import.meta.url).pathname,
+      env: { ...process.env, XDG_DATA_HOME: path.join(root, "data"), XDG_CACHE_HOME: path.join(root, "cache"), XDG_CONFIG_HOME: path.join(root, "config"), XDG_STATE_HOME: path.join(root, "state") },
+      stdout: redirectedFile.fd, stderr: "ignore",
+    })
+    expect(await redirected.exited).toBe(0)
+    await redirectedFile.close()
+    expect(JSON.parse(await fs.readFile(redirectedPath, "utf8")).text).toHaveLength(body.length)
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+}, 30_000)
+
 test("diagnostics show keeps large raw output intact through a pipe", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "wiscode-diagnostics-show-large-"))
   try {
