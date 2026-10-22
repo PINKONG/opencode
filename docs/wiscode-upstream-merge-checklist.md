@@ -4,7 +4,7 @@
 
 目标只有两个：
 - 吃到上游更新
-- 不破坏 WisCode 现有品牌、配置隔离、BMAD 集成和发布链路
+- 不破坏 WisCode 现有品牌、配置隔离、BMAD 集成、诊断日志和发布链路
 
 开始任何一次 upstream merge 前，先通读：
 - [docs/wiscode-fork-delta.md](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-fork-delta.md)
@@ -179,6 +179,24 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 
 同步 OpenCode **不自动更新 BMAD**。不要在 merge、构建或启动时拉取 BMAD `main`；需升级时另行选择提交，运行 `script/update-bmad.ts`，审查补丁并通过 [BMAD 集成设计](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-10-bmad-integration.md)中的升级门禁。
 
+### 9. 诊断日志必须作为长期分叉能力保留
+
+行为基线见 [诊断日志指南](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-diagnostics-guide.md)、[CLI 视图协议](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-diagnostics-tail.md)和 [LLM 内容设计](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-22-diagnostic-llm-content-v1-design.md)。不能只保留 writer 文件，而丢失调用边界的接入。
+
+必须逐项保护：
+- 结构化 JSONL 保持 session/instance 独立流、数值分卷、流锁和 seq 恢复；诊断失败不得阻断业务，不得把日志送入遥测/上报链路。
+- trace 上下文显式传递，保留子代理 `parentTraceId`/`childTraceId` 和接续 prompt 的 `followsTraceId`；不得用全局 ambient context 替代。实例事件（如 `plugin.loaded`）仍写 `instance.jsonl`。
+- 主对话和 title/summary/auxiliary 等辅助模型调用都要接入；LLM、工具/权限、MCP/知识库、插件和上下文边界不得因上游重构静默失去事件。若执行器或 provider 层迁移，必须逐个迁移发射点，而不是只让旧适配层通过类型检查。
+- `llm.step.completed` 在 processor 持久化 step-finish 后发出，使用真实助手 `messageId`、`partId` 和同源 usage/cost；请求级与步骤级 usage 不相加，SQLite 对账口径不变。
+- `categories` 决定事件准入；`llmContent`、`rawPayloads`、`streaming` 独立，不得互相放行或自动切换。系统 `diagnostic.events_dropped` 不受类别过滤；被过滤事件不执行 content/raw 序列化或 raw 供应者。
+- `llmContent` 保存每轮完整逻辑请求及响应（包括失败/取消时的部分输出），不触发 wire capture；`rawPayloads` 才负责 provider/transport 原始报文，raw 供应者仍惰性执行。
+- 所有运行时 `configure` 调用经 `DiagnosticTrace.fromConfig` 映射；仅诊断配置变化不得 dispose 实例或中断会话。保留 `categories: null` 仅用于更新请求的删除标记、JSON/JSONC 真正删键、status 原样回显及旧服务端响应校验。
+- 保留启用时一次清理、启用期间每 6 小时清理，以及默认 14 天/2 GiB 保留规则；`cleanup` 是保留期清理，`clear` 是全量清空。HTTP 端点保持 `/global/diagnostics/clear`，锁竞争跳过不算错误，清空后仍可继续写入。
+- 保留 CLI 全局/单会话/跨 session trace 三种视图，含精确 latest-N、follow 替换/seq 重启处理；`show --content` 与 `--raw` 互斥且有敏感提示，大输出必须等待 stdout 排空。
+- 日志设置块仅桌面显示（两代设置页均需保护），保留 i18n、清空二次确认与 deleted/skipped 结果；不得因合并向 Web 新增正文/raw 查看入口。
+
+高风险落点：`packages/schema/src/diagnostic.ts`、`packages/core/src/diagnostic*.ts`、`packages/core/src/config/diagnostics.ts`、全局配置加载/更新、`packages/opencode/src/session/{prompt,llm,processor}.ts`、provider/transport、工具/权限/MCP/插件接入、project-copy 辅助 LLM、HTTP global handlers/groups、CLI diagnostics、两代桌面设置页及共享 `settings-logs.tsx`、i18n 和 SDK 生成脚本/产物。
+
 ## 合并过程中必须做的事
 
 ### 1. 冲突清完后，先找残留品牌/路径风险
@@ -200,6 +218,13 @@ sidecar embed 不是单文件功能，而是跨 `packages/app`、`packages/openc
 - `bmad-init`
 - `WISCODE_BUNDLED_UV_PATH`
 - `bmad-managed.json`
+- `DiagnosticTrace`
+- `llmContent`
+- `rawPayloads`
+- `categories`
+- `followsTraceId`
+- `llm.step.completed`
+- `diagnostics/clear`
 
 ### 2. OpenAPI / SDK 改动必须成套处理
 
@@ -305,6 +330,32 @@ cd packages/app && bun test --conditions=browser --preload ./happydom.ts ./src/c
 ```
 
 `test/bmad/vendor-update.test.ts` 还要求约定位置的本地 BMAD checkout，且端到端测试需要 uv；运行前确认前置条件，不得把缺失导致的跳过当成验收通过。若合并触及 V2 Protocol/Server 命令契约，还须从 `packages/client` 执行 `bun run generate`，并对受影响的 `core`、`protocol`、`server`、`client` 包运行 `bun typecheck`，检查生成客户端和 Web 提交路径。
+
+### 2.2 诊断日志常驻回归门禁
+
+每次上游同步都运行，不以是否出现 `diagnostic` 文件冲突为条件；LLM、配置或设置页的无冲突覆盖同样可能破坏接入。
+
+以下命令分别从所列包目录执行，不从仓库根运行测试：
+
+```bash
+cd packages/schema && bun test test/diagnostic.test.ts
+cd packages/core && bun test test/diagnostic.test.ts test/diagnostic-reader.test.ts test/config/config.test.ts
+cd packages/opencode && bun test test/session/llm.test.ts test/session/llm-diagnostic.test.ts test/session/prompt-diagnostic.test.ts test/session/tool-diagnostic.test.ts test/session/phase-diagnostic.test.ts test/session/context-diagnostic.test.ts test/permission/diagnostic.test.ts test/plugin/diagnostic.test.ts test/cli/diagnostics.test.ts test/cli/diagnostic-format.test.ts test/server/httpapi-global.test.ts test/server/httpapi-public-openapi.test.ts
+cd packages/opencode && bun test test/session/prompt.test.ts test/session/processor-effect.test.ts test/plugin/loader-shared.test.ts test/server/project-copy.test.ts
+cd packages/app && bun test src/components/diagnostic-settings.test.ts
+```
+
+同时从 `packages/schema`、`packages/core`、`packages/opencode`、`packages/app`、`packages/sdk/js` 各自执行 `bun typecheck`。已有失败必须在合并前基线上复现并单独记录，不得把新增失败一概归为存量。
+
+公开 HttpApi/配置/status 契约变化时，从 `packages/client` 执行 `bun run generate`，并运行 `./packages/sdk/js/script/build.ts` 再生遗留 SDK；不得手改生成物。检查 `global.config.update({ config })` 调用形状及 `categories` 删除语义仍正确。
+
+桌面/真实会话冒烟还必须覆盖：
+- 开启日志、切换类别/content/raw/streaming 不销毁运行中会话；仅 LLM + content 开启 + raw/streaming 关闭时，新事件有完整 content、无 raw/chunk，辅助 LLM 仍可见。
+- 一次带工具和子代理的会话，核对 trace 跨会话闭包、运行中接续 prompt 的 `followsTraceId`、JSONL step usage 与 SQLite 的 message/part 对账，以及 `plugin.loaded` 的 instance 落点。
+- 空日志目录时 status/打开目录/读取空态不报模糊错误；清空有二次确认和 deleted/skipped 展示，清空后 writer 与 follow 均继续工作；`show --content`/`--raw` 大输出经管道可完整解析。
+- Windows 上验证读取器与 clear 并发：按文件共享模式删除成功或返回 skipped 均可，但不能损坏读取器；后续清空成功并重建后，follow 能观察 seq 重启的新文件。
+
+Windows 实机验证不能用 macOS 测试或交叉构建替代；若需先提交才能在 Windows 打包，必须显式记录为待验证的发布门禁，不得宣称跨平台验收已完成。
 
 ### 3. 桌面端冒烟验证
 

@@ -386,6 +386,22 @@
 详细列表看：
 - [docs/wiscode-upstream-dependencies.md](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-upstream-dependencies.md)
 
+## 15.1 本机诊断日志与 LLM 内容记录
+
+### 必须保留
+
+- 本机 JSONL 诊断日志是 WisCode 独有能力，不能被上游普通应用日志替代；保留 session/instance 分流、分卷、锁、seq 恢复、失败隔离和不进入遥测/上报链路的边界。
+- 主/辅助 LLM、工具、权限、知识库/MCP、插件和上下文边界持续可观测；显式传递父子 trace 与接续关系，不使用 ambient context。processor 持久化后发出的 step usage/cost 与 SQLite message/part 可对账。
+- `categories` 写入过滤和 `llmContent`、`rawPayloads`、`streaming` 独立；逻辑内容是每轮自包含的完整请求/响应，不等于 wire 抓包，不因开启内容而开启 raw。系统丢弃统计始终可记录。
+- 全局动态配置统一经 `DiagnosticTrace.fromConfig`，只改 diagnostics 不重建实例或销毁会话；类别未配置代表全部，`null` 删除标记只在更新请求生效，持久化配置不存 null。
+- 保留启用时及每 6 小时的自动保留期清理（默认 14 天/2 GiB）和手动全量清空；CLI `cleanup` 与 `clear` 语义分开，HTTP 全量清空使用 `/global/diagnostics/clear`。
+- CLI 全局/会话/trace 视图、follow、`show --content`/`--raw` 和大输出排空能力必须保留。设置仅桌面显示，含 i18n、动态保存和清空确认；不新增 Web 日志正文/raw 入口。内容和 raw 均不承诺脱敏。
+
+### 合并时注意
+
+- 上游重构 session 执行器、provider、配置更新、插件加载或设置页时，必须迁移诊断接入点，不能只保留服务本身；以行为等价为准，不强求旧文件结构。
+- 逐项操作、测试命令与 Windows 人工门禁见 [合并清单 §9 与 §2.2](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-upstream-merge-checklist.md)。使用方式见 [诊断日志指南](/Volumes/EXTENSION/works/morewis/opencode/docs/wiscode-diagnostics-guide.md)，内容层契约见 [定稿设计](/Volumes/EXTENSION/works/morewis/opencode/docs/plans/2026-10-22-diagnostic-llm-content-v1-design.md)。
+
 ## 16. 合并时的最小核对顺序
 
 每次同步 OpenCode 前后，至少按这个顺序核对：
@@ -401,6 +417,7 @@
 9. 全局配置目录是否仍为 `~/.config/wiscode`，且 `~/.config/wiscode/wiscode.json` 的 MCP 配置可生效
 10. 内置 `/init` slash command 是否仍保持屏蔽（未重新出现在默认命令列表）
 11. BMAD 快照、内嵌 uv、`/bmad-init`、项目技能发现和 `/skills` 访问是否仍完整，普通 `/` 补全未重新暴露 BMAD 技能
+12. 诊断日志边界接入、类别/content/raw 独立开关、无会话销毁的动态配置、清理及 CLI 三种视图是否完整，常驻回归与桌面/Windows 门禁是否逐项记录
 
 ## 17. 维护规则
 
