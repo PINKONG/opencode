@@ -113,6 +113,13 @@ function matchLegacyOpenApi(input: Record<string, unknown>) {
         if (!isV2Api) delete operation.requestBody.required
         const body = operation.requestBody.content?.["application/json"]
         if (body?.schema) body.schema = stripOptionalNull(structuredClone(body.schema))
+        if (path === "/global/config" && method === "patch") {
+          const bodySchema = body?.schema
+          const bodyName = bodySchema?.$ref?.replace("#/components/schemas/", "")
+          const bodyDefinition = bodyName ? spec.components?.schemas?.[bodyName] : bodySchema
+          const categories = bodyDefinition?.properties?.diagnostics?.properties?.categories
+          if (categories) bodyDefinition!.properties!.diagnostics!.properties!.categories = nullable(categories)
+        }
         if (path === "/experimental/workspace" && method === "post") {
           // Workspace creation fields `branch` and `extra` are Schema.NullOr —
           // genuinely nullable, not just optional. Re-add the null that the
@@ -142,6 +149,13 @@ function matchLegacyOpenApi(input: Record<string, unknown>) {
         for (const content of Object.values(response.content ?? {})) {
           if (content.schema) content.schema = stripOptionalNull(structuredClone(content.schema))
         }
+      }
+      if (path === "/global/diagnostics" && method === "get") {
+        const status = operation.responses?.["200"]?.content?.["application/json"]?.schema
+        const statusName = status?.$ref?.replace("#/components/schemas/", "")
+        const statusDefinition = statusName ? spec.components?.schemas?.[statusName] : status
+        if (statusDefinition?.properties?.categories)
+          statusDefinition.properties.categories = nullable(statusDefinition.properties.categories)
       }
       if (!isV2Api) {
         // Auth is still runtime middleware outside the legacy public OpenAPI

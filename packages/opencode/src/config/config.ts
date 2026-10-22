@@ -114,6 +114,8 @@ type Info = ConfigV1.Info & {
   plugin_origins?: ConfigPlugin.Origin[]
 }
 
+type GlobalUpdate = { patch: Info; deletes?: readonly "diagnostics.categories"[] }
+
 type State = {
   config: Info
   directories: string[]
@@ -126,7 +128,7 @@ export interface Interface {
   readonly getGlobal: () => Effect.Effect<Info>
   readonly getConsoleState: () => Effect.Effect<ConsoleState>
   readonly update: (config: Info) => Effect.Effect<void>
-  readonly updateGlobal: (config: Info) => Effect.Effect<{ info: Info; changed: boolean }>
+  readonly updateGlobal: (input: Info | GlobalUpdate) => Effect.Effect<{ info: Info; changed: boolean }>
   readonly invalidate: () => Effect.Effect<void>
   readonly directories: () => Effect.Effect<string[]>
   readonly waitForDependencies: () => Effect.Effect<void>
@@ -156,6 +158,15 @@ function patchJsonc(input: string, patch: unknown, path: string[] = []): string 
   }
 
   return Object.entries(patch).reduce((result, [key, value]) => patchJsonc(result, value, [...path, key]), input)
+}
+
+function deleteJsonc(input: string, path: string[]) {
+  return applyEdits(
+    input,
+    modify(input, path, undefined, {
+      formattingOptions: { insertSpaces: true, tabSize: 2 },
+    }),
+  )
 }
 
 function writable(info: Info) {
@@ -663,10 +674,12 @@ const layer = Layer.effect(
       yield* invalidateGlobal
     })
 
-    const updateGlobal = Effect.fn("Config.updateGlobal")(function* (config: Info) {
+    const updateGlobal = Effect.fn("Config.updateGlobal")(function* (input: Info | GlobalUpdate) {
       const file = globalConfigFile()
       const before = (yield* readConfigFile(file)) ?? "{}"
-      const patch = writableGlobal(config)
+      const update = "patch" in input ? input : { patch: input }
+      const patch = writableGlobal(update.patch)
+      const deletes = update.deletes ?? []
 
       let next: Info
       let changed: boolean
@@ -674,12 +687,20 @@ const layer = Layer.effect(
         const existing = ConfigParse.jsonc(before, file)
         ConfigParse.schema(ConfigV1.Info, ConfigV2Compat.lower(normalizeLoadedConfig(existing), file).value, file)
         const merged = mergeDeep(isRecord(existing) ? existing : {}, patch)
+        for (const key of deletes) {
+          if (key === "diagnostics.categories" && isRecord(merged.diagnostics)) {
+            delete merged.diagnostics.categories
+          }
+        }
         const serialized = JSON.stringify(merged, null, 2)
         next = yield* decodeConfig(merged, file)
         changed = serialized !== before
         if (changed) yield* fs.writeFileString(file, serialized).pipe(Effect.orDie)
       } else {
-        const updated = patchJsonc(before, patch)
+        const updated = deletes.reduce(
+          (result, key) => (key === "diagnostics.categories" ? deleteJsonc(result, ["diagnostics", "categories"]) : result),
+          patchJsonc(before, patch),
+        )
         next = yield* decodeConfig(ConfigParse.jsonc(updated, file), file)
         changed = updated !== before
         if (changed) yield* fs.writeFileString(file, updated).pipe(Effect.orDie)

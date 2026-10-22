@@ -16,6 +16,7 @@ import { ConfigPluginV1 } from "./plugin"
 import { ConfigProviderV1 } from "./provider"
 import { ConfigServerV1 } from "./server"
 import { ConfigSkillsV1 } from "./skills"
+import { ConfigDiagnostics } from "../../config/diagnostics"
 
 export type Layout = ConfigLayoutV1.Layout
 
@@ -29,17 +30,13 @@ const LogLevelRef = Schema.Literals(["DEBUG", "INFO", "WARN", "ERROR"]).annotate
   description: "Log level",
 })
 
+export const Diagnostics = ConfigDiagnostics.Info
+
 export const Info = Schema.Struct({
   $schema: Schema.optional(Schema.String).annotate({
     description: "JSON schema reference for configuration validation",
   }),
-  diagnostics: Schema.Struct({
-    enabled: Schema.Boolean.pipe(Schema.optional),
-    rawPayloads: Schema.Boolean.pipe(Schema.optional),
-    streaming: Schema.Boolean.pipe(Schema.optional),
-    retentionDays: NonNegativeInt.pipe(Schema.optional),
-    maxTotalBytes: PositiveInt.pipe(Schema.optional),
-  })
+  diagnostics: Diagnostics
     .pipe(Schema.optional)
     .annotate({ description: "Global local-only diagnostic trace settings" }),
   shell: Schema.optional(Schema.String).annotate({ description: "Default shell to use for terminal and bash tool" }),

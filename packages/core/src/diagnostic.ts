@@ -6,10 +6,14 @@ import { FSUtil } from "./fs-util"
 import { Global } from "./global"
 import { makeGlobalNode } from "./effect/app-node"
 import { Flock } from "./util/flock"
+import { ConfigDiagnostics } from "./config/diagnostics"
 
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 type EventInput = { summary: unknown; raw?: () => unknown | Promise<unknown> }
 type EmitOptions = { status?: Diagnostic.Status; durationMs?: number; parentEventId?: string }
+
+export type Category = ConfigDiagnostics.Category
+export type ConfigInput = ConfigDiagnostics.Info
 
 export interface Config {
   readonly enabled: boolean
@@ -17,6 +21,7 @@ export interface Config {
   readonly streaming: boolean
   readonly retentionDays: number
   readonly maxTotalBytes: number
+  readonly categories?: readonly Category[]
 }
 
 export interface TraceContext {
@@ -77,6 +82,18 @@ const defaults: Config = {
   streaming: false,
   retentionDays: 14,
   maxTotalBytes: 2 * 1024 * 1024 * 1024,
+  categories: undefined,
+}
+
+export function fromConfig(input: ConfigInput | undefined): Config {
+  return {
+    enabled: input?.enabled ?? defaults.enabled,
+    rawPayloads: input?.rawPayloads ?? defaults.rawPayloads,
+    streaming: input?.streaming ?? defaults.streaming,
+    retentionDays: input?.retentionDays ?? defaults.retentionDays,
+    maxTotalBytes: input?.maxTotalBytes ?? defaults.maxTotalBytes,
+    categories: input?.categories === undefined ? undefined : [...input.categories],
+  }
 }
 
 type NodeOptions = {
@@ -116,7 +133,8 @@ function makeLayer(options: NodeOptions = {}) {
     Effect.gen(function* () {
       const global = yield* Global.Service
       const filesystem = yield* FSUtil.Service
-      let current = defaults
+      let current = fromConfig(defaults)
+      let allowed: ReadonlySet<string> | undefined
       const streams = new Map<string, Stream>()
       const background = new Map<string, Promise<void>>()
       const dropped = new Map<string, DropStats>()
@@ -248,6 +266,7 @@ function makeLayer(options: NodeOptions = {}) {
         Effect.sync(() => {
           const snapshot = current
           if (!snapshot.enabled) return
+          if (allowed !== undefined && !allowed.has(event.split(".", 1)[0])) return
           const lowPriority = isLowPriority(event)
           if (isStreamEvent(event) && !snapshot.streaming) return
           const timestamp = new Date().toISOString()
@@ -531,7 +550,8 @@ function makeLayer(options: NodeOptions = {}) {
         configure: (value) =>
           Effect.gen(function* () {
             const wasEnabled = current.enabled
-            current = { ...value }
+            current = fromConfig(value)
+            allowed = current.categories === undefined ? undefined : new Set(current.categories)
             if (!current.enabled) {
               if (cleanupTimer) clearTimeout(cleanupTimer)
               cleanupTimer = undefined

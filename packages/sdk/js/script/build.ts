@@ -94,6 +94,30 @@ if (historySdkPatched === generatedSdk) {
 }
 await Bun.write("./src/v2/gen/sdk.gen.ts", historySdkPatched)
 
+const configSdkSource = await Bun.file("./src/v2/gen/sdk.gen.ts").text()
+const configStart = configSdkSource.indexOf("export class Config extends HeyApiClient {")
+const diagnosticsStart = configSdkSource.indexOf("export class Diagnostics extends HeyApiClient {", configStart)
+const configClass = configSdkSource.slice(configStart, diagnosticsStart)
+const configClassPatched = configClass
+  .replace("configUpdate?: ConfigUpdate", "config?: ConfigUpdate")
+  .replaceAll("key: 'configUpdate', map: 'body'", "key: 'config', map: 'body'")
+  .replaceAll('key: "configUpdate", map: "body"', 'key: "config", map: "body"')
+if (configStart < 0 || diagnosticsStart < 0 || configClassPatched === configClass) {
+  throw new Error("Global config SDK parameter patch did not apply")
+}
+if (
+  configClassPatched.includes("configUpdate?: ConfigUpdate") ||
+  configClassPatched.includes("key: 'configUpdate', map: 'body'") ||
+  configClassPatched.includes('key: "configUpdate", map: "body"')
+) {
+  throw new Error("Global config SDK parameter patch was incomplete")
+}
+if (!configClassPatched.includes("key: 'config', map: 'body'") && !configClassPatched.includes('key: "config", map: "body"')) {
+  throw new Error("Global config SDK body key is missing")
+}
+const configSdkPatched = `${configSdkSource.slice(0, configStart)}${configClassPatched}${configSdkSource.slice(diagnosticsStart)}`
+await Bun.write("./src/v2/gen/sdk.gen.ts", configSdkPatched)
+
 // Patch a @hey-api/openapi-ts codegen bug: SseFn incorrectly passes the
 // endpoint's TError into the second generic of ServerSentEventsResult, which
 // is the AsyncGenerator's TReturn slot. Iterator return values have nothing

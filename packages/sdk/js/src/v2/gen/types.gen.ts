@@ -1901,6 +1901,161 @@ export type Config = {
     streaming?: boolean
     retentionDays?: number
     maxTotalBytes?: number
+    categories?: Array<"task" | "processing" | "llm" | "tool" | "knowledge" | "plugin" | "context">
+  }
+  shell?: string
+  logLevel?: LogLevel
+  server?: ServerConfig
+  command?: {
+    [key: string]: {
+      template: string
+      description?: string
+      agent?: string
+      model?: string
+      variant?: string
+      subtask?: boolean
+    }
+  }
+  skills?: {
+    paths?: Array<string>
+    urls?: Array<string>
+  }
+  references?: {
+    [key: string]: string | ConfigV2ReferenceGit | ConfigV2ReferenceLocal
+  }
+  reference?: {
+    [key: string]: string | ConfigV2ReferenceGit | ConfigV2ReferenceLocal
+  }
+  watcher?: {
+    ignore?: Array<string>
+  }
+  snapshot?: boolean
+  plugin?: Array<
+    | string
+    | [
+        string,
+        {
+          [key: string]: unknown
+        },
+      ]
+  >
+  share?: "manual" | "auto" | "disabled"
+  autoshare?: boolean
+  /**
+   * Check for new versions and show an update notice. Updates are never installed automatically; run /update or `wiscode upgrade`. Set to false to disable update checks. true and 'notify' behave the same
+   */
+  autoupdate?: boolean | "notify"
+  disabled_providers?: Array<string>
+  enabled_providers?: Array<string>
+  model?: string
+  small_model?: string
+  default_agent?: string
+  subagent_depth?: number
+  username?: string
+  mode?: {
+    build?: AgentConfig
+    plan?: AgentConfig
+    [key: string]: AgentConfig | undefined
+  }
+  agent?: {
+    plan?: AgentConfig
+    build?: AgentConfig
+    general?: AgentConfig
+    explore?: AgentConfig
+    title?: AgentConfig
+    summary?: AgentConfig
+    compaction?: AgentConfig
+    [key: string]: AgentConfig | undefined
+  }
+  provider?: {
+    [key: string]: ProviderConfig
+  }
+  mcp?: {
+    [key: string]:
+      | McpLocalConfig
+      | McpRemoteConfig
+      | {
+          enabled: boolean
+        }
+  }
+  /**
+   * Enable or configure formatters. Omit or set to false to disable, true to enable built-ins, or an object to enable built-ins with overrides.
+   */
+  formatter?:
+    | boolean
+    | {
+        [key: string]: {
+          disabled?: boolean
+          command?: Array<string>
+          environment?: {
+            [key: string]: string
+          }
+          extensions?: Array<string>
+        }
+      }
+  /**
+   * Enable or configure LSP servers. Omit or set to false to disable, true to enable built-ins, or an object to enable built-ins with overrides.
+   */
+  lsp?:
+    | boolean
+    | {
+        [key: string]:
+          | {
+              disabled: true
+            }
+          | {
+              command: Array<string>
+              extensions?: Array<string>
+              disabled?: boolean
+              env?: {
+                [key: string]: string
+              }
+              initialization?: {
+                [key: string]: unknown
+              }
+            }
+      }
+  instructions?: Array<string>
+  layout?: LayoutConfig
+  permission?: PermissionConfig
+  tools?: {
+    [key: string]: boolean
+  }
+  attachment?: AttachmentConfig
+  enterprise?: {
+    url?: string
+  }
+  tool_output?: {
+    max_lines?: number
+    max_bytes?: number
+  }
+  compaction?: {
+    auto?: boolean
+    prune?: boolean
+    tail_turns?: number
+    preserve_recent_tokens?: number
+    reserved?: number
+  }
+  experimental?: {
+    disable_paste_summary?: boolean
+    batch_tool?: boolean
+    openTelemetry?: boolean
+    primary_tools?: Array<string>
+    continue_loop_on_deny?: boolean
+    mcp_timeout?: number
+    policies?: Array<ConfigV2ExperimentalPolicy>
+  }
+}
+
+export type ConfigUpdate = {
+  $schema?: string
+  diagnostics?: {
+    enabled?: boolean
+    rawPayloads?: boolean
+    streaming?: boolean
+    retentionDays?: number
+    maxTotalBytes?: number
+    categories?: Array<"task" | "processing" | "llm" | "tool" | "knowledge" | "plugin" | "context"> | null
   }
   shell?: string
   logLevel?: LogLevel
@@ -7320,7 +7475,7 @@ export type GlobalConfigGetResponses = {
 export type GlobalConfigGetResponse = GlobalConfigGetResponses[keyof GlobalConfigGetResponses]
 
 export type GlobalConfigUpdateData = {
-  body?: Config
+  body?: ConfigUpdate
   path?: never
   query?: never
   url: "/global/config"
@@ -7371,6 +7526,7 @@ export type GlobalDiagnosticsStatusResponses = {
     streaming: boolean
     retentionDays: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
     maxTotalBytes: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    categories: Array<"task" | "processing" | "llm" | "tool" | "knowledge" | "plugin" | "context"> | null
   }
 }
 

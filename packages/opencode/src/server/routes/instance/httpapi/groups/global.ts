@@ -1,4 +1,5 @@
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
+import { ConfigDiagnostics } from "@opencode-ai/core/config/diagnostics"
 import { NonNegativeInt } from "@opencode-ai/core/schema"
 import { EventV2 } from "@opencode-ai/core/event"
 import { EventManifest } from "@/event-manifest"
@@ -73,7 +74,18 @@ const DiagnosticStatus = Schema.Struct({
   streaming: Schema.Boolean,
   retentionDays: Schema.Number,
   maxTotalBytes: Schema.Number,
+  categories: Schema.NullOr(ConfigDiagnostics.Categories),
 })
+
+const GlobalConfigUpdate = Schema.Struct({
+  ...ConfigV1.Info.fields,
+  diagnostics: Schema.optional(
+    Schema.Struct({
+      ...ConfigV1.Diagnostics.fields,
+      categories: Schema.optional(Schema.NullOr(ConfigDiagnostics.Categories)),
+    }),
+  ),
+}).annotate({ identifier: "ConfigUpdate" })
 
 const DiagnosticClearResult = Schema.Struct({ root: Schema.String, deleted: NonNegativeInt, skipped: NonNegativeInt })
 
@@ -118,7 +130,7 @@ export const GlobalApi = HttpApi.make("global").add(
         }),
       ),
       HttpApiEndpoint.patch("configUpdate", GlobalPaths.config, {
-        payload: ConfigV1.Info,
+        payload: GlobalConfigUpdate,
         success: described(ConfigV1.Info, "Successfully updated global config"),
         error: HttpApiError.BadRequest,
       }).annotateMerge(

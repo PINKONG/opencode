@@ -20,6 +20,101 @@ const run = async <A>(
 }
 
 describe("DiagnosticTrace", () => {
+  test("filters categories before summary normalization, raw evaluation, queue capacity and sequence allocation", async () => {
+    await using tmp = await tmpdir()
+    let summaryCalls = 0
+    let rawCalls = 0
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      yield* service.configure({ ...service.config(), enabled: true, rawPayloads: true, categories: ["llm"] })
+      const context = service.startTask({ sessionId: "ses_categories" })
+      for (const event of ["task.started", "tool.completed", "plugin.loaded", "future.event"]) {
+        yield* service.emit(context, event, {
+          summary: { get ignored() { summaryCalls++; return true } },
+          raw: () => { rawCalls++; return "ignored" },
+        })
+      }
+      yield* service.complete(context, "llm.request.completed", { summary: { tokens: 4 }, raw: () => "kept" })
+      yield* service.flush()
+    }), DiagnosticTrace.testingNode({ highCapacity: 1 }))
+    const directory = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10))
+    const rows = (await fs.readFile(path.join(directory, "ses_categories.jsonl"), "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line))
+    expect(summaryCalls).toBe(0)
+    expect(rawCalls).toBe(0)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ seq: 0, event: "llm.request.completed", payload: { raw: "kept" } })
+    expect(await fs.readdir(directory)).toEqual(["ses_categories.jsonl"])
+  })
+
+  test("maps every configuration field and supplies complete defaults", () => {
+    expect(DiagnosticTrace.fromConfig(undefined)).toEqual({
+      enabled: false, rawPayloads: false, streaming: false, retentionDays: 14,
+      maxTotalBytes: 2 * 1024 * 1024 * 1024, categories: undefined,
+    })
+    expect(DiagnosticTrace.fromConfig({ enabled: true, rawPayloads: true, streaming: true,
+      retentionDays: 7, maxTotalBytes: 4096, categories: ["llm", "tool"] })).toEqual({
+      enabled: true, rawPayloads: true, streaming: true, retentionDays: 7, maxTotalBytes: 4096, categories: ["llm", "tool"],
+    })
+  })
+
+  test("copies category snapshots and restores unrestricted admission on replacement", async () => {
+    await using tmp = await tmpdir()
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      const categories: ("llm" | "tool")[] = ["llm"]
+      yield* service.configure({ ...service.config(), enabled: true, categories })
+      categories.push("tool")
+      expect(service.config().categories).toEqual(["llm"])
+      yield* service.emit(undefined, "tool.started", { summary: {} })
+      yield* service.emit(undefined, "llm.request.started", { summary: {} })
+      yield* service.configure({ ...service.config(), categories: undefined })
+      yield* service.emit(undefined, "future.event", { summary: {} })
+      yield* service.flush()
+    }))
+    const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
+    expect((await fs.readFile(file, "utf8")).trim().split("\n").map((line) => JSON.parse(line).event))
+      .toEqual(["llm.request.started", "future.event"])
+  })
+
+  test("keeps category and streaming admission independent", async () => {
+    await using tmp = await tmpdir()
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      yield* service.configure({ ...service.config(), enabled: true, categories: ["llm"] })
+      yield* service.emit(undefined, "llm.stream.chunk", { summary: { index: 0 } })
+      yield* service.configure({ ...service.config(), streaming: true, categories: ["tool"] })
+      yield* service.emit(undefined, "llm.stream.chunk", { summary: { index: 1 } })
+      yield* service.configure({ ...service.config(), categories: ["llm"] })
+      yield* service.emit(undefined, "llm.stream.chunk", { summary: { index: 2 } })
+      yield* service.flush()
+    }))
+    const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
+    const rows = (await fs.readFile(file, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line))
+    expect(rows).toHaveLength(1)
+    expect(rows[0].payload.summary.index).toBe(2)
+  })
+
+  test("preserves writer drop signals under llm-only admission", async () => {
+    await using tmp = await tmpdir()
+    await run(tmp.path, Effect.gen(function* () {
+      const service = yield* DiagnosticTrace.Service
+      yield* service.configure({ ...service.config(), enabled: true, categories: ["llm"] })
+      yield* service.emit(undefined, "llm.request.started", { summary: {} })
+      yield* service.emit(undefined, "tool.started", { summary: {} })
+      yield* service.flush()
+    }), DiagnosticTrace.testingNode({ highCapacity: 0 }))
+    const file = path.join(tmp.path, "log", "diagnostics", new Date().toISOString().slice(0, 10), "instance.jsonl")
+    const row = JSON.parse(await fs.readFile(file, "utf8"))
+    expect(row.event).toBe("diagnostic.events_dropped")
+    expect(row.payload.counts).toEqual({ "llm.request.started": 1 })
+  })
+
   test("normalizes failures with a stable stage and retryability", () => {
     const error = Object.assign(new Error("quota exceeded"), { retryable: true, providerError: { code: 429 } })
     expect(DiagnosticTrace.errorInfo(error, "provider")).toMatchObject({
@@ -104,6 +199,7 @@ describe("DiagnosticTrace", () => {
           streaming: false,
           retentionDays: 14,
           maxTotalBytes: 2 * 1024 * 1024 * 1024,
+          categories: undefined,
         })
         yield* service.emit(context, "task.started", {
           summary: { textLength: 4 },

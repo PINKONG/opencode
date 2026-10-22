@@ -22,6 +22,7 @@ import type {
   ConfigGetResponses,
   ConfigProvidersErrors,
   ConfigProvidersResponses,
+  ConfigUpdate,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
   EventSubscribeResponses,
@@ -1397,7 +1398,7 @@ export class Config extends HeyApiClient {
    */
   public update<ThrowOnError extends boolean = false>(
     parameters?: {
-      config?: Config3
+      config?: ConfigUpdate
     },
     options?: Options<never, ThrowOnError>,
   ) {

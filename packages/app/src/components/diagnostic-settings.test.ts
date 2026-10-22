@@ -1,5 +1,12 @@
 import { expect, test } from "bun:test"
-import { cleanupDiagnosticLogs, openDiagnosticDirectory } from "./diagnostic-settings"
+import {
+  cleanupDiagnosticLogs,
+  diagnosticCategoriesPatch,
+  diagnosticCategoriesMatch,
+  openDiagnosticDirectory,
+  selectedDiagnosticCategories,
+  updateDiagnosticCategory,
+} from "./diagnostic-settings"
 import { dict as en } from "../i18n/en"
 import { dict as zh } from "../i18n/zh"
 import { dict as zht } from "../i18n/zht"
@@ -14,6 +21,28 @@ test("diagnostic settings have localized navigation and privacy copy", () => {
   expect(zh["settings.logs.cleanup.failed"]).toContain("{{error}}")
   expect(zh["settings.logs.cleanup.confirm"]).toContain("今天")
   expect(en["settings.logs.cleanup.partial"]).toContain("{{skipped}}")
+})
+
+test("diagnostic categories default to all and null restores the unrestricted configuration", () => {
+  expect(selectedDiagnosticCategories(undefined)).toHaveLength(7)
+  expect(selectedDiagnosticCategories(["llm"])).toEqual(["llm"])
+  expect(diagnosticCategoriesPatch(["llm"])).toEqual(["llm"])
+  expect(diagnosticCategoriesPatch(null)).toBeNull()
+  expect(diagnosticCategoriesPatch(selectedDiagnosticCategories(undefined))).toHaveLength(7)
+})
+
+test("diagnostic category saves reject servers silently ignoring category updates", () => {
+  expect(diagnosticCategoriesMatch(null, ["llm"])).toBe(false)
+  expect(diagnosticCategoriesMatch(["llm"], undefined)).toBe(false)
+  expect(diagnosticCategoriesMatch(["llm"], ["tool"])).toBe(false)
+  expect(diagnosticCategoriesMatch(null, undefined)).toBe(true)
+  expect(diagnosticCategoriesMatch(["llm", "tool"], ["tool", "llm"])).toBe(true)
+})
+
+test("diagnostic category selection cannot remove its last category", () => {
+  expect(updateDiagnosticCategory(["llm"], "llm", false)).toEqual(["llm"])
+  expect(updateDiagnosticCategory(["llm"], "tool", true)).toEqual(["llm", "tool"])
+  expect(updateDiagnosticCategory(["llm", "tool"], "llm", false)).toEqual(["tool"])
 })
 
 test("opens the diagnostics directory through a desktop file manager", async () => {

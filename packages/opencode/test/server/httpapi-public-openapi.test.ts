@@ -25,7 +25,10 @@ type OpenApiOperation = {
     readonly schema?: { readonly type?: string }
   }>
   readonly responses?: Record<string, OpenApiResponse>
-  readonly requestBody?: { readonly required?: boolean }
+  readonly requestBody?: {
+    readonly required?: boolean
+    readonly content?: Record<string, { readonly schema?: OpenApiSchema }>
+  }
   readonly security?: unknown
 }
 type OpenApiPathItem = Partial<Record<Method, OpenApiOperation>>
@@ -61,6 +64,17 @@ function componentName(ref: string) {
   return ref.replace("#/components/schemas/", "")
 }
 
+function propertySchema(spec: OpenApiSpec, schema: OpenApiSchema | undefined, property: string): OpenApiSchema | undefined {
+  if (!schema) return undefined
+  if (schema.$ref) return propertySchema(spec, spec.components.schemas[componentName(schema.$ref)], property)
+  return schema.properties?.[property]
+}
+
+function includesNull(schema: OpenApiSchema | undefined): boolean {
+  if (!schema) return false
+  return schema.type === "null" || (schema.anyOf ?? []).some(includesNull)
+}
+
 function componentNames(response: OpenApiResponse | undefined) {
   const schema = response?.content?.["application/json"]?.schema
   if (!schema) return []
@@ -79,6 +93,24 @@ describe("PublicApi OpenAPI v2 errors", () => {
 
     expect(spec.info?.title).toBe("WisCode")
     expect(spec.info?.description).toBe("WisCode API")
+  })
+
+  test("keeps the diagnostic category deletion marker nullable only on update and status contracts", () => {
+    const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
+    const update = spec.paths["/global/config"]?.patch?.requestBody?.content?.["application/json"]?.schema
+    const status = spec.paths["/global/diagnostics"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema
+    const config = spec.paths["/global/config"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema
+
+    expect(includesNull(propertySchema(spec, propertySchema(spec, update, "diagnostics"), "categories"))).toBe(true)
+    expect(includesNull(propertySchema(spec, status, "categories"))).toBe(true)
+    expect(includesNull(propertySchema(spec, propertySchema(spec, config, "diagnostics"), "categories"))).toBe(false)
+  })
+
+  test("keeps the legacy global config update body named config", () => {
+    const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
+    const update = spec.paths["/global/config"]?.patch?.requestBody?.content?.["application/json"]?.schema
+
+    expect(update?.$ref).toBe("#/components/schemas/ConfigUpdate")
   })
 
   test("includes plugin-facing core schemas", () => {

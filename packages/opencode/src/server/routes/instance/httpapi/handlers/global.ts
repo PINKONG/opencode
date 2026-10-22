@@ -2,7 +2,6 @@ import { Config } from "@/config/config"
 import { GlobalBus, type GlobalEvent as GlobalBusEvent } from "@/bus/global"
 import { EffectBridge } from "@/effect/bridge"
 import { EventV2 } from "@opencode-ai/core/event"
-import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import { Installation } from "@/installation"
 import { disposeAllInstancesAndEmitGlobalDisposed } from "@/server/global-lifecycle"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
@@ -77,14 +76,26 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
 
     const configGet = Effect.fn("GlobalHttpApi.configGet")(function* () {
       const info = yield* config.getGlobal()
-      yield* diagnostics.configure(diagnosticConfig(info.diagnostics))
+      yield* diagnostics.configure(DiagnosticTrace.fromConfig(info.diagnostics))
       return info
     })
 
     const configUpdate = Effect.fn("GlobalHttpApi.configUpdate")(function* (ctx) {
       const before = yield* config.getGlobal()
-      const result = yield* config.updateGlobal(ctx.payload)
-      yield* diagnostics.configure(diagnosticConfig(result.info.diagnostics))
+      const removeCategories = ctx.payload.diagnostics?.categories === null
+      const diagnosticsPatch = { ...ctx.payload.diagnostics }
+      if (removeCategories) delete diagnosticsPatch.categories
+      const update = removeCategories
+        ? {
+            patch: {
+              ...ctx.payload,
+              diagnostics: diagnosticsPatch,
+            },
+            deletes: ["diagnostics.categories"] as const,
+          }
+        : ctx.payload
+      const result = yield* config.updateGlobal(update)
+      yield* diagnostics.configure(DiagnosticTrace.fromConfig(result.info.diagnostics))
       if (result.changed && shouldDisposeInstances(before, result.info))
         bridge.fork(disposeAllInstancesAndEmitGlobalDisposed({ swallowErrors: true }))
       return result.info
@@ -92,9 +103,10 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
 
     const diagnosticsStatus = Effect.fn("GlobalHttpApi.diagnosticsStatus")(function* () {
       const info = yield* config.getGlobal()
-      yield* diagnostics.configure(diagnosticConfig(info.diagnostics))
+      yield* diagnostics.configure(DiagnosticTrace.fromConfig(info.diagnostics))
       yield* diagnostics.ensureRoot()
-      return { root: diagnostics.root(), ...diagnostics.config() }
+      const current = diagnostics.config()
+      return { root: diagnostics.root(), ...current, categories: current.categories ?? null }
     })
 
     const diagnosticsClear = Effect.fn("GlobalHttpApi.diagnosticsClear")(function* () {
@@ -147,16 +159,6 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
       .handle("upgrade", upgrade)
   }),
 )
-
-function diagnosticConfig(input: ConfigV1.Info["diagnostics"]): DiagnosticTrace.Config {
-  return {
-    enabled: input?.enabled ?? false,
-    rawPayloads: input?.rawPayloads ?? false,
-    streaming: input?.streaming ?? false,
-    retentionDays: input?.retentionDays ?? 14,
-    maxTotalBytes: input?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
-  }
-}
 
 export function shouldDisposeInstances(before: Record<string, unknown>, after: Record<string, unknown>) {
   return !isDeepStrictEqual({ ...before, diagnostics: undefined }, { ...after, diagnostics: undefined })

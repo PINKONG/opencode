@@ -160,14 +160,9 @@ const StatusCommand = effectCmd({
     const config = yield* Config.Service
     const diagnostics = yield* DiagnosticTrace.Service
     const info = yield* config.getGlobal()
-    yield* diagnostics.configure({
-      enabled: info.diagnostics?.enabled ?? false,
-      rawPayloads: info.diagnostics?.rawPayloads ?? false,
-      streaming: info.diagnostics?.streaming ?? false,
-      retentionDays: info.diagnostics?.retentionDays ?? 14,
-      maxTotalBytes: info.diagnostics?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
-    })
-    console.log(JSON.stringify({ root: diagnostics.root(), ...diagnostics.config() }))
+    yield* diagnostics.configure(DiagnosticTrace.fromConfig(info.diagnostics))
+    const current = diagnostics.config()
+    console.log(JSON.stringify({ root: diagnostics.root(), ...current, categories: current.categories ?? null }))
   }),
 })
 
@@ -181,13 +176,7 @@ const CleanupCommand = effectCmd({
     const config = yield* Config.Service
     const diagnostics = yield* DiagnosticTrace.Service
     const info = yield* config.getGlobal()
-    yield* diagnostics.configure({
-      enabled: info.diagnostics?.enabled ?? false,
-      rawPayloads: info.diagnostics?.rawPayloads ?? false,
-      streaming: info.diagnostics?.streaming ?? false,
-      retentionDays: info.diagnostics?.retentionDays ?? 14,
-      maxTotalBytes: info.diagnostics?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
-    })
+    yield* diagnostics.configure(DiagnosticTrace.fromConfig(info.diagnostics))
     yield* diagnostics.cleanup()
     console.log(diagnostics.root())
   }),

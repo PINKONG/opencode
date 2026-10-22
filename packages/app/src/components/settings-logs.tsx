@@ -1,14 +1,24 @@
-import { Component, Show, createMemo } from "solid-js"
+import { Component, Show, createMemo, createSignal } from "solid-js"
 import { Button } from "@opencode-ai/ui/button"
+import { Checkbox } from "@opencode-ai/ui/checkbox"
 import { Switch } from "@opencode-ai/ui/switch"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
+import { CheckboxV2 } from "@opencode-ai/ui/v2/checkbox-v2"
 import { Switch as SwitchV2 } from "@opencode-ai/ui/v2/switch-v2"
-import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
+import type { ConfigUpdate } from "@opencode-ai/sdk/v2/client"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
-import { cleanupDiagnosticLogs, openDiagnosticDirectory } from "./diagnostic-settings"
+import {
+  cleanupDiagnosticLogs,
+  diagnosticCategoriesMatch,
+  diagnosticCategoriesPatch,
+  DIAGNOSTIC_CATEGORIES,
+  openDiagnosticDirectory,
+  selectedDiagnosticCategories,
+  updateDiagnosticCategory,
+} from "./diagnostic-settings"
 import { SettingsList } from "./settings-list"
 import { SettingsRow } from "./settings-row"
 import { SettingsListV2 } from "./settings-v2/parts/list"
@@ -20,8 +30,25 @@ function useLogs() {
   const serverSdk = useServerSDK()
   const serverSync = useServerSync()
   const diagnostics = createMemo(() => serverSync().data.config.diagnostics ?? {})
-  const update = (patch: Partial<NonNullable<ConfigV1.Info["diagnostics"]>>) =>
+  const [savingCategories, setSavingCategories] = createSignal(false)
+  const update = (patch: NonNullable<ConfigUpdate["diagnostics"]>) =>
     serverSync().updateConfig({ diagnostics: { ...diagnostics(), ...patch } })
+  const updateCategories = async (categories: readonly (typeof DIAGNOSTIC_CATEGORIES)[number][] | null) => {
+    const expected = categories === null ? null : [...categories]
+    setSavingCategories(true)
+    try {
+      const result = await update({ categories: diagnosticCategoriesPatch(expected) })
+      if (!result.data?.diagnostics || !diagnosticCategoriesMatch(expected, result.data.diagnostics.categories)) {
+        throw new Error(language.t("settings.logs.categories.unsupported"))
+      }
+    } catch (error) {
+      window.alert(language.t("settings.logs.categories.failed", { error: String(error) }))
+    } finally {
+      setSavingCategories(false)
+    }
+  }
+  const toggleCategory = (category: (typeof DIAGNOSTIC_CATEGORIES)[number], checked: boolean) =>
+    void updateCategories(updateDiagnosticCategory(diagnostics().categories, category, checked))
   const open = async () => {
     try {
       const result = await openDiagnosticDirectory({
@@ -62,7 +89,11 @@ function useLogs() {
     if (rawPayloads && !window.confirm(language.t("settings.logs.raw.confirm"))) return
     void update({ rawPayloads })
   }
-  return { language, diagnostics, update, updateRaw, open, cleanup }
+  return { language, diagnostics, savingCategories, update, updateRaw, updateCategories, toggleCategory, open, cleanup }
+}
+
+function categoryLabel(language: ReturnType<typeof useLanguage>, category: (typeof DIAGNOSTIC_CATEGORIES)[number]) {
+  return language.t(`settings.logs.categories.${category}`)
 }
 
 export const SettingsLogsSection: Component = () => {
@@ -78,6 +109,33 @@ export const SettingsLogsSection: Component = () => {
           <Switch checked={logs.diagnostics().enabled ?? false} onChange={(enabled) => logs.update({ enabled })} />
         </SettingsRow>
         <Show when={logs.diagnostics().enabled}>
+          <div class="flex flex-col gap-2 py-3 border-b border-border-weak-base last:border-none">
+            <div class="flex flex-wrap items-center gap-4 sm:flex-nowrap">
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-14-medium text-text-strong">{logs.language.t("settings.logs.categories.title")}</span>
+                <span class="text-12-regular text-text-weak">{logs.language.t("settings.logs.categories.description")}</span>
+              </div>
+              <div class="flex w-full justify-end gap-2 sm:w-auto sm:shrink-0">
+                <Button size="small" variant="secondary" disabled={logs.savingCategories()} onClick={() => void logs.updateCategories(null)}>
+                  {logs.language.t("settings.logs.categories.all")}
+                </Button>
+                <Button size="small" variant="secondary" disabled={logs.savingCategories()} onClick={() => void logs.updateCategories(["llm"])}>
+                  {logs.language.t("settings.logs.categories.llmOnly")}
+                </Button>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-x-5 gap-y-2">
+              {DIAGNOSTIC_CATEGORIES.map((category) => (
+                <Checkbox
+                  disabled={logs.savingCategories()}
+                  checked={selectedDiagnosticCategories(logs.diagnostics().categories).includes(category)}
+                  onChange={(checked) => logs.toggleCategory(category, checked)}
+                >
+                  {categoryLabel(logs.language, category)}
+                </Checkbox>
+              ))}
+            </div>
+          </div>
           <SettingsRow
             title={logs.language.t("settings.logs.raw.title")}
             description={logs.language.t("settings.logs.raw.description")}
@@ -128,6 +186,37 @@ export const SettingsLogsSectionV2: Component = () => {
           <SwitchV2 checked={logs.diagnostics().enabled ?? false} onChange={(enabled) => logs.update({ enabled })} />
         </SettingsRowV2>
         <Show when={logs.diagnostics().enabled}>
+          <div data-component="settings-v2-row" data-wrap="content">
+            <div data-slot="settings-v2-row-copy">
+              <div data-slot="settings-v2-row-title">{logs.language.t("settings.logs.categories.title")}</div>
+              <div data-slot="settings-v2-row-description">{logs.language.t("settings.logs.categories.description")}</div>
+            </div>
+            <div data-slot="settings-v2-row-control">
+              <div class="flex gap-2">
+                <ButtonV2
+                  size="normal"
+                  variant="neutral"
+                  disabled={logs.savingCategories()}
+                  onClick={() => void logs.updateCategories(null)}
+                >
+                  {logs.language.t("settings.logs.categories.all")}
+                </ButtonV2>
+                <ButtonV2 size="normal" variant="neutral" disabled={logs.savingCategories()} onClick={() => void logs.updateCategories(["llm"])}>
+                  {logs.language.t("settings.logs.categories.llmOnly")}
+                </ButtonV2>
+              </div>
+            </div>
+            <div data-slot="settings-v2-row-content">
+              {DIAGNOSTIC_CATEGORIES.map((category) => (
+                <CheckboxV2
+                  disabled={logs.savingCategories()}
+                  label={categoryLabel(logs.language, category)}
+                  checked={selectedDiagnosticCategories(logs.diagnostics().categories).includes(category)}
+                  onChange={(checked) => logs.toggleCategory(category, checked)}
+                />
+              ))}
+            </div>
+          </div>
           <SettingsRowV2
             title={logs.language.t("settings.logs.raw.title")}
             description={logs.language.t("settings.logs.raw.description")}

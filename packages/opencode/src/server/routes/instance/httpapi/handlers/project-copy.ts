@@ -36,13 +36,7 @@ export const projectCopyHandlers = HttpApiBuilder.group(InstanceHttpApi, "projec
         (yield* provider.getModel(fallback.providerID, fallback.modelID))
       const sessionID = SessionID.descending()
       const global = yield* config.getGlobal()
-      yield* diagnostics.configure({
-        enabled: global.diagnostics?.enabled ?? false,
-        rawPayloads: global.diagnostics?.rawPayloads ?? false,
-        streaming: global.diagnostics?.streaming ?? false,
-        retentionDays: global.diagnostics?.retentionDays ?? 14,
-        maxTotalBytes: global.diagnostics?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
-      })
+      yield* diagnostics.configure(DiagnosticTrace.fromConfig(global.diagnostics))
       const trace = diagnostics.startTask({
         sessionId: sessionID,
         runtime: { sessionEngine: "legacy-v1", surface: "web" },

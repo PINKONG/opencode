@@ -1268,13 +1268,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     ) {
       const session = yield* sessions.get(input.sessionID).pipe(Effect.orDie)
       const globalConfig = yield* config.getGlobal()
-      yield* diagnostics.configure({
-        enabled: globalConfig.diagnostics?.enabled ?? false,
-        rawPayloads: globalConfig.diagnostics?.rawPayloads ?? false,
-        streaming: globalConfig.diagnostics?.streaming ?? false,
-        retentionDays: globalConfig.diagnostics?.retentionDays ?? 14,
-        maxTotalBytes: globalConfig.diagnostics?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
-      })
+      yield* diagnostics.configure(DiagnosticTrace.fromConfig(globalConfig.diagnostics))
       const location = yield* InstanceState.context
       const parentLink = diagnosticParentLink(parent, input.sessionID, parentToolCallId)
       const diagnostic = diagnostics.startTask({

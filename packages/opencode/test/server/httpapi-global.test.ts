@@ -20,6 +20,8 @@ import { schemaErrorLayer } from "../../src/server/routes/instance/httpapi/middl
 import { testEffect } from "../lib/effect"
 
 let ensuredRoots = 0
+let globalConfig: Record<string, unknown> = {}
+let globalUpdate: unknown
 
 const diagnostic = {
   configure: () => Effect.void,
@@ -53,7 +55,17 @@ const apiLayer = HttpRouter.serve(
 ).pipe(
   Layer.provideMerge(NodeHttpServer.layerTest),
   Layer.provide(Layer.mock(Auth.Service)({})),
-  Layer.provide(Layer.mock(Config.Service)({ getGlobal: () => Effect.succeed({}) })),
+  Layer.provide(
+    Layer.mock(Config.Service)({
+      getGlobal: () => Effect.sync(() => globalConfig),
+      updateGlobal: (input: unknown) =>
+        Effect.sync(() => {
+          globalUpdate = input
+          globalConfig = { diagnostics: {} }
+          return { info: globalConfig, changed: true }
+        }),
+    }),
+  ),
   Layer.provide(Layer.mock(DiagnosticTrace.Service)(diagnostic)),
   Layer.provide(Layer.mock(MoveSession.Service)({})),
   Layer.provide(
@@ -93,10 +105,40 @@ describe("global HttpApi", () => {
   it.live("ensures the local diagnostic directory exists before reporting it", () =>
     Effect.gen(function* () {
       ensuredRoots = 0
+      globalConfig = {}
       const response = yield* HttpClientRequest.get(GlobalPaths.diagnostics).pipe(HttpClient.execute)
       expect(response.status).toBe(200)
-      expect(yield* response.json).toMatchObject({ root: "/tmp/wiscode-diagnostics", enabled: false })
+      expect(yield* response.json).toMatchObject({
+        root: "/tmp/wiscode-diagnostics",
+        enabled: false,
+        categories: null,
+      })
       expect(ensuredRoots).toBe(1)
+    }),
+  )
+
+  it.live("accepts categories null only as the diagnostic category deletion marker", () =>
+    Effect.gen(function* () {
+      globalUpdate = undefined
+      const response = yield* HttpClientRequest.patch(GlobalPaths.config).pipe(
+        HttpClientRequest.bodyJsonUnsafe({ diagnostics: { categories: null } }),
+        HttpClient.execute,
+      )
+
+      expect(response.status).toBe(200)
+      expect(globalUpdate).toEqual({ patch: { diagnostics: {} }, deletes: ["diagnostics.categories"] })
+      expect(yield* response.json).toEqual({ diagnostics: {} })
+    }),
+  )
+
+  it.live("rejects an empty diagnostic category selection", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClientRequest.patch(GlobalPaths.config).pipe(
+        HttpClientRequest.bodyJsonUnsafe({ diagnostics: { categories: [] } }),
+        HttpClient.execute,
+      )
+
+      expect(response.status).toBe(400)
     }),
   )
 

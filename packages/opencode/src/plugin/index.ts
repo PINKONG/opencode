@@ -142,13 +142,7 @@ const layer = Layer.effect(
         const hookIDs: string[] = []
         const bridge = yield* EffectBridge.make()
         const global = yield* config.getGlobal()
-        yield* diagnostics.configure({
-          enabled: global.diagnostics?.enabled ?? false,
-          rawPayloads: global.diagnostics?.rawPayloads ?? false,
-          streaming: global.diagnostics?.streaming ?? false,
-          retentionDays: global.diagnostics?.retentionDays ?? 14,
-          maxTotalBytes: global.diagnostics?.maxTotalBytes ?? 2 * 1024 * 1024 * 1024,
-        })
+        yield* diagnostics.configure(DiagnosticTrace.fromConfig(global.diagnostics))
 
         function publishPluginError(message: string) {
           bridge.fork(events.publish(Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() }))

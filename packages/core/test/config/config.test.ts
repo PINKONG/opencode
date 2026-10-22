@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test"
 import { Effect, Layer, Schema } from "effect"
 import { FastCheck } from "effect/testing"
 import { Config } from "@opencode-ai/core/config"
+import { DiagnosticTrace } from "@opencode-ai/core/diagnostic"
 import { ConfigProvider } from "@opencode-ai/core/config/provider"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
@@ -52,6 +53,15 @@ const provider = {
 }
 
 describe("Config", () => {
+  test("diagnostic categories validate nonempty business allowlists", () => {
+    const decode = Schema.decodeUnknownSync(ConfigV1.Info)
+    expect(decode({ diagnostics: { categories: ["llm", "tool"] } }).diagnostics?.categories).toEqual(["llm", "tool"])
+    for (const categories of [[], ["unknown"], ["diagnostic"], null]) {
+      expect(() => decode({ diagnostics: { categories } })).toThrow()
+    }
+    expect(Object.keys(DiagnosticTrace.fromConfig(undefined)).sort()).toEqual(Object.keys(ConfigV1.Diagnostics.fields).sort())
+  })
+
   test("diagnostic settings remain absent when not configured", () => {
     const config = Schema.decodeUnknownSync(ConfigV1.Info)({})
 

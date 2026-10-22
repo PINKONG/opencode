@@ -531,6 +531,52 @@ it.effect("updates global config and omits empty shell key in jsonc", () =>
   ),
 )
 
+for (const extension of ["json", "jsonc"] as const) {
+  it.effect(`updates and removes diagnostic categories in ${extension}`, () =>
+    withGlobalConfig(
+      { config: { diagnostics: { enabled: true, categories: ["llm"] } }, name: `wiscode.${extension}` },
+      ({ dir }) =>
+        Effect.gen(function* () {
+          const file = path.join(dir, `wiscode.${extension}`)
+          const before = yield* FSUtil.use.readFileString(file)
+          const omitted = yield* Config.use.updateGlobal({ patch: { username: "kept" } })
+          expect(omitted.info.diagnostics?.categories).toEqual(["llm"])
+
+          const replaced = yield* Config.use.updateGlobal({
+            patch: { diagnostics: { categories: ["tool"] } },
+          })
+          expect(replaced.info.diagnostics?.categories).toEqual(["tool"])
+
+          const deleted = yield* Config.use.updateGlobal({
+            patch: {},
+            deletes: ["diagnostics.categories"],
+          })
+          expect(deleted.info.diagnostics?.categories).toBeUndefined()
+          const written = yield* FSUtil.use.readFileString(file)
+          expect(ConfigParse.jsonc(written, file)).not.toHaveProperty("diagnostics.categories")
+          if (extension === "jsonc") expect(written).toContain("diagnostics")
+          expect(before).not.toBe(written)
+        }),
+    ),
+  )
+}
+
+it.effect("rejects empty diagnostic categories without modifying global config", () =>
+  withGlobalConfig(
+    { config: { diagnostics: { enabled: true, categories: ["llm"] } }, name: "wiscode.json" },
+    ({ dir }) =>
+      Effect.gen(function* () {
+        const file = path.join(dir, "wiscode.json")
+        const before = yield* FSUtil.use.readFileString(file)
+        const exit = yield* Effect.exit(
+          Config.use.updateGlobal({ patch: { diagnostics: { categories: [] as never[] } } }),
+        )
+        expect(Exit.isFailure(exit)).toBe(true)
+        expect(yield* FSUtil.use.readFileString(file)).toBe(before)
+      }),
+  ),
+)
+
 it.effect("logs global update diagnostics once without exposing values", () =>
   withGlobalConfig(
     {
