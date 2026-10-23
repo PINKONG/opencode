@@ -20,6 +20,7 @@
 
 | WisCode 版本 | OpenCode 基线 | 说明 |
 | --- | --- | --- |
+| `1.5.4` | `v1.19.4` | 同步 Bun 1.4.4、musl 原生依赖跨平台构建与测试兼容性更新，保留 WisCode 品牌、配置隔离、BMAD/uv 及诊断日志 |
 | `1.5.3` | `v1.19.3` | 同步 OpenCode v1.19.3 的模型推理选项配置，保留 WisCode 品牌、配置隔离、BMAD/uv、诊断日志与 LLM 内容层 |
 | `1.5.2` | `v1.19.2` | 同步 OpenCode v1.19.2，保留 WisCode 品牌、配置隔离、内嵌 BMAD/uv，并继续屏蔽 OpenCode 2 升级入口 |
 | `1.5.1` | `v1.19.1` | 同步 OpenCode v1.19.1，跟进停用 session sharing，保留 WisCode 品牌、配置隔离和内嵌 BMAD/uv |
