@@ -14,6 +14,7 @@ import { SessionRunState } from "@/session/run-state"
 import { SessionStatus } from "@/session/status"
 import { SessionSummary } from "@/session/summary"
 import { Todo } from "@/session/todo"
+import { ExternalContext } from "@/session/external-context"
 import { MessageID, PartID, SessionID } from "@/session/schema"
 import { NamedError } from "@opencode-ai/core/util/error"
 import { Cause, Effect, Option, Schema, Scope } from "effect"
@@ -35,6 +36,7 @@ import {
   ShellPayload,
   SummarizePayload,
   UpdatePayload,
+  ExternalContextPayload,
 } from "../groups/session"
 import { PermissionNotFoundError } from "../errors"
 import * as SessionError from "./session-errors"
@@ -57,6 +59,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     const permissionSvc = yield* Permission.Service
     const statusSvc = yield* SessionStatus.Service
     const todoSvc = yield* Todo.Service
+    const externalContext = yield* ExternalContext.Service
     const summary = yield* SessionSummary.Service
     const events = yield* EventV2Bridge.Service
     const scope = yield* Scope.Scope
@@ -94,6 +97,28 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     const todo = Effect.fn("SessionHttpApi.todo")(function* (ctx: { params: { sessionID: SessionID } }) {
       yield* requireSession(ctx.params.sessionID)
       return yield* todoSvc.get(ctx.params.sessionID)
+    })
+
+    const getExternalContext = Effect.fn("SessionHttpApi.getExternalContext")(function* (ctx: { params: { sessionID: SessionID } }) {
+      yield* requireSession(ctx.params.sessionID)
+      return (yield* externalContext.get(ctx.params.sessionID)) ?? null
+    })
+
+    const updateExternalContext = Effect.fn("SessionHttpApi.updateExternalContext")(function* (ctx: {
+      params: { sessionID: SessionID }
+      payload: typeof ExternalContextPayload.Type
+    }) {
+      yield* requireSession(ctx.params.sessionID)
+      return yield* externalContext.put({ sessionID: ctx.params.sessionID, ...ctx.payload }).pipe(
+        Effect.catchTag("ExternalContextConflictError", () => Effect.fail(new HttpApiError.BadRequest({}))),
+        Effect.catchTag("ExternalContextRequestIdError", () => Effect.fail(new HttpApiError.BadRequest({}))),
+      )
+    })
+
+    const deleteExternalContext = Effect.fn("SessionHttpApi.deleteExternalContext")(function* (ctx: { params: { sessionID: SessionID } }) {
+      yield* requireSession(ctx.params.sessionID)
+      yield* externalContext.remove(ctx.params.sessionID)
+      return true
     })
 
     const diff = Effect.fn("SessionHttpApi.diff")(function* (ctx: {
@@ -416,6 +441,9 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       .handle("get", get)
       .handle("children", children)
       .handle("todo", todo)
+      .handle("externalContext", getExternalContext)
+      .handle("externalContextUpdate", updateExternalContext)
+      .handle("externalContextDelete", deleteExternalContext)
       .handle("diff", diff)
       .handle("messages", messages)
       .handle("message", message)

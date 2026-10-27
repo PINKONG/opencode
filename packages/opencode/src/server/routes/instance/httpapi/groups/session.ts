@@ -74,6 +74,19 @@ export const RevertPayload = Schema.Struct(Struct.omit(SessionRevert.RevertInput
 export const PermissionResponsePayload = Schema.Struct({
   response: PermissionV1.Reply,
 })
+export const ExternalContextPayload = Schema.Struct({
+  source: Schema.String,
+  instanceId: Schema.String,
+  contextVersion: Schema.Int,
+  requestId: Schema.String,
+  expectedRevision: Schema.Int,
+  data: Schema.Record(Schema.String, Schema.Unknown),
+})
+export const ExternalContextInfo = Schema.Struct({
+  source: Schema.String,
+  revision: Schema.Int,
+  data: Schema.Record(Schema.String, Schema.Unknown),
+})
 
 export const SessionPaths = {
   list: root,
@@ -102,6 +115,7 @@ export const SessionPaths = {
   deleteMessage: `${root}/:sessionID/message/:messageID`,
   deletePart: `${root}/:sessionID/message/:messageID/part/:partID`,
   updatePart: `${root}/:sessionID/message/:messageID/part/:partID`,
+  externalContext: `${root}/:sessionID/external-context`,
 } as const
 
 export const SessionApi = HttpApi.make("session")
@@ -164,6 +178,31 @@ export const SessionApi = HttpApi.make("session")
             summary: "Get session todos",
             description: "Retrieve the todo list associated with a specific session, showing tasks and action items.",
           }),
+        ),
+        HttpApiEndpoint.get("externalContext", SessionPaths.externalContext, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Schema.Union([ExternalContextInfo, Schema.Null]), "Get external context"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({ identifier: "session.externalContext.get", summary: "Get external context" }),
+        ),
+        HttpApiEndpoint.put("externalContextUpdate", SessionPaths.externalContext, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          payload: ExternalContextPayload,
+          success: described(ExternalContextInfo, "Updated external context"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({ identifier: "session.externalContext.update", summary: "Update external context" }),
+        ),
+        HttpApiEndpoint.delete("externalContextDelete", SessionPaths.externalContext, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(Schema.Boolean, "Deleted external context"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({ identifier: "session.externalContext.delete", summary: "Delete external context" }),
         ),
         HttpApiEndpoint.get("diff", SessionPaths.diff, {
           params: { sessionID: SessionID },

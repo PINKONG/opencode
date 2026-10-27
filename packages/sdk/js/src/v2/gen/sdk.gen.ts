@@ -199,6 +199,12 @@ import type {
   SessionDeleteResponses,
   SessionDiffErrors,
   SessionDiffResponses,
+  SessionExternalContextDeleteErrors,
+  SessionExternalContextDeleteResponses,
+  SessionExternalContextGetErrors,
+  SessionExternalContextGetResponses,
+  SessionExternalContextUpdateErrors,
+  SessionExternalContextUpdateResponses,
   SessionForkErrors,
   SessionForkResponses,
   SessionGetErrors,
@@ -3489,6 +3495,129 @@ export class Provider extends HeyApiClient {
   }
 }
 
+export class ExternalContext extends HeyApiClient {
+  /**
+   * Delete external context
+   */
+  public delete<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<
+      SessionExternalContextDeleteResponses,
+      SessionExternalContextDeleteErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/external-context",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get external context
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      SessionExternalContextGetResponses,
+      SessionExternalContextGetErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/external-context",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update external context
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+      source?: string
+      instanceId?: string
+      contextVersion?: number
+      requestId?: string
+      expectedRevision?: number
+      data?: {
+        [key: string]: unknown
+      }
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "source" },
+            { in: "body", key: "instanceId" },
+            { in: "body", key: "contextVersion" },
+            { in: "body", key: "requestId" },
+            { in: "body", key: "expectedRevision" },
+            { in: "body", key: "data" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<
+      SessionExternalContextUpdateResponses,
+      SessionExternalContextUpdateErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/external-context",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Session2 extends HeyApiClient {
   /**
    * List sessions
@@ -4460,6 +4589,11 @@ export class Session2 extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  private _externalContext?: ExternalContext
+  get externalContext(): ExternalContext {
+    return (this._externalContext ??= new ExternalContext({ client: this.client }))
   }
 }
 

@@ -30,6 +30,8 @@ import { SessionEvent } from "../event"
 import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
 import { SessionSchema } from "../schema"
+import { SessionExternalContextTable } from "../sql"
+import { SessionExternalContext } from "../external-context"
 import { SessionStore } from "../store"
 import { type RunError, Service } from "./index"
 import { SessionRunnerModel } from "./model"
@@ -39,6 +41,7 @@ import { MAX_STEPS_PROMPT } from "./max-steps"
 import { Snapshot } from "../../snapshot"
 import { makeLocationNode } from "../../effect/app-node"
 import { llmClient } from "../../effect/app-node-platform"
+import { eq } from "drizzle-orm"
 
 /**
  * Runs one durable coding-agent Session until it settles.
@@ -201,6 +204,17 @@ const layer = Layer.effect(
       const context = entries.map((entry) => entry.message)
       const isLastStep = agent.info?.steps !== undefined && currentStep >= agent.info.steps
       const toolMaterialization = isLastStep ? undefined : yield* tools.materialize(agent.info?.permissions)
+      const externalContextRow = yield* db
+        .select()
+        .from(SessionExternalContextTable)
+        .where(eq(SessionExternalContextTable.session_id, session.id))
+        .get()
+        .pipe(Effect.orDie)
+      const externalContext = SessionExternalContext.render(
+        externalContextRow
+          ? { source: externalContextRow.source, revision: externalContextRow.revision, data: SessionExternalContext.validateData(externalContextRow.value) }
+          : undefined,
+      )
       const promptCacheKey = /^ses_[0-9a-f]{64}$/.test(session.id) ? session.id.slice(4) : session.id
       const request = LLM.request({
         model,
@@ -214,7 +228,7 @@ const layer = Layer.effect(
           },
         },
         providerOptions: { openai: { promptCacheKey } },
-        system: [agent.info?.system, system.baseline]
+        system: [agent.info?.system, system.baseline, externalContext]
           .filter((part): part is string => part !== undefined && part.length > 0)
           .map(SystemPart.make),
         messages: [...toLLMMessages(context, model), ...(isLastStep ? [Message.assistant(MAX_STEPS_PROMPT)] : [])],

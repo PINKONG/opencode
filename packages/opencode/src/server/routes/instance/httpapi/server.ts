@@ -40,6 +40,7 @@ import { Session } from "@/session/session"
 import { SessionStatus } from "@/session/status"
 import { SessionSummary } from "@/session/summary"
 import { Todo } from "@/session/todo"
+import { ExternalContext } from "@/session/external-context"
 import { SessionShare } from "@/share/session"
 import { Skill } from "@/skill"
 import { Discovery } from "@/skill/discovery"
@@ -233,6 +234,7 @@ const app = LayerNode.group([
   Permission.node,
   PermissionSaved.node,
   Todo.node,
+  ExternalContext.node,
   Session.node,
   SessionProjector.node,
   SessionStatus.node,

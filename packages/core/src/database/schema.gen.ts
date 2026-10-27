@@ -155,6 +155,21 @@ export default {
         );
       `)
       yield* tx.run(`
+        CREATE TABLE \`session_external_context\` (
+          \`session_id\` text PRIMARY KEY,
+          \`source\` text NOT NULL,
+          \`revision\` integer DEFAULT 0 NOT NULL,
+          \`value\` text NOT NULL,
+          \`last_instance_id\` text,
+          \`last_context_version\` integer,
+          \`last_request_id\` text,
+          \`last_request_hash\` text,
+          \`last_request_result\` text,
+          \`time_updated\` integer NOT NULL,
+          CONSTRAINT \`fk_session_external_context_session_id_session_id_fk\` FOREIGN KEY (\`session_id\`) REFERENCES \`session\`(\`id\`) ON DELETE CASCADE
+        );
+      `)
+      yield* tx.run(`
         CREATE TABLE \`session_input\` (
           \`id\` text PRIMARY KEY,
           \`session_id\` text NOT NULL,

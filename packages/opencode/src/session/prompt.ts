@@ -51,6 +51,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EffectBridge } from "@/effect/bridge"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { Database } from "@opencode-ai/core/database/database"
+import { ExternalContext } from "@/session/external-context"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { eq } from "drizzle-orm"
@@ -204,6 +205,7 @@ const layer = Layer.effect(
     const events = yield* EventV2Bridge.Service
     const flags = yield* RuntimeFlags.Service
     const database = yield* Database.Service
+    const externalContext = yield* ExternalContext.Service
     const { db } = database
     const traces = new Map<string, DiagnosticTrace.TraceContext>()
     const activeTraces = new Map<string, DiagnosticTrace.TraceContext>()
@@ -1608,6 +1610,8 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             ...(mcpInstructions ? [mcpInstructions] : []),
             ...(skills ? [skills] : []),
           ]
+          const externalContextBlock = yield* externalContext.render(session.id)
+          if (externalContextBlock) system.push(externalContextBlock)
           yield* recordContextSources(diagnostics, currentDiagnostic, [
             ...env.map((content, index) => ({
               kind: "system" as const,
@@ -2017,6 +2021,7 @@ export const node = LayerNode.make({
     EventV2Bridge.node,
     RuntimeFlags.node,
     Database.node,
+    ExternalContext.node,
   ],
 })
 

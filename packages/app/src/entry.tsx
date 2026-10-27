@@ -12,6 +12,7 @@ import { authFromToken } from "@/utils/server"
 import pkg from "../package.json"
 import { ServerConnection } from "./context/server"
 import { readEmbedSessionBootstrap } from "./util/embed-session"
+import { installExternalContextBridge } from "./util/external-context-bridge"
 
 const DEFAULT_SERVER_URL_KEY = "opencode.settings.dat:defaultServerUrl"
 
@@ -151,6 +152,8 @@ if (import.meta.env.VITE_SENTRY_DSN) {
 }
 
 if (root instanceof HTMLElement) {
+  const disposeExternalContextBridge = installExternalContextBridge(Boolean(readEmbedSessionBootstrap(location.search)))
+  window.addEventListener("pagehide", disposeExternalContextBridge, { once: true })
   void loadInitialLocale().then((locale) => {
     const auth = authFromToken(new URLSearchParams(location.search).get("auth_token"))
     clearAuthToken()

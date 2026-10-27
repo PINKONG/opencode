@@ -26,7 +26,7 @@ import { Image } from "../../src/image/image"
 import { Question } from "../../src/question"
 import { Todo } from "../../src/session/todo"
 import { Session } from "@/session/session"
-import { SessionMessageTable } from "@opencode-ai/core/session/sql"
+import { SessionExternalContextTable, SessionMessageTable } from "@opencode-ai/core/session/sql"
 import { LLM } from "../../src/session/llm"
 import { MessageV2 } from "../../src/session/message-v2"
 import { FSUtil } from "@opencode-ai/core/fs-util"
@@ -822,6 +822,54 @@ it.instance("static loop returns assistant text through local provider", () =>
     expect(result.parts.some((part) => part.type === "text" && part.text === "world")).toBe(true)
     expect(yield* llm.hits).toHaveLength(1)
     expect(yield* llm.pending).toBe(0)
+  }),
+)
+
+it.instance("injects committed external context into the Legacy provider request", () =>
+  Effect.gen(function* () {
+    const { llm } = yield* useServerConfig(providerCfg)
+    const db = yield* Database.Service
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const session = yield* sessions.create({
+      title: "Prompt external context",
+      permission: [{ permission: "*", pattern: "*", action: "allow" }],
+    })
+
+    yield* db.db
+      .insert(SessionExternalContextTable)
+      .values({
+        session_id: session.id,
+        source: "company-system",
+        revision: 1,
+        value: { pageId: "page-legacy" },
+        last_instance_id: "frame-1",
+        last_context_version: 1,
+        last_request_id: "request-1",
+        last_request_hash: "hash-1",
+        last_request_result: { source: "company-system", revision: 1 },
+        time_updated: Date.now(),
+      })
+      .run()
+      .pipe(Effect.orDie)
+
+    yield* prompt.prompt({
+      sessionID: session.id,
+      agent: "build",
+      noReply: true,
+      parts: [{ type: "text", text: "Use page context" }],
+    })
+    yield* llm.text("context received")
+    yield* prompt.loop({ sessionID: session.id })
+
+    const inputs = yield* llm.inputs
+    const system = inputs
+      .flatMap((input) => (Array.isArray(input.messages) ? input.messages : []))
+      .filter((message) => message && typeof message === "object" && message.role === "system")
+      .map((message) => JSON.stringify(message))
+      .join("\n")
+    expect(system).toContain("<wiscode_external_context")
+    expect(system).toContain("page-legacy")
   }),
 )
 

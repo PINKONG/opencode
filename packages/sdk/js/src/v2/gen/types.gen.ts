@@ -10031,6 +10031,134 @@ export type SessionTodoResponses = {
 
 export type SessionTodoResponse = SessionTodoResponses[keyof SessionTodoResponses]
 
+export type SessionExternalContextDeleteData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/external-context"
+}
+
+export type SessionExternalContextDeleteErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionExternalContextDeleteError =
+  SessionExternalContextDeleteErrors[keyof SessionExternalContextDeleteErrors]
+
+export type SessionExternalContextDeleteResponses = {
+  /**
+   * Deleted external context
+   */
+  200: boolean
+}
+
+export type SessionExternalContextDeleteResponse =
+  SessionExternalContextDeleteResponses[keyof SessionExternalContextDeleteResponses]
+
+export type SessionExternalContextGetData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/external-context"
+}
+
+export type SessionExternalContextGetErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionExternalContextGetError = SessionExternalContextGetErrors[keyof SessionExternalContextGetErrors]
+
+export type SessionExternalContextGetResponses = {
+  /**
+   * Get external context
+   */
+  200: {
+    source: string
+    revision: number
+    data: {
+      [key: string]: unknown
+    }
+  }
+}
+
+export type SessionExternalContextGetResponse =
+  SessionExternalContextGetResponses[keyof SessionExternalContextGetResponses]
+
+export type SessionExternalContextUpdateData = {
+  body?: {
+    source: string
+    instanceId: string
+    contextVersion: number
+    requestId: string
+    expectedRevision: number
+    data: {
+      [key: string]: unknown
+    }
+  }
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/external-context"
+}
+
+export type SessionExternalContextUpdateErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+}
+
+export type SessionExternalContextUpdateError =
+  SessionExternalContextUpdateErrors[keyof SessionExternalContextUpdateErrors]
+
+export type SessionExternalContextUpdateResponses = {
+  /**
+   * Updated external context
+   */
+  200: {
+    source: string
+    revision: number
+    data: {
+      [key: string]: unknown
+    }
+  }
+}
+
+export type SessionExternalContextUpdateResponse =
+  SessionExternalContextUpdateResponses[keyof SessionExternalContextUpdateResponses]
+
 export type SessionDiffData = {
   body?: never
   path: {

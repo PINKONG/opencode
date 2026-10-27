@@ -1,6 +1,7 @@
 import { afterEach, describe, expect } from "bun:test"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
+import { Database } from "@opencode-ai/core/database/database"
 import { Deferred, Effect, Layer } from "effect"
 import type * as Scope from "effect/Scope"
 import { HttpServer } from "effect/unstable/http"
@@ -28,7 +29,6 @@ import { awaitWithTimeout, pollWithTimeout, testEffect } from "../lib/effect"
 import { testProviderConfig } from "../lib/test-provider"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
-import { Database } from "@opencode-ai/core/database/database"
 import { httpApiLayer } from "./httpapi-layer"
 
 const noopBootstrapLayer = Layer.succeed(InstanceBootstrap.Service, InstanceBootstrap.Service.of({ run: Effect.void }))
@@ -335,6 +335,50 @@ afterEach(async () => {
 })
 
 describe("HttpApi SDK", () => {
+  httpapiInstance(
+    "deletes external context when its session is deleted",
+    { serverPath: "raw", git: false },
+    ({ sdk }) => Effect.gen(function* () {
+      const created = yield* call(() => sdk.session.create({ title: "external context cascade" }))
+      const sessionID = created.data!.id
+      yield* call(() => sdk.session.externalContext.update({
+        sessionID, source: "company-system", instanceId: "frame-1", contextVersion: 1,
+        requestId: "request-1", expectedRevision: 0, data: { pageId: "page-1" },
+      }))
+      yield* call(() => sdk.session.delete({ sessionID }))
+      yield* expectStatus(() => sdk.session.externalContext.get({ sessionID }), 404)
+    }),
+  )
+
+  httpapiInstance(
+    "persists, replaces and clears external context with CAS and idempotent retries",
+    { serverPath: "raw", git: false },
+    ({ sdk }) => Effect.gen(function* () {
+      const session = yield* call(() => sdk.session.create({ title: "external context" }))
+      const sessionID = session.data!.id
+      const empty = yield* call(() => sdk.session.externalContext.get({ sessionID }))
+      expect(empty.data).toBeNull()
+      const input = { sessionID, source: "company-system", instanceId: "frame-1", contextVersion: 1,
+        requestId: "request-1", expectedRevision: 0, data: { arbitrary: { script: "hello" } } }
+      const first = yield* call(() => sdk.session.externalContext.update(input))
+      expect(first.data).toMatchObject({ revision: 1, data: input.data })
+      const retry = yield* call(() => sdk.session.externalContext.update(input))
+      expect(retry.data).toEqual(first.data)
+      yield* expectStatus(() => sdk.session.externalContext.update({ ...input, data: {} }), 400)
+      yield* expectStatus(() => sdk.session.externalContext.update({ ...input, requestId: "stale" }), 400)
+      const replaced = yield* call(() => sdk.session.externalContext.update({ ...input,
+        requestId: "request-2", contextVersion: 2, expectedRevision: 1, data: { fresh: true } }))
+      expect(replaced.data).toMatchObject({ revision: 2, data: { fresh: true } })
+      const cleared = yield* call(() => sdk.session.externalContext.update({ ...input,
+        requestId: "request-3", contextVersion: 3, expectedRevision: 2, data: {} }))
+      expect(cleared.data).toMatchObject({ revision: 3, data: {} })
+      yield* expectStatus(() => sdk.session.externalContext.delete({ sessionID }), 200)
+      const removed = yield* call(() => sdk.session.externalContext.get({ sessionID }))
+      expect(removed.data).toBeNull()
+      yield* expectStatus(() => sdk.session.externalContext.get({ sessionID: SessionID.make("ses_external_context_missing") }), 404)
+    }),
+  )
+
   httpapi(
     "uses the generated SDK for global and control routes",
     Effect.gen(function* () {

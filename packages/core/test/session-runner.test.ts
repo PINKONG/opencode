@@ -45,6 +45,7 @@ import {
   SessionContextEpochTable,
   SessionInputTable,
   SessionMessageTable,
+  SessionExternalContextTable,
   SessionTable,
 } from "@opencode-ai/core/session/sql"
 import { SessionStore } from "@opencode-ai/core/session/store"
@@ -627,6 +628,37 @@ describe("SessionRunnerLLM", () => {
       expect(yield* session.messages({ sessionID })).toMatchObject([
         { id: message.id, type: "user", text: "Run automatically" },
       ])
+    }),
+  )
+
+  it.effect("injects committed external context into the V2 provider request", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const { db } = yield* Database.Service
+      yield* db
+        .insert(SessionExternalContextTable)
+        .values({
+          session_id: sessionID,
+          source: "company-system",
+          revision: 1,
+          value: { pageId: "page-v2" },
+          last_instance_id: "frame-1",
+          last_context_version: 1,
+          last_request_id: "request-1",
+          last_request_hash: "hash-1",
+          last_request_result: { source: "company-system", revision: 1 },
+          time_updated: Date.now(),
+        })
+        .run()
+        .pipe(Effect.orDie)
+
+      const session = yield* SessionV2.Service
+      requests.length = 0
+      response = []
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Use page context" }) })
+
+      expect(requests[0]?.system.map((part) => part.text)).toContainEqual(expect.stringContaining("<wiscode_external_context"))
+      expect(requests[0]?.system.map((part) => part.text)).toContainEqual(expect.stringContaining("page-v2"))
     }),
   )
 

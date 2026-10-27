@@ -23,6 +23,7 @@ import { createPromptSubmissionState } from "./submission-state"
 import { normalizeSessionInfo } from "@/utils/session"
 import { Event } from "@opencode-ai/schema/event"
 import { blobDataUrl } from "@/utils/draft-store"
+import { waitForExternalContext } from "@/util/external-context-bridge"
 
 type PendingPrompt = {
   abort: AbortController
@@ -71,6 +72,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
   const wait = async () => {
     const ok = await input.before?.()
     if (ok === false) return false
+    await waitForExternalContext(input.draft.sessionID, input.draft.sessionDirectory)
     return true
   }
 

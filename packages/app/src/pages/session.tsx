@@ -65,6 +65,13 @@ import { setCursorPosition } from "@/components/prompt-input/editor-dom"
 import { promptLength } from "@/components/prompt-input/history"
 import { type FollowupDraft, sendFollowupDraft } from "@/components/prompt-input/submit"
 import {
+  currentExternalContext,
+  setExternalContextWaiter,
+  subscribeExternalContext,
+  waitForExternalContext,
+} from "@/util/external-context-bridge"
+import { createExternalContextSync } from "@/util/external-context-sync"
+import {
   createPromptInputController,
   createSessionComposerController,
   createSessionComposerRegionController,
@@ -287,8 +294,58 @@ function ResolvedTargetSessionRoute() {
 // key: SessionPage handles session changes reactively, and remounting here
 // destroys workspace-scoped state (terminal PTYs, file/prompt providers).
 function TargetSessionPage() {
-  const sdk = useSDK()
   const serverSDK = useServerSDK()
+  const sdk = useSDK()
+  const { params } = useSessionLayout()
+  const [externalContext, setExternalContext] = createSignal<Record<string, unknown> | undefined>(currentExternalContext())
+  const instanceId = crypto.randomUUID()
+  let contextVersion = 0
+  let lastApplied: { sessionID: string; data: Record<string, unknown> } | undefined
+  const contextSync = createExternalContextSync(async ({ sessionID, directory, data, requestId, state }) => {
+    if (state.revision === undefined) {
+      const existing = await serverSDK().client.session.externalContext.get({ sessionID, directory })
+      if (existing.error) throw existing.error
+      state.revision = existing.data?.revision ?? 0
+      state.version = ++contextVersion
+    }
+    const result = await serverSDK().client.session.externalContext.update({
+      sessionID,
+      directory,
+      source: "company-system",
+      instanceId,
+      contextVersion: state.version!,
+      requestId,
+      expectedRevision: state.revision,
+      data,
+    })
+    if (result.error) throw result.error
+    lastApplied = { sessionID, data }
+  })
+
+  onMount(() => {
+    if (!serverSDK().server.http.embedSession || window.parent === window) return
+    const unsubscribe = subscribeExternalContext(setExternalContext)
+    onCleanup(unsubscribe)
+    onCleanup(setExternalContextWaiter((sessionID, directory) => {
+      const data = currentExternalContext()
+      return data === undefined ? Promise.resolve() : contextSync.bind(sessionID, directory, data)
+    }))
+  })
+
+  createEffect(() => {
+    const data = externalContext()
+    const sessionID = params.id
+    if (!data || !sessionID) return
+    if (lastApplied?.sessionID === sessionID && lastApplied.data === data) return
+    void contextSync.bind(sessionID, sdk().directory, data).catch((error) => {
+      showToast({
+        variant: "error",
+        title: "External context update failed",
+        description: error instanceof Error ? error.message : String(error),
+      })
+    })
+  })
+
   return (
     <Show when={`${serverSDK().scope}\0${sdk().directory}`} keyed>
       <SessionPage />
