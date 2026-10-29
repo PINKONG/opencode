@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WisCode Sidecar 上下文联调</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+        color: #152d2a;
+        background: #eef3ed;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; }
+      header { padding: 20px 24px; color: #f5f7ed; background: #173b35; }
+      h1 { margin: 0; font-size: 18px; font-weight: 650; }
+      main { display: grid; grid-template-columns: minmax(280px, 390px) minmax(0, 1fr); gap: 20px; padding: 20px; }
+      section { min-width: 0; }
+      label { display: block; margin: 0 0 7px; font-size: 12px; font-weight: 700; }
+      input, textarea { width: 100%; border: 1px solid #9aaca4; border-radius: 4px; padding: 10px; color: inherit; background: #fff; font: inherit; font-size: 12px; }
+      textarea { min-height: 330px; resize: vertical; line-height: 1.5; }
+      .url-row { display: flex; gap: 8px; }
+      .url-row input { min-width: 0; }
+      .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+      button { min-height: 36px; border: 1px solid #173b35; border-radius: 4px; padding: 0 12px; color: #fff; background: #176b5b; font: inherit; font-size: 12px; cursor: pointer; }
+      button.secondary { color: #173b35; background: transparent; }
+      button.danger { border-color: #a44031; color: #a44031; background: transparent; }
+      button:disabled { cursor: not-allowed; opacity: .5; }
+      .status { min-height: 40px; border-left: 3px solid #d99a32; padding: 8px 10px; background: #fff; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+      .status.ok { border-color: #18806a; }
+      .status.error { border-color: #b13d32; }
+      .hint { margin: 10px 0 0; color: #51645e; font: 12px/1.5 system-ui, sans-serif; }
+      .frame-wrap { height: calc(100vh - 104px); min-height: 500px; border: 1px solid #9aaca4; background: #fff; }
+      iframe { display: block; width: 100%; height: 100%; border: 0; }
+      @media (max-width: 800px) {
+        main { grid-template-columns: 1fr; }
+        .frame-wrap { height: 72vh; min-height: 460px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header><h1>WisCode Sidecar 上下文联调</h1></header>
+    <main>
+      <section aria-label="测试控制">
+        <label for="sidecar-url">Sidecar URL（包含 auth_token 或 embed_session）</label>
+        <div class="url-row">
+          <input id="sidecar-url" type="url" placeholder="http://127.0.0.1:4096/?embed_session=..." />
+          <button id="load" type="button">加载</button>
+        </div>
+        <p class="hint">先加载 Sidecar，页面会在 iframe load 后自动发送当前 JSON。此测试页使用 HTTP localhost origin，不要用 file:// 打开。</p>
+
+        <label for="payload">要发送的完整上下文对象</label>
+        <textarea id="payload" spellcheck="false"></textarea>
+        <div class="actions">
+          <button id="send" type="button" disabled>发送 / 替换</button>
+          <button id="sample" class="secondary" type="button">恢复示例数据</button>
+          <button id="clear" class="danger" type="button" disabled>发送空对象</button>
+        </div>
+        <div id="status" class="status" role="status" aria-live="polite">等待输入 Sidecar URL。</div>
+        <p class="hint">发送后，在 iframe 内发起新对话并询问 pageId、事件名称或脚本内容。postMessage 没有 ACK；状态只表示本测试页已调用发送。</p>
+      </section>
+      <section class="frame-wrap" aria-label="嵌入的 WisCode Sidecar">
+        <iframe id="wiscode" title="WisCode Sidecar" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </section>
+    </main>
+    <script>
+      const iframe = document.querySelector("#wiscode")
+      const urlInput = document.querySelector("#sidecar-url")
+      const payloadInput = document.querySelector("#payload")
+      const status = document.querySelector("#status")
+      const sendButton = document.querySelector("#send")
+      const clearButton = document.querySelector("#clear")
+      const sample = {
+        pageId: "sidecar-test-page-001",
+        upFuncPermissionCode: "TEST_PERMISSION_CODE",
+        eventInfo: {
+          name: "onChange",
+          title: "Sidecar 上下文联调事件",
+          code: {
+            version: 1,
+            commitMessage: null,
+            script: "console.log('sidecar external context test');",
+            updated: false,
+            eventId: "test-event-001",
+            id: "test-code-001",
+          },
+        },
+      }
+      payloadInput.value = JSON.stringify(sample, null, 2)
+      let targetOrigin
+      let loaded = false
+      let pendingPayload
+
+      function report(message, kind) {
+        status.textContent = message
+        status.className = `status ${kind || ""}`
+      }
+
+      function sendData(data) {
+        if (!loaded || !iframe.contentWindow || !targetOrigin) {
+          pendingPayload = data
+          report("Sidecar 尚未完成加载，数据将在 iframe load 后发送。")
+          return
+        }
+        iframe.contentWindow.postMessage({ type: "wiscode.context.update", data }, targetOrigin)
+        report(`已调用 postMessage，targetOrigin=${targetOrigin}。协议无 ACK，请在 Sidecar 发起新模型请求验证。`, "ok")
+      }
+
+      document.querySelector("#load").addEventListener("click", () => {
+        try {
+          const url = new URL(urlInput.value.trim())
+          if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Sidecar URL 必须使用 HTTP 或 HTTPS")
+          if (!url.searchParams.has("embed_session") && !url.searchParams.has("auth_token")) {
+            throw new Error("URL 需要包含 embed_session 或 auth_token 参数")
+          }
+          targetOrigin = url.origin
+          loaded = false
+          sendButton.disabled = true
+          clearButton.disabled = true
+          pendingPayload = JSON.parse(payloadInput.value)
+          if (!pendingPayload || Array.isArray(pendingPayload) || typeof pendingPayload !== "object") {
+            throw new Error("上下文 JSON 根值必须是对象")
+          }
+          iframe.src = url.href
+          report(`正在加载 ${url.origin} ...`)
+        } catch (error) {
+          report(error instanceof Error ? error.message : String(error), "error")
+        }
+      })
+
+      iframe.addEventListener("load", () => {
+        if (!targetOrigin) return
+        loaded = true
+        sendButton.disabled = false
+        clearButton.disabled = false
+        sendData(pendingPayload ?? JSON.parse(payloadInput.value))
+        pendingPayload = undefined
+      })
+
+      sendButton.addEventListener("click", () => {
+        try {
+          const data = JSON.parse(payloadInput.value)
+          if (!data || Array.isArray(data) || typeof data !== "object") throw new Error("上下文 JSON 根值必须是对象")
+          sendData(data)
+        } catch (error) {
+          report(error instanceof Error ? error.message : String(error), "error")
+        }
+      })
+      clearButton.addEventListener("click", () => sendData({}))
+      document.querySelector("#sample").addEventListener("click", () => {
+        payloadInput.value = JSON.stringify(sample, null, 2)
+        report("已恢复示例数据；点击“发送 / 替换”后生效。")
+      })
+    </script>
+  </body>
+</html>

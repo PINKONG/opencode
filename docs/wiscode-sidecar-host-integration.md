@@ -38,6 +38,8 @@ sendContext({
 
 上例在 iframe 已加载后调用。首次发送可放在已有的 iframe load 回调里；无需额外监听 WisCode 的 ready 消息。load 前发送可能丢失，浏览器不会缓存尚无接收器的消息。iframe URL 若发生跨 origin 重定向，应使用最终 sidecar 页面的 origin。
 
+**宿主页面必须声明 UTF-8 编码**：在 HTML 头部加入 `<meta charset="utf-8">`，或确保服务端返回 `Content-Type: text/html; charset=utf-8`。若页面未声明编码，浏览器可能按旧编码（如 windows-1252）解码页面内联脚本中的中文，postMessage 发出的字符串在源头就已变成乱码——WisCode 无法识别或修复这种损坏，模型会看到乱码数据。这类问题在宿主侧很难自查（页面本身显示正常），联调时务必用非 ASCII 字段验证一次（见 §6）。
+
 ## 2. 替换与清空
 
 - 每次发送完整对象，不是增量 patch；未包含的旧字段会被删除。
@@ -70,3 +72,4 @@ targetOrigin 使用实际 sidecar 页面的精确 origin，不用 `*`。宿主�
 2. 确认 Skill 能读取页面和事件字段，不需要握手或回执监听。
 3. 更新完整对象后旧字段消失，发送 {} 后上下文清空。
 4. 刷新同一会话不重发仍能复用快照，切换会话自动绑定本 iframe 最近数据。
+5. 发送含中文等非 ASCII 字段的数据，确认保存后原文一致（可查询 `GET /session/:sessionID/external-context`，或让模型复述该字段），以验证宿主页面已正确声明 UTF-8 编码。
