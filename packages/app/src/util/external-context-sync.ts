@@ -1,3 +1,5 @@
+import { uuid } from "@/utils/uuid"
+
 type Write = (input: { sessionID: string; directory: string; data: Record<string, unknown>; requestId: string; state: { revision?: number; version?: number } }) => Promise<void>
 
 export function createExternalContextSync(write: Write, wait?: () => Promise<void>) {
@@ -8,7 +10,7 @@ export function createExternalContextSync(write: Write, wait?: () => Promise<voi
     const key = JSON.stringify([directory, sessionID])
     const previous = bindings.get(key)
     if (previous?.data === data) return previous.task
-    const requestId = crypto.randomUUID()
+    const requestId = uuid()
     const state: { revision?: number; version?: number } = {}
     const task = tail.then(async () => {
       await wait?.()

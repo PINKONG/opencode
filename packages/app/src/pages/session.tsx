@@ -71,6 +71,7 @@ import {
   waitForExternalContext,
 } from "@/util/external-context-bridge"
 import { createExternalContextSync } from "@/util/external-context-sync"
+import { uuid } from "@/utils/uuid"
 import {
   createPromptInputController,
   createSessionComposerController,
@@ -298,7 +299,7 @@ function TargetSessionPage() {
   const sdk = useSDK()
   const { params } = useSessionLayout()
   const [externalContext, setExternalContext] = createSignal<Record<string, unknown> | undefined>(currentExternalContext())
-  const instanceId = crypto.randomUUID()
+  const instanceId = uuid()
   let contextVersion = 0
   let lastApplied: { sessionID: string; data: Record<string, unknown> } | undefined
   const contextSync = createExternalContextSync(async ({ sessionID, directory, data, requestId, state }) => {
